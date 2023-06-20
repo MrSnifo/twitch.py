@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present MrSniFo
+Copyright (c) 2023-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,11 +22,51 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-__title__ = 'Twitchify'
-__version__ = '1.0.0'
-__license__ = 'MIT License'
-__author__ = 'Snifo'
-__email__ = 'Snifo@mail.com'
-__github__ = 'https://github.com/mrsnifo/twitchify'
+# Core
+from ..user import SpecificBroadcaster, SpecificUser
+# Libraries
+from typing import Literal, List
 
-from .client import Client
+
+class Contributor(SpecificUser):
+    type: Literal['bits', 'subscription', 'other']
+    total: int
+
+
+class BaseHypeTrain(SpecificBroadcaster):
+    id: str
+    total: int
+    level: int
+    top_contributions: List[Contributor]
+    started_at: str
+
+
+class Begin(BaseHypeTrain):
+    """
+    Type: Hype Train Begin
+    Name: `channel.hype_train.begin`
+    Version: 1
+    """
+    progress: int
+    goal: int
+    last_contribution: List[Contributor]
+    expires_at: str
+
+
+class Progress(Begin):
+    """
+    Type: Hype Train Progress
+    Name: `channel.hype_train.progress`
+    Version: 1
+    """
+    pass
+
+
+class End(BaseHypeTrain):
+    """
+    Type: Hype Train End
+    Name: `channel.hype_train.end`
+    Version: 1
+    """
+    ended_at: str
+    cooldown_ends_at: str

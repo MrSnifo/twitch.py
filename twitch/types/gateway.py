@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present MrSniFo
+Copyright (c) 2023-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,11 +22,57 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-__title__ = 'Twitchify'
-__version__ = '1.0.0'
-__license__ = 'MIT License'
-__author__ = 'Snifo'
-__email__ = 'Snifo@mail.com'
-__github__ = 'https://github.com/mrsnifo/twitchify'
+# Libraries
+from typing import Optional, TypedDict, Dict
 
-from .client import Client
+__all__ = ('Session', 'Subscription')
+
+
+class _Metadata(TypedDict):
+    """
+    Represents the metadata of a server.
+    """
+    _id: str
+    _type: str
+    _timestamp: str
+
+
+class _SubscriptionMetadata(_Metadata):
+    """
+    Represents the metadata for a Notification.
+    """
+    subscription_type: str
+    subscription_version: str
+
+
+class Session(TypedDict):
+    """
+    Represents the connection information.
+    """
+    id: str
+    status: str
+    connected_at: str
+    keepalive_timeout_seconds: Optional[int]
+    reconnect_url: Optional[str]
+
+
+class _Transport(TypedDict):
+    """
+    Represents the transport details.
+    """
+    method: str
+    session_id: str
+
+
+class Subscription(TypedDict):
+    """
+    Represents the subscription details.
+    """
+    id: str
+    status: str
+    type: str
+    version: str
+    cost: str
+    condition: Dict[str, str]
+    transport: _Transport
+    created_at: str

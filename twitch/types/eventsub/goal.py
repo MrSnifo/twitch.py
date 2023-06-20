@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present MrSniFo
+Copyright (c) 2023-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,11 +22,46 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-__title__ = 'Twitchify'
-__version__ = '1.0.0'
-__license__ = 'MIT License'
-__author__ = 'Snifo'
-__email__ = 'Snifo@mail.com'
-__github__ = 'https://github.com/mrsnifo/twitchify'
+# Core
+from ..user import SpecificBroadcaster
+# Libraries
+from typing import TypedDict, Literal
 
-from .client import Client
+
+class Goal(TypedDict):
+    type: Literal['follow', 'subscription', 'subscription_count', 'new_subscription', 'new_subscription_count']
+    current_amount: int
+
+
+class _GoalBase(SpecificBroadcaster, Goal):
+    id: str
+    description: str
+    started_at: str
+
+
+class Begin(_GoalBase):
+    """
+    Type: Goal Begin
+    Name: `channel.goal.begin`
+    Version: 1
+    """
+    pass
+
+
+class Progress(_GoalBase):
+    """
+    Type: Goal Progress
+    Name: `channel.goal.progress`
+    Version: 1
+    """
+    pass
+
+
+class End(_GoalBase):
+    """
+    Type: Goal End
+    Name: `channel.goal.end`
+    Version: 1
+    """
+    is_achieved: bool
+    ended_at: str
