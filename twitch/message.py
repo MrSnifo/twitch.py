@@ -25,6 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .types import message as msg
     from typing import List, Optional
@@ -34,12 +35,14 @@ class Emote:
     """
     Represents a message emote.
     """
-    def __init__(self, *, emote: msg.Emote):
+    __slots__ = ('id', 'begin', 'end')
+
+    def __init__(self, *, emote: msg.Emote) -> None:
         self.id: str = emote['id']
         self.begin: int = emote['begin']
         self.end: int = emote['end']
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Emote id={self.id} begin={self.begin} end={self.end}>'
 
 
@@ -47,11 +50,13 @@ class Message:
     """
     Represents a chat message.
     """
-    def __init__(self, *, message: msg.Message):
+    __slots__ = ('content', '_emotes')
+
+    def __init__(self, *, message: msg.Message) -> None:
         self.content: str = message['text']
         self._emotes: List[msg.Emote] = message['emotes']
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Message message={self.content}>'
 
     def __str__(self) -> str:

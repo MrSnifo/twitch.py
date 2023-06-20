@@ -130,7 +130,6 @@ class Client:
         setup_logging()
         if self.loop is None:
             self.loop = asyncio.get_running_loop()
-        self.dispatch('connect')
         # Validating the access key and opening a new session.
         validation = await self._http.open_session(access_token=access_token, refresh_token=refresh_token)
         # Retrieving the client.
@@ -144,6 +143,7 @@ class Client:
             self.loop.create_task(self._http.Refresher(expires_in=validation['expires_in']),
                                   name="Twitchify:Refresher")
         ]
+        self.dispatch('connect')
         # Makes sure that there are events to subscribe to.
         if len(EventSub.subscriptions) >= 1:
             tasks.append(self.loop.create_task(EventSub.connect(), name="Twitchify:EventSub"))

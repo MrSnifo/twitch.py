@@ -11,7 +11,7 @@ client = Client(
 @client.event
 async def on_connect():
     """
-    Event handler triggered when the client is connecting.
+    Event handler triggered when the client successfully connected to the eventsub websocket.
     """
     print("Connecting...")
 

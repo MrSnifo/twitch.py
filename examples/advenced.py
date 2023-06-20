@@ -9,9 +9,9 @@ class Twitch(Client):
 
     async def on_connect(self):
         """
-        Event handler triggered when the client is connecting.
+        Event handler triggered when the client successfully connected to the eventsub websocket.
         """
-        print("Connecting...")
+        print("Connected as %s ID: %s" % (self.user.name, self.user.id))
 
     async def on_ready(self):
         """

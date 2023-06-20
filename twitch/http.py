@@ -44,7 +44,6 @@ if TYPE_CHECKING:
     from .state import ConnectionState
     from typing import Optional, List
 
-
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ class Route:
 
     __slots__ = ('method', 'url')
 
-    def __init__(self, method: str, path: Optional[str] = None, url: Optional[str] = None):
+    def __init__(self, method: str, path: Optional[str] = None, url: Optional[str] = None) -> None:
         """
         Initialize a Route object.
 
@@ -85,7 +84,7 @@ class HTTPClient:
     __slots__ = ('__connection', '_client_id', '_client_secret', '__session', '_session_lock', '_user_agent',
                  '_refresh_token')
 
-    def __init__(self, *, connection: ConnectionState, client_id: str, client_secret: Optional[str]):
+    def __init__(self, *, connection: ConnectionState, client_id: str, client_secret: Optional[str]) -> None:
         """
         Initialize the HTTPClient object.
         """
@@ -236,8 +235,6 @@ class HTTPClient:
                     self.__session.headers.update({'Authorization': f'Bearer {refresh["access_token"]}'})
                     _logger.debug('Session headers have been successfully updated with the new access token.')
                     await self.__connection.parse(event='refresh_token', data=refresh)
-                    # todo In connections...
-                    # self.core.dispatch('refresh_token', refresh['access_token'])
                     return refresh
         return None
 
@@ -365,6 +362,7 @@ class HTTPClient:
             except BadRequest:
                 raise SubscriptionError(subscription=subscription['name'],
                                         version=subscription['version'])
+        await self.__connection.parse(event='ready')
 
     async def get_client(self) -> Broadcaster:
         """

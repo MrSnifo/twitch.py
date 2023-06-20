@@ -42,7 +42,7 @@ class _Image:
 
     __slots__ = ('url_1x', 'url_2x', 'url_4x')
 
-    def __init__(self, *, image: rd.Image):
+    def __init__(self, *, image: rd.Image) -> None:
         self.url_1x: str = image['url_1x']
         self.url_2x: str = image['url_2x']
         self.url_4x: str = image['url_4x']
@@ -55,7 +55,7 @@ class _OptionalImage:
 
     __slots__ = ('url_1x', 'url_2x', 'url_4x')
 
-    def __init__(self, *, image: rd.OptionalImage):
+    def __init__(self, *, image: rd.OptionalImage) -> None:
         self.url_1x: Optional[str] = image['url_1x']
         self.url_2x: Optional[str] = image['url_2x']
         self.url_4x: Optional[str] = image['url_4x']
@@ -68,7 +68,7 @@ class _MaxValue:
 
     __slots__ = ('is_enabled', 'value')
 
-    def __init__(self, *, data: rd.MaxValue):
+    def __init__(self, *, data: rd.MaxValue) -> None:
         self.is_enabled: bool = data['is_enabled']
         self.value: int = data['value']
 
@@ -177,6 +177,9 @@ class _Reward:
         self.cost: int = reward['cost']
         self.description: str = reward['prompt']
 
+    def __repr__(self) -> str:
+        return f'<_Reward id={self.id} title={self.title} cost={self.cost}>'
+
 
 class Redemption:
     """
@@ -184,7 +187,7 @@ class Redemption:
     """
     __slots__ = ('id', 'user', 'status', 'reward', 'redeemed_at')
 
-    def __init__(self, redemption: rd.Redemption):
+    def __init__(self, redemption: rd.Redemption) -> None:
         self.id: str = redemption['id']
         self.user: User = User(user=redemption)
         self.status: str = redemption['status']
@@ -192,5 +195,4 @@ class Redemption:
         self.redeemed_at: datetime = parse_rfc3339_timestamp(timestamp=redemption['redeemed_at'])
 
     def __repr__(self) -> str:
-        return f'<Redemption id={self.id} user={self.user} status={self.status}>'
-
+        return f'<Redemption id={self.id} user={self.user} reward={self.reward.__repr__()} status={self.status}>'

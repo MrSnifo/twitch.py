@@ -79,7 +79,7 @@ class ShieldMode:
     """
     __slots__ = ('moderator', '_started_at', '_ended_at')
 
-    def __init__(self, mode: Union[md.ShieldModeBegin, md.ShieldModeEnd]):
+    def __init__(self, mode: Union[md.ShieldModeBegin, md.ShieldModeEnd]) -> None:
         self.moderator: User = User(user=mode, prefix='moderator_user')
         self._started_at: Optional[str] = mode.get('started_at')
         self._ended_at: Optional[str] = mode.get('ended_at')

@@ -30,7 +30,6 @@ from .types.eventsub.subscriptions import Subscriptions
 # Libraries
 from datetime import datetime
 import json
-import re
 import logging
 
 from typing import TYPE_CHECKING
@@ -127,20 +126,6 @@ def parse_rfc3339_timestamp(*, timestamp: str) -> datetime:
     return datetime.fromisoformat(timestamp)
 
 
-def is_valid(login: str) -> bool:
-    """
-    Checks if a login is valid.
-
-    :param login:
-     The login to be checked.
-
-    :return:
-     True if the login is valid, False otherwise.
-    """
-    pattern = r"^[a-z0-9_]{1,25}$"
-    return not not re.match(pattern, login)
-
-
 class ColoredFormatter(logging.Formatter):
     """
     Setup chat formatter for logger
@@ -168,7 +153,6 @@ def setup_logging() -> logging.getLogger:
     formatter = ColoredFormatter('%(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
-
     logger = logging.getLogger()
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)

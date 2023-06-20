@@ -34,7 +34,6 @@ from json import JSONDecodeError
 from aiohttp import WSMsgType
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionPayload
     from typing import Optional, List, Dict, Any
@@ -44,7 +43,6 @@ if TYPE_CHECKING:
     from .types.gateway import *
 
 import logging
-
 _logger = logging.getLogger(__name__)
 
 
@@ -63,7 +61,7 @@ class EventSubWebSocket:
     __slots__ = ('_http', '__connection', '__loop', 'subscriptions', '_ready', '_keep_alive', '_ws', '_ws_switch',
                  'session_id', 'retry_count')
 
-    def __init__(self, *, http: HTTPClient, connection: ConnectionState, loop, events: List[str]):
+    def __init__(self, *, http: HTTPClient, connection: ConnectionState, loop, events: List[str]) -> None:
         """
         Initialize the EventSubWebSocket.
 
@@ -202,7 +200,6 @@ class EventSubWebSocket:
                                                     session_id=_session['id'],
                                                     subscriptions=self.subscriptions)
                         self.__loop.create_task(task, name='Twitchify:Subscriptions')
-                        await self.__connection.parse(event='ready')
                     if _session['id'] != self.session_id:
                         if self.session_id is not None:
                             _logger.debug('A new WebSocket Session has been detected ID: %s', _session['id'])

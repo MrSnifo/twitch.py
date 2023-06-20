@@ -35,6 +35,7 @@ from .survey import Poll, Prediction
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from typing import Optional, Dict, Callable, Any
     from .types.http import Refresh
     from .types.eventsub import (
         channel as chl,
@@ -47,7 +48,6 @@ if TYPE_CHECKING:
         hypertrain as ht,
         stream as sm,
         user as us)
-    from typing import Optional, Dict, Callable, Any
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -55,10 +55,10 @@ _logger = logging.getLogger(__name__)
 
 class ConnectionState:
     """
-    Represents the state of the connection to the Twitch API.
+    Represents the state of the connection.
     """
 
-    def __init__(self, dispatcher: Callable[..., Any]):
+    def __init__(self, dispatcher: Callable[..., Any]) -> None:
         self.broadcaster: Optional[Broadcaster] = None
         self._dispatch: Callable[..., Any] = dispatcher
 
@@ -72,8 +72,8 @@ class ConnectionState:
                 await parse()
             else:
                 await parse(data)
-        except AttributeError:
-            _logger.error(f'Failed to parse event: {event}')
+        except Exception as error:
+            _logger.error(f'Failed to parse event: {event}, {error}')
 
     async def parse_ready(self) -> None:
         """
@@ -381,4 +381,9 @@ class ConnectionState:
         Parse a user update event.
         """
         _update = Update(update=data)
+        # Updating the broadcaster
+        self.broadcaster.name = _update.name
+        self.broadcaster.display_name = _update.display_name
+        self.broadcaster._description = _update.description
+        self.broadcaster.email = _update.email
         self._dispatch('user_update', _update)

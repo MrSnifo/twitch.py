@@ -70,7 +70,7 @@ class Update(User):
     """
     __slots__ = ('description', 'email', 'email_verified')
 
-    def __init__(self, *, update: us.Update):
+    def __init__(self, *, update: us.Update) -> None:
         super().__init__(user=update)
         self.description: str = update['description']
         self.email: Optional[str] = update.get('email')  # Requires user:read:email scope

@@ -49,7 +49,7 @@
 
 ### on_connect()
 
-This event is triggered when the client is connecting.
+This event is triggered when the client successfully connected to the eventsub websocket.
 
 ---
 

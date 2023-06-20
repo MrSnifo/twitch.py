@@ -37,17 +37,20 @@ if TYPE_CHECKING:
     from datetime import datetime
 
 
-
-class CharityInfo:
+class _CharityInfo:
     """
     Information about a charity.
     """
+    __slots__ = ('name', 'description', 'logo', 'website')
 
-    def __init__(self, charity: ch.SpecificCharity):
+    def __init__(self, charity: ch.SpecificCharity) -> None:
         self.name: str = charity['charity_name']
-        self.description: Optional[str] = charity.get('charity_description')
+        self.description: Optional[str] = charity.get('charity_description')  # Beta
         self.logo: str = charity['charity_logo']
-        self.website: Optional[str] = charity.get('charity_website')
+        self.website: Optional[str] = charity.get('charity_website')  # Beta
+
+    def __repr__(self) -> str:
+        return f'<_CharityInfo name={self.name} description={self.description}>'
 
 
 class _CharityAmount:
@@ -56,11 +59,11 @@ class _CharityAmount:
     """
     __slots__ = ('value', 'currency')
 
-    def __init__(self, *, amount: ch.Amount):
+    def __init__(self, *, amount: ch.Amount) -> None:
         self.value: float = (amount['value'] / 10 ** amount['decimal_places'])
         self.currency: str = amount['currency']
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<_Amount value={self.value} currency={self.currency}>'
 
 
@@ -70,15 +73,15 @@ class Charity:
     """
     __slots__ = ('id', 'charity', 'current_amount', 'target_amount', '_started_at', '_stopped_at')
 
-    def __init__(self, charity: Union[ch.Start, ch.Progress, ch.Stop]):
+    def __init__(self, charity: Union[ch.Start, ch.Progress, ch.Stop]) -> None:
         self.id: str = charity['id']
-        self.charity: CharityInfo = CharityInfo(charity=charity)
+        self.charity: _CharityInfo = _CharityInfo(charity=charity)
         self.current_amount: _CharityAmount = _CharityAmount(amount=charity['current_amount'])
         self.target_amount: _CharityAmount = _CharityAmount(amount=charity['target_amount'])
         self._started_at: Optional[str] = charity.get('started_at')
         self._stopped_at: Optional[str] = charity.get('stopped_at')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Charity id={self.id} current_amount={self.current_amount.__repr__()}>'
 
 
@@ -88,13 +91,13 @@ class Donation:
     """
     __slots__ = ('id', 'charity', 'user', 'amount')
 
-    def __init__(self, donation: ch.Donation):
+    def __init__(self, donation: ch.Donation) -> None:
         self.id: str = donation['id']
-        self.charity: CharityInfo = CharityInfo(charity=donation)
+        self.charity: _CharityInfo = _CharityInfo(charity=donation)
         self.user: User = User(user=donation)
         self.amount: _CharityAmount = _CharityAmount(amount=donation['amount'])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Donation id={self.id} user={self.user.__repr__()} amount={self.amount.__repr__()}>'
 
 
@@ -103,11 +106,11 @@ class _GoalAmount:
     Represents the amount and type of goal.
     """
 
-    def __init__(self, goal: gl.Goal):
+    def __init__(self, goal: gl.Goal) -> None:
         self.value: int = goal['current_amount']
         self.type: str = goal['type']
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<_GoalAmount value={self.value} type={self.type}>'
 
 
@@ -117,7 +120,7 @@ class Goal:
     """
     __slots__ = ('id', 'description', 'amount', 'started_at', 'is_achieved', '_ended_at')
 
-    def __init__(self, goal: Union[gl.Begin, gl.Progress, gl.End]):
+    def __init__(self, goal: Union[gl.Begin, gl.Progress, gl.End]) -> None:
         self.id: str = goal['id']
         self.description: str = goal['description']
         self.amount: _GoalAmount = _GoalAmount(goal=goal)
@@ -125,7 +128,7 @@ class Goal:
         self.is_achieved: bool = goal.get('is_achieved') or False
         self._ended_at: Optional[str] = goal.get('ended_at')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<Goal id={self.id} amount={self.amount.__repr__()} started_at={self.started_at}>'
 
 
@@ -135,12 +138,12 @@ class _Contributor:
     """
     __slots__ = ('user', 'type', 'total')
 
-    def __init__(self, *, contributor: ht.Contributor):
+    def __init__(self, *, contributor: ht.Contributor) -> None:
         self.user: User = User(user=contributor)
         self.type: str = contributor['type']
         self.total: int = contributor['total']
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<_Contributor user={self.user.__repr__()} total={self.total} type={self.type}>'
 
 
@@ -150,13 +153,13 @@ class Train:
     """
     __slots__ = ('progress', 'goal', 'expires_at', '_last_contribution')
 
-    def __init__(self, train: ht.Begin):
+    def __init__(self, train: ht.Begin) -> None:
         self.goal: int = train['goal']
         self.progress: int = train['progress']
         self.expires_at: datetime = parse_rfc3339_timestamp(timestamp=train['expires_at'])
         self._last_contribution: List[ht.Contributor] = train['last_contribution']
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<_Train goal={self.goal} progress={self.progress} expires_at={self.expires_at}>'
 
     @property
@@ -171,7 +174,7 @@ class HyperTrain:
     __slots__ = ('__hypertrain', 'id', 'total', 'level', '_top_contributions', 'started_at', '_ended_at',
                  '_cooldown_ends_at')
 
-    def __init__(self, hypertrain: Union[ht.Begin, ht.Progress, ht.End]):
+    def __init__(self, hypertrain: Union[ht.Begin, ht.Progress, ht.End]) -> None:
         self.__hypertrain = hypertrain
         self.id: str = hypertrain['id']
         self.level: int = hypertrain['level']
@@ -181,7 +184,7 @@ class HyperTrain:
         self._ended_at: Optional[str] = hypertrain.get('ended_at')
         self._cooldown_ends_at: Optional[str] = hypertrain.get('cooldown_ends_at')
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<HyperTrain id={self.id} level={self.level} total={self.total}>'
 
     @property

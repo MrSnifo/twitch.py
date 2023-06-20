@@ -1,18 +1,17 @@
 # Twitchify
 
 ---
+
 [![Discord](https://img.shields.io/discord/938786168592547880)](https://discord.gg/hH4ZkNg6cA)
-[![PyPI Version](https://img.shields.io/pypi/v/twitchify.svg)](https://pypi.org/project/twitchify)
+[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
 ![Python versions](https://img.shields.io/pypi/pyversions/twitchify)
 
-Twitchify is a Python library that provides a lightweight and extensible Twitch API wrapper with support for WebSocket EventSub.
-
-**Note**: Twitchify currently supports EventSub only.
+Python library for Twitch's WebSocket **EventSub** integration
 
 ## Features
-
-- WebSocket EventSub support for real-time Twitch event notifications.
-- Easy-to-use interfaces for accessing Twitch resources.
+- Comprehensive support for WebSocket EventSub, providing real-time Twitch event notifications.
+- User-friendly interfaces for seamless integration.
+- Built-in support for type hinting, ensuring code clarity and maintainability.
 
 ## Installation
 
@@ -25,6 +24,9 @@ py -3 -m pip install -U twitchify
 # Linux/macOS
 python3 -m pip install -U twitchify
 ```
+
+## Documentation
+Please refer to the [Events Documentation](https://github.com/MrSniFo/Twitchify/blob/main/docs/EVENTS.md) for detailed information on handling events with Twitchify.
 
 ## Quick Example
 ```python

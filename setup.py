@@ -16,12 +16,12 @@ def readme() -> str:
 
 setup(
     name='twitchify',
-    version='1.0.1',
+    version='1.0.2',
     python_requires='>=3.8.0',
     packages=['twitch', 'twitch.types'],
     author='Snifo',
     author_email='Snifo@mail.com',
-    description='A Python Twitch API wrapper',
+    description='A Python library for Twitch\'s WebSocket EventSub integration.',
     url='https://github.com/mrsnifo/twitchify',
     project_urls={'Issue tracker': 'https://github.com/mrsnifo/twitchify/issues'},
     long_description=readme(),

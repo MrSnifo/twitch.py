@@ -85,7 +85,7 @@ class Online:
     """
     __slots__ = ('user', 'id', 'type', 'started_at')
 
-    def __init__(self, stream: sm.Online):
+    def __init__(self, stream: sm.Online) -> None:
         self.user: User = User(user=stream, prefix='broadcaster_user')
         self.id: str = stream['id']
         self.type: str = stream['type']
@@ -101,7 +101,7 @@ class Offline:
     """
     __slots__ = 'user'
 
-    def __init__(self, stream: sm.Offline):
+    def __init__(self, stream: sm.Offline) -> None:
         self.user: User = User(user=stream, prefix='broadcaster_user')
 
     def __repr__(self) -> str:
