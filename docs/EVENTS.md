@@ -49,7 +49,7 @@
 
 ### on_connect()
 
-This event is triggered when the client successfully connects to the Twitch API.
+This event is triggered when the client is connecting.
 
 ---
 
