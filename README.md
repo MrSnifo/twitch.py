@@ -48,5 +48,5 @@ async def on_follow(user: Follower):
     """
     print("%s just followed you!" % user.display_name)
 
-client.run( access_token="USER ACCESS TOKEN HERE")
+client.run(access_token="USER ACCESS TOKEN HERE")
 ```
