@@ -16,7 +16,7 @@ def readme() -> str:
 
 setup(
     name='twitchify',
-    version='1.0.3',
+    version=version(),
     python_requires='>=3.8.0',
     packages=['twitch', 'twitch.types', 'twitch.types.eventsub'],
     author='Snifo',
