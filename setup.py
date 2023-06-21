@@ -16,9 +16,9 @@ def readme() -> str:
 
 setup(
     name='twitchify',
-    version='1.0.2',
+    version='1.0.3',
     python_requires='>=3.8.0',
-    packages=['twitch', 'twitch.types'],
+    packages=['twitch', 'twitch.types', 'twitch.types.eventsub'],
     author='Snifo',
     author_email='Snifo@mail.com',
     description='A Python library for Twitch\'s WebSocket EventSub integration.',
