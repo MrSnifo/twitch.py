@@ -3,21 +3,25 @@ from twitch.channel import Cheer
 
 
 class Twitch(Client):
+    """
+    Twitch client class for handling events.
+    """
+
     def __init__(self):
         super().__init__(client_id="CLIENT ID HERE",
                          client_secret="CLIENT SECRET HERE")
 
     async def on_connect(self):
         """
-        Event handler triggered when the client successfully connected to the eventsub websocket.
+        Event handler triggered when the client successfully connects to the eventsub websocket.
         """
-        print("Connected as %s ID: %s" % (self.user.name, self.user.id))
+        print(f"Connected as {self.user.name} ID: {self.user.id}")
 
     async def on_ready(self):
         """
         Event handler triggered when the client is ready to start processing events.
         """
-        print("Ready as %s" % self.user.display_name)
+        print(f"Ready as {self.user.display_name}")
 
     async def on_refresh_token(self, access_token: str):
         """
@@ -32,15 +36,16 @@ class Twitch(Client):
         """
         Event handler triggered when a user sends a cheer to the channel.
         """
-        print("%s just cheered %s bits!" % cheer.user.display_name, cheer.bits)
+        print(f"{cheer.user.display_name} just cheered {cheer.bits} bits!")
 
     def run_client(self):
         """
-        You can import the access token here and use it
+        You can import the access token here and use it.
         """
         self.run(
             access_token="USER ACCESS TOKEN HERE",
-            refresh_token="USER REFRESH TOKEN HERE")
+            refresh_token="USER REFRESH TOKEN HERE"
+        )
 
 
 client = Twitch()
