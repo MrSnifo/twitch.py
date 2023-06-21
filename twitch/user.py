@@ -24,14 +24,12 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
-from .types.user import (UserPayload, UserPayloadWithEmail)
-from .utils import empty_to_none, parse_rfc3339_timestamp
-from typing import TYPE_CHECKING
+from .utils import parse_rfc3339_timestamp
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types.eventsub import (channel as chl, user as us)
-    from typing import Union, Optional, Dict, Any
+    from typing import Optional, Dict, Any
     from datetime import datetime
 
 
@@ -66,7 +64,7 @@ class Follower(User):
 
 class Update(User):
     """
-    Represents a user updated his information.
+    Represents a user who has updated their information.
     """
     __slots__ = ('description', 'email', 'email_verified')
 
@@ -78,86 +76,3 @@ class Update(User):
 
     def __repr__(self) -> str:
         return f'<Update user={super().__repr__()} description={self.description} email={self.email}>'
-
-
-class Broadcaster:
-    """
-    Represents a Twitch user.
-    """
-
-    __slots__ = ('id', 'name', 'display_name', '_type', '_broadcaster_type', '_description', 'profile_image_url',
-                 '_offline_image_url', 'view_count', 'email', '_created_at')
-
-    def __init__(self, data: Union[UserPayload, UserPayloadWithEmail]):
-        self.id: str = data['id']
-        self.name: str = data['login']
-        self.display_name: str = data['display_name']
-        self._type: str = data['type']
-        self._broadcaster_type: str = data['broadcaster_type']
-        self._description: str = data['description']
-        self.profile_image_url: str = data['profile_image_url']
-        self._offline_image_url: str = data['offline_image_url']
-        self.view_count = int(data['view_count'])
-        self.email: Optional[str] = data.get('email')
-        self._created_at: str = data['created_at']
-
-    def __repr__(self) -> str:
-        return f'<User id={self.id} login={self.name} display_name={self.display_name}>'
-
-    @property
-    def description(self) -> Optional[str]:
-        """
-        Returns the user's description, if available.
-
-        Returns:`Optional[str]`
-        """
-        return empty_to_none(text=self._description)
-
-    @property
-    def url(self) -> Optional[str]:
-        """
-        Returns the channel url.
-
-        Returns:`str`
-        """
-        return f'https://www.twitch.tv/{self.name}'
-
-    @property
-    def user_type(self) -> Optional[str]:
-        """
-        Returns the user's type.
-
-        Returns:`Optional[str]`
-            The user's type, or None if it's a normal user.
-            Possible values are 'admin ', 'global_mod', 'staff', or None.
-        """
-        return empty_to_none(text=self._type)
-
-    @property
-    def broadcaster_type(self) -> Optional[str]:
-        """
-        Returns the user's broadcaster type.
-
-        Returns:`Optional[str]`
-            The user's broadcaster type, or None if it's a normal broadcaster.
-            Possible values are 'affiliate', 'partner', or None.
-        """
-        return empty_to_none(text=self._broadcaster_type)
-
-    @property
-    def offline_image(self) -> Optional[str]:
-        """
-        Returns the URL of the user's offline image, if available.
-
-        Returns:`Optional[str]`
-        """
-        return empty_to_none(text=self._offline_image_url)
-
-    @property
-    def created_at(self) -> datetime:
-        """
-        Returns the UTC date and time when the user's account was created.
-
-        Returns:`Optional[str]`
-        """
-        return parse_rfc3339_timestamp(timestamp=self._created_at)

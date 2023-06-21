@@ -54,8 +54,8 @@ class Client:
         self.client_secret = client_secret
         self.client_id = client_id
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch)
-        self._http = HTTPClient(connection=self._connection, client_id=self.client_id, client_secret=self.client_secret)
+        self._http = HTTPClient(dispatcher=self.dispatch, client_id=self.client_id, client_secret=self.client_secret)
+        self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch, http=self._http)
 
     @property
     def user(self) -> Optional[Broadcaster]:
@@ -133,7 +133,7 @@ class Client:
         # Validating the access key and opening a new session.
         validation = await self._http.open_session(access_token=access_token, refresh_token=refresh_token)
         # Retrieving the client.
-        self._connection.broadcaster = await self._http.get_client()
+        await self._connection.get_client()
         # Creating an EventSub websocket.
         EventSub = EventSubWebSocket(http=self._http, connection=self._connection,
                                      loop=self.loop,

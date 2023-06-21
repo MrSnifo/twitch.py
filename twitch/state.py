@@ -27,16 +27,18 @@ from __future__ import annotations
 # Core
 from .channel import Channel, Subscription, SubscriptionGift, SubscriptionMessage, Cheer, Raid
 from .goals import Donation, Charity, Goal, HyperTrain
-from .user import Broadcaster, Follower, User, Update
+from .user import Follower, User, Update
+from .broadcaster import Broadcaster
 from .moderation import Ban, UnBan, ShieldMode
 from .stream import Online, Offline, Shoutout
 from .reward import Reward, Redemption
 from .survey import Poll, Prediction
+from asyncio import Task
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Optional, Dict, Callable, Any
-    from .types.http import Refresh
+    from .http import HTTPClient
     from .types.eventsub import (
         channel as chl,
         moderation as md,
@@ -50,6 +52,7 @@ if TYPE_CHECKING:
         user as us)
 
 import logging
+
 _logger = logging.getLogger(__name__)
 
 
@@ -57,10 +60,19 @@ class ConnectionState:
     """
     Represents the state of the connection.
     """
+    __slots__ = ('_http', 'broadcaster', '_dispatch')
 
-    def __init__(self, dispatcher: Callable[..., Any]) -> None:
+    def __init__(self, dispatcher: Callable[..., Any], http: HTTPClient) -> None:
+        self._http: HTTPClient = http
+        self._dispatch: Callable[[str, Any, Any], Task] = dispatcher
         self.broadcaster: Optional[Broadcaster] = None
-        self._dispatch: Callable[..., Any] = dispatcher
+
+    async def get_client(self) -> None:
+        """
+        Retrieves the broadcaster's data from the connection's HTTP client and initializes the Broadcaster object.
+        """
+        _data = await self._http.get_client()
+        self.broadcaster = Broadcaster(data=_data, http=self._http)
 
     async def parse(self, event: str, data: Optional[Dict[str, Any]] = None) -> None:
         """
@@ -80,12 +92,6 @@ class ConnectionState:
         Parse ready event.
         """
         self._dispatch('ready')
-
-    async def parse_refresh_token(self, data: Refresh) -> None:
-        """
-        Parse a refresh token event.
-        """
-        self._dispatch('refresh_token', data['access_token'])
 
     async def parse_channel_update(self, data: chl.Update) -> None:
         """

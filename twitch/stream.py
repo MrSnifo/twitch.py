@@ -31,8 +31,42 @@ from .user import User
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types.eventsub import stream as sm
-    from typing import Optional, Union
+    from typing import Optional, Union, List
+    from .types import stream as mst
     from datetime import datetime
+
+
+class Category:
+    """
+    Represents a stream category.
+    """
+    def __init__(self, *, category: mst.Category) -> None:
+        self.id: str = category['game_id']
+        self.name: str = category['game_name']
+
+    def __repr__(self) -> str:
+        return f'<Category id={self.id} login={self.name}>'
+
+
+class Stream:
+    """
+    Represents a broadcaster stream.
+    """
+
+    def __init__(self, *, stream: mst.Stream) -> None:
+        self.id: str = stream['id']
+        self.type: str = stream['type']
+        self.title: str = stream['title']
+        self.tags: List[str] = stream['tags']
+        self.viewer_count: int = stream['viewer_count']
+        self.language: str = stream['language']
+        self.thumbnail: str = stream['thumbnail_url']
+        self.is_mature: bool = stream['is_mature']
+        self.category: Optional[Category] = Category(category=stream) if stream['game_id'] != '' else None
+        self.started_at: datetime = parse_rfc3339_timestamp(timestamp=stream['started_at'])
+
+    def __repr__(self) -> str:
+        return f'<Stream id={self.id} type={self.type} viewer_count={self.viewer_count} is_mature={self.is_mature}>'
 
 
 class Shoutout:

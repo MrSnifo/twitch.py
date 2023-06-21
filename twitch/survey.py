@@ -29,12 +29,12 @@ from .utils import parse_rfc3339_timestamp
 from .user import User
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from typing import Optional, List, Union, Literal
     from .types.eventsub import poll as pl
     from .types.eventsub import prediction as pd
     from datetime import datetime
-
 
 
 class _Voting:

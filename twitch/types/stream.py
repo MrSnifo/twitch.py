@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present MrSniFo
+Copyright (c) 2023-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,11 +22,22 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-__title__ = 'Twitchify'
-__version__ = '1.0.6'
-__license__ = 'MIT License'
-__author__ = 'Snifo'
-__email__ = 'Snifo@mail.com'
-__github__ = 'https://github.com/mrsnifo/twitchify'
+from .user import SpecificUser
+from typing import TypedDict, Literal, List
 
-from .client import Client
+
+class Category(TypedDict):
+    game_id: str
+    game_name: str
+
+
+class Stream(SpecificUser, Category):
+    id: str
+    title: str
+    language: str
+    tags: List[str]
+    type: Literal['live', '']
+    is_mature: bool
+    viewer_count: int
+    thumbnail_url: str
+    started_at: str

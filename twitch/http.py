@@ -26,23 +26,24 @@ from __future__ import annotations
 
 # Core
 from .errors import (UnknownError, TwitchServerError, BadRequest, Unauthorized,
-                     Forbidden, HTTPException, SubscriptionError)
+                     Forbidden, HTTPException, SubscriptionError, NotFound)
 from . import __version__, __github__
 from .utils import format_seconds
-from .user import Broadcaster
+from .types.user import UserPayload, UserPayloadWithEmail
+from .types.stream import Stream
 
 # Libraries
 from aiohttp import (ClientSession, helpers)
-from asyncio import Lock, sleep
+from asyncio import Lock, sleep, Task
 from time import time
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionPayload
     from aiohttp import ClientWebSocketResponse
     from .types.http import Validate, Refresh
-    from .state import ConnectionState
-    from typing import Optional, List
+    from typing import Optional, List, Union, Callable, Any
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -81,14 +82,14 @@ class Route:
 class HTTPClient:
     """Serves as an HTTP client responsible for sending HTTP requests to the Twitch API."""
 
-    __slots__ = ('__connection', '_client_id', '_client_secret', '__session', '_session_lock', '_user_agent',
+    __slots__ = ('_dispatch', '_client_id', '_client_secret', '__session', '_session_lock', '_user_agent',
                  '_refresh_token')
 
-    def __init__(self, *, connection: ConnectionState, client_id: str, client_secret: Optional[str]) -> None:
+    def __init__(self, *, dispatcher: Callable[..., Any], client_id: str, client_secret: Optional[str]) -> None:
         """
         Initialize the HTTPClient object.
         """
-        self.__connection = connection
+        self._dispatch: Callable[[str, Any, Any], Task] = dispatcher
         self._client_id = client_id
         self._client_secret = client_secret
         self.__session: Optional[ClientSession] = None
@@ -198,6 +199,7 @@ class HTTPClient:
         for retry_count in range(1, 4):
             try:
                 async with self.__session.request(method, url, **kwargs) as response:
+
                     if response.status in [200, 202]:
                         return await response.json()
                     elif response.status == 400:
@@ -206,6 +208,8 @@ class HTTPClient:
                         raise Unauthorized
                     elif response.status == 403:
                         raise Forbidden
+                    elif response.status == 404:
+                        raise NotFound
                     elif 500 <= response.status < 600:
                         raise TwitchServerError
                     else:
@@ -234,7 +238,7 @@ class HTTPClient:
                     # Updating the session headers.
                     self.__session.headers.update({'Authorization': f'Bearer {refresh["access_token"]}'})
                     _logger.debug('Session headers have been successfully updated with the new access token.')
-                    await self.__connection.parse(event='refresh_token', data=refresh)
+                    self._dispatch('refresh_token', refresh['access_token'])
                     return refresh
         return None
 
@@ -362,14 +366,25 @@ class HTTPClient:
             except BadRequest:
                 raise SubscriptionError(subscription=subscription['name'],
                                         version=subscription['version'])
-        await self.__connection.parse(event='ready')
+        self._dispatch('ready')
 
-    async def get_client(self) -> Broadcaster:
+    async def get_client(self) -> Union[UserPayload, UserPayloadWithEmail]:
         """
-        Retrieves the user with the associated access token.
-
-        :return:
-         The Broadcaster.
+        Retrieves the broadcaster with the associated access token.
         """
         data = await self.request(route=Route(method='GET', path='users'))
-        return Broadcaster(data=data['data'][0])
+        return data['data'][0]
+
+    async def get_stream(self, user_id: str) -> Optional[Stream]:
+        """
+        Retrieves the stream.
+        """
+        try:
+
+            data = await self.request(route=Route(method='GET', path=f'streams?user_id={user_id}'))
+            if len(data['data']) == 1:
+                print(data['data'][0])
+                return data['data'][0]
+        except NotFound:
+            pass
+        return None
