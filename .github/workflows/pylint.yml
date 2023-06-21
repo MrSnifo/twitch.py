@@ -20,10 +20,4 @@ jobs:
           pip install pylint
       - name: Analysing the code with pylint
         run: |
-          echo "---
-          disable:
-            - missing-module-docstring
-            - missing-class-docstring
-            - missing-function-docstring
-          max-line-length: 99" > pylint.yml
-          pylint --rcfile=pylint.yml $(git ls-files '*.py')
+          pylint --disable=missing-class-docstring,missing-module-docstring,missing-function-docstring --max-line-length=99 $(git ls-files '*.py')
