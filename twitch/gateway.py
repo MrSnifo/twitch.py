@@ -41,7 +41,7 @@ if TYPE_CHECKING:
     from aiohttp import ClientWebSocketResponse
     from .state import ConnectionState
     from .http import HTTPClient
-    from .types.gateway import *
+    from .types.gateway import Session, Subscription
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ class EventSubWebSocket:
             try:
                 await self._connect(url=url)
             except WsReconnect as reconnect_url:
-                url = reconnect_url.__str__()
+                url = str(reconnect_url)
                 _logger.debug('Reconnecting to URL: %s', url)
                 continue
             except (OSError, WebSocketError, SessionClosed, TimeoutError) as error:
@@ -130,31 +130,28 @@ class EventSubWebSocket:
         Handle incoming WebSocket messages.
         """
         while True:
-            try:
-                msg = await asyncio.wait_for(self._ws.receive(), timeout=(self._keep_alive + 10))
-                if msg.type == WSMsgType.TEXT:
-                    await self.received_response(response=str(msg.data))
-                elif msg.type == WSMsgType.CLOSED:
-                    _logger.error('WebSocket connection closed by the server')
-                    close_code = self._ws.close_code
-                    if close_code == 4004:
-                        raise WebsocketClosed('Failed to reconnect to a new WebSocket within'
-                                              ' the specified time.')
-                    elif close_code == 4007:
-                        raise WebsocketClosed('Failed to reconnect to a new WebSocket.'
-                                              ' The reconnect URL provided is invalid.')
-                    elif close_code in [4000, 4001, 4002, 4003, 4005, 4006]:
-                        raise WebSocketError(
-                            f'WebSocket connection closed by the server. Close code:{close_code}')
-                    else:
-                        raise WebSocketError(
-                            f'WebSocket connection closed by the server. Close code:{close_code}')
-                elif msg.type == WSMsgType.ERROR:
-                    exception = self._ws.exception()
-                    error_message = str(exception) if exception else 'Unknown error occurred'
-                    raise WebSocketError(f'WebSocket connection closed with error:{error_message}')
-            except asyncio.TimeoutError:
-                raise
+            msg = await asyncio.wait_for(self._ws.receive(), timeout=(self._keep_alive + 10))
+            if msg.type == WSMsgType.TEXT:
+                await self.received_response(response=str(msg.data))
+            elif msg.type == WSMsgType.CLOSED:
+                _logger.error('WebSocket connection closed by the server')
+                close_code = self._ws.close_code
+                if close_code == 4004:
+                    raise WebsocketClosed('Failed to reconnect to a new WebSocket within'
+                                          ' the specified time.')
+                elif close_code == 4007:
+                    raise WebsocketClosed('Failed to reconnect to a new WebSocket.'
+                                          ' The reconnect URL provided is invalid.')
+                elif close_code in [4000, 4001, 4002, 4003, 4005, 4006]:
+                    raise WebSocketError(
+                        f'WebSocket connection closed by the server. Close code:{close_code}')
+                else:
+                    raise WebSocketError(
+                        f'WebSocket connection closed by the server. Close code:{close_code}')
+            elif msg.type == WSMsgType.ERROR:
+                exception = self._ws.exception()
+                error_message = str(exception) if exception else 'Unknown error occurred'
+                raise WebSocketError(f'WebSocket connection closed with error:{error_message}')
 
     async def received_response(self, response: str) -> None:
         """
@@ -192,7 +189,7 @@ class EventSubWebSocket:
                         self.__loop.create_task(task, name='Twitchify:Subscriptions')
                     if _session['id'] != self.session_id:
                         if self.session_id is not None:
-                            _logger.debug(f'A new WebSocket Session has been detected ID: %s',
+                            _logger.debug('A new WebSocket Session has been detected ID: %s',
                                           _session['id'])
                         self.session_id = _session['id']
                     # KeepAlive timeout.
