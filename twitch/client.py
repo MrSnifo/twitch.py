@@ -83,7 +83,7 @@ class Client:
         except Exception as error:
             await self.on_error(event_name, str(error), *args, **kwargs)
 
-    def dispatch(self, event: str, /, *args: Any, **kwargs: Any) -> asyncio.Task:
+    def dispatch(self, event: str, /, *args: Any, **kwargs: Any) -> None:
         """
         Dispatch the specified event with the given arguments.
         """
@@ -93,7 +93,7 @@ class Client:
         if coro is not None and asyncio.iscoroutinefunction(coro):
             wrapped = self._run_event(coro, event_name, *args, **kwargs)
             # Schedule the task
-            return self.loop.create_task(wrapped, name=f'Twitchify:{event_name}')
+            self.loop.create_task(wrapped, name=f'Twitchify:{event_name}')
 
     @staticmethod
     async def on_error(event_name: str, error: str, /, *args: Any, **kwargs: Any) -> None:
