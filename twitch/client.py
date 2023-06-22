@@ -81,10 +81,7 @@ class Client:
         except asyncio.CancelledError:
             pass
         except Exception as error:
-            try:
-                await self.on_error(event_name, str(error), *args, **kwargs)
-            except asyncio.CancelledError:
-                pass
+            await self.on_error(event_name, str(error), *args, **kwargs)
 
     def dispatch(self, event: str, /, *args: Any, **kwargs: Any) -> asyncio.Task:
         """
@@ -148,16 +145,19 @@ class Client:
         try:
             await self.connect(access_token, refresh_token)
         # Automatically close the HTTP session when an error occurs.
+        except asyncio.CancelledError:
+            if self._http is not None and self._http.is_open:
+                await self._http.close()
+            raise
         except Exception as error:
-            # Checks if the _http session is open.
             if self._http is not None and self._http.is_open:
                 await self._http.close()
             raise error
 
     def run(self, access_token: str, refresh_token: Optional[str] = None):
         """
-       Runs the Twitch client by establishing a connection and initiating the event loop.
-       """
+        Runs the Twitch client by establishing a connection and initiating the event loop.
+        """
         async def runner():
             await self.start(access_token, refresh_token)
         asyncio.run(runner())
