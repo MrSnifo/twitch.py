@@ -194,29 +194,27 @@ class HTTPClient:
         for retry_count in range(1, 4):
             try:
                 async with self.__session.request(method, url, **kwargs) as response:
-
                     if response.status in [200, 202]:
                         return await response.json()
-                    elif response.status == 400:
-                        print(await response.json())
-                        raise BadRequest
-                    elif response.status == 401:
-                        raise Unauthorized
-                    elif response.status == 403:
-                        raise Forbidden
-                    elif response.status == 404:
-                        raise NotFound
-                    elif 500 <= response.status < 600:
-                        raise TwitchServerError
                     else:
-                        raise UnknownError
+                        if response.status == 400:
+                            raise BadRequest
+                        elif response.status == 401:
+                            raise Unauthorized
+                        elif response.status == 403:
+                            raise Forbidden
+                        elif response.status == 404:
+                            raise NotFound
+                        elif 500 <= response.status < 600:
+                            raise TwitchServerError
+                        else:
+                            raise UnknownError
             except OSError:
                 if 3 >= retry_count:
-                    _logger.info(f'Request failed: {route}. Retrying in'
-                                 f' {5 * retry_count}seconds...')
+                    _logger.info('Request failed: %s. Retrying in %s seconds...',
+                                 Route, (5 * retry_count))
                     await sleep(5 * retry_count)
-        else:
-            raise HTTPException
+                raise HTTPException
 
     async def _generate_token(self) -> Optional[Refresh]:
         if self._refresh_token and self._client_secret:
@@ -279,7 +277,7 @@ class HTTPClient:
         start_time = time()
         # If the refresh_token or client_secret is missing,
         if self._refresh_token and self._client_secret:
-            _logger.debug(f'A new token will be generated in {format_seconds(expires_in - 300)}.')
+            _logger.debug('A new token will be generated in %s.', format_seconds(expires_in - 300))
         else:
             # Set expires_in to a default value of 3540 seconds (59 minutes).
             expires_in = 3540 + 300
@@ -296,8 +294,8 @@ class HTTPClient:
                     # Reset the refresh token timer
                     start_time = time()
                     await self._generate_token()
-                    _logger.debug(f'A new token will be generated in '
-                                  f'{format_seconds(expires_in - 300)}.')
+                    _logger.debug('A new token will be generated in %s.',
+                                  format_seconds(expires_in - 300))
                 # ==> Validating the access token <==
                 validation: Validate = await self._validate_token()
                 # Update the expiration time of the access token.
@@ -322,14 +320,14 @@ class HTTPClient:
         """
         while True:
             try:
-                _logger.debug(f'Sending request: {route} kwargs: {kwargs}.')
+                _logger.debug('Sending request: %s kwargs: %s.', route, kwargs)
                 data: dict = await self._request(route=route, **kwargs)
-                _logger.debug(f'Received response: {data}')
+                _logger.debug('Received response: %s', data)
                 return data
             except Unauthorized:
                 try:
-                    _logger.error(f'Unable to make the request to URL: {route.url}.'
-                                  f' Unauthorized access.')
+                    _logger.error('Unable to make the request to URL: %s Unauthorized access.',
+                                  route.url)
                     await self._validate_token(generate=True)
                 except (Unauthorized, BadRequest):
                     raise
@@ -364,16 +362,16 @@ class HTTPClient:
                         'session_id': session_id
                     }
                 }
-                _logger.debug(f'Subscribing to '
-                              f'`{subscription["name"]}` event version {subscription["version"]}.')
+                _logger.debug('Subscribing to `%s` event version %s.',
+                              subscription['name'], subscription['version'])
                 route = Route(method='POST', path='eventsub/subscriptions')
                 await self.request(route=route, json=data)
-            except Forbidden:
-                raise Forbidden(f'Subscription'
-                                f' `{subscription["name"]}` is missing proper authorization')
-            except BadRequest:
+            except Forbidden as exc:
+                raise Forbidden(f'Subscription `{subscription["name"]}`'
+                                f' is missing proper authorization') from exc
+            except BadRequest as exc:
                 raise SubscriptionError(subscription=subscription['name'],
-                                        version=subscription['version'])
+                                        version=subscription['version']) from exc
         self._dispatch('ready')
 
     async def get_client(self) -> UserType:
