@@ -47,9 +47,6 @@ class Client:
     """
     Represents a Twitch client for interacting with the Twitch API and receiving event
     notifications.
-
-    :param client_id: The client ID associated with the Twitch application.
-    :param client_secret: The client secret for the Twitch application, if applicable.
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None) -> None:
@@ -85,7 +82,7 @@ class Client:
             pass
         except Exception as error:
             try:
-                await self.on_error(str(error), event_name, args, kwargs)
+                await self.on_error(event_name, str(error), *args, **kwargs)
             except asyncio.CancelledError:
                 pass
 
@@ -95,24 +92,16 @@ class Client:
         """
         _logger.debug('Dispatching event %s', event)
         event_name = "on_" + event
-        try:
-            coro = self.__getattribute__(event_name)
-        except AttributeError:
-            pass
-        else:
+        coro = getattr(self, event_name, None)
+        if coro is not None and asyncio.iscoroutinefunction(coro):
             wrapped = self._run_event(coro, event_name, *args, **kwargs)
-            # Schedules the task
+            # Schedule the task
             return self.loop.create_task(wrapped, name=f'Twitchify:{event_name}')
 
     @staticmethod
     async def on_error(event_name: str, error: str, /, *args: Any, **kwargs: Any) -> None:
         """
         The default error handler for events.
-
-        :param event_name: The name of the event where the error occurred.
-        :param error: The error message.
-        :param args: Variable length argument list passed to the event when the error occurred.
-        :param kwargs: Arbitrary keyword arguments passed to the event when the error occurred.
         """
         _logger.exception('Ignoring error: %s from %s, args: %s kwargs: %s', error, event_name,
                           args, kwargs)
@@ -120,9 +109,6 @@ class Client:
     def event(self, coro: Callable[..., Any], /):
         """
         Decorator to register an event coroutine.
-
-        :param coro: The event coroutine to be registered.
-        :raises TypeError: If the registered event is not a coroutine function.
         """
         if not asyncio.iscoroutinefunction(coro):
             raise TypeError("The registered event must be a coroutine function")
@@ -132,9 +118,6 @@ class Client:
     async def connect(self, access_token: str, refresh_token: Optional[str]) -> None:
         """
         Establishes a connection to Twitch services.
-
-        :param access_token: The access token for authentication.
-        :param refresh_token: The refresh token for refreshing the access token, if applicable.
         """
         # Setup logger
         setup_logging()
@@ -142,7 +125,7 @@ class Client:
             self.loop = asyncio.get_running_loop()
         # Validating the access key and opening a new session.
         validation = await self._http.open_session(token=access_token,
-                                                   refresh_token=refresh_token,)
+                                                   refresh_token=refresh_token)
         # Retrieving the client.
         await self._connection.get_client()
         # Creating an EventSub websocket.
@@ -161,9 +144,6 @@ class Client:
     async def start(self, access_token: str, refresh_token: Optional[str] = None) -> None:
         """
         Starts the Twitch client by establishing a connection and initiating the event loop.
-
-        :param access_token: The access token for authentication.
-        :param refresh_token: The refresh token for refreshing the access token, if applicable.
         """
         try:
             await self.connect(access_token, refresh_token)
@@ -177,12 +157,7 @@ class Client:
     def run(self, access_token: str, refresh_token: Optional[str] = None):
         """
        Runs the Twitch client by establishing a connection and initiating the event loop.
-
-       :param access_token: The access token for authentication.
-       :param refresh_token: The refresh token for refreshing the access token, if applicable.
        """
-
         async def runner():
             await self.start(access_token, refresh_token)
-
         asyncio.run(runner())
