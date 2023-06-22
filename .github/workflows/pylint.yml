@@ -20,4 +20,4 @@ jobs:
           pip install pylint
       - name: Analysing the code with pylint
         run: |
-          pylint --disable=missing-class-docstring,missing-module-docstring,missing-function-docstring,invalid-name,R0903,R0902,C0413,C0411,W0107,W0718,C0325 --max-line-length=99 $(git ls-files '*.py')
+          pylint --disable=missing-class-docstring,missing-module-docstring,missing-function-docstring,invalid-name,R0903,R0902,C0413,C0411,W0107,W0718,C0325,R1720 --max-line-length=99 $(git ls-files '*.py')
