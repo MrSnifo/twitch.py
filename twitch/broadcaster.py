@@ -23,18 +23,19 @@ DEALINGS IN THE SOFTWARE.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+from datetime import datetime
 from .utils import parse_rfc3339_timestamp, empty_to_none, cache_decorator
-from .types.user import (UserType, UserImages, Tier, Types)
+from .types.user import UserType, UserImages, Tier, Types
 from .channel import Channel
 from .stream import Stream
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types import channel as ch
     from .types import stream as stm
     from typing import Optional
     from .http import HTTPClient
-    from datetime import datetime
 
 
 class Images:
@@ -57,7 +58,7 @@ class Broadcaster:
 
     :param http: The HTTPClient instance for making HTTP requests.
     :param user: The user data representing the broadcaster.
-   """
+    """
     def __init__(self, *, http: HTTPClient, user: UserType):
         self.__http = http
         self.id: str = user['id']
@@ -66,9 +67,9 @@ class Broadcaster:
         self.email: Optional[str] = empty_to_none(text=user['email'])
         self.images: Images = Images(user=user)
         # Set the broadcaster tier.
-        self.tier: Tier = user['broadcaster_type'] if user['broadcaster_type'] != '' else 'regular'
+        self.tier: Tier = user['broadcaster_type'] if user['broadcaster_type'] else 'regular'
         # Set the user type.
-        self.type: Types = user['type'] if user['type'] != '' else 'regular'
+        self.type: Types = user['type'] if user['type'] else 'regular'
         self.joined_at: datetime = parse_rfc3339_timestamp(user['created_at'])
         # Updating the channel description from the user.
         self.bio = empty_to_none(text=user['description'])
