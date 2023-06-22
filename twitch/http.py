@@ -196,25 +196,23 @@ class HTTPClient:
                 async with self.__session.request(method, url, **kwargs) as response:
                     if response.status in [200, 202]:
                         return await response.json()
-                    else:
-                        if response.status == 400:
-                            raise BadRequest
-                        elif response.status == 401:
-                            raise Unauthorized
-                        elif response.status == 403:
-                            raise Forbidden
-                        elif response.status == 404:
-                            raise NotFound
-                        elif 500 <= response.status < 600:
-                            raise TwitchServerError
-                        else:
-                            raise UnknownError
-            except OSError:
+                    if response.status == 400:
+                        raise BadRequest
+                    elif response.status == 401:
+                        raise Unauthorized
+                    elif response.status == 403:
+                        raise Forbidden
+                    elif response.status == 404:
+                        raise NotFound
+                    elif 500 <= response.status < 600:
+                        raise TwitchServerError
+                    raise UnknownError
+            except OSError as exc:
                 if 3 >= retry_count:
                     _logger.info('Request failed: %s. Retrying in %s seconds...',
                                  Route, (5 * retry_count))
                     await sleep(5 * retry_count)
-                raise HTTPException
+                raise HTTPException from exc
 
     async def _generate_token(self) -> Optional[Refresh]:
         if self._refresh_token and self._client_secret:
@@ -257,13 +255,14 @@ class HTTPClient:
                 validation: Validate = await self._request(route=route)
                 _logger.debug('Access token successfully validated.')
                 return validation
-            except Unauthorized:
+            except Unauthorized as exc:
                 if generate and (self._client_secret and self._refresh_token):
                     try:
                         # Generating a new access token.
                         await self._generate_token()
                     except (BadRequest, Forbidden):
-                        raise Unauthorized(message='Invalid refresh token or client secret.')
+                        raise Unauthorized(message='Invalid refresh token or client secret.'
+                                           ) from exc
                 else:
                     raise
 
@@ -329,6 +328,7 @@ class HTTPClient:
                     _logger.error('Unable to make the request to URL: %s Unauthorized access.',
                                   route.url)
                     await self._validate_token(generate=True)
+                    break
                 except (Unauthorized, BadRequest):
                     raise
 
