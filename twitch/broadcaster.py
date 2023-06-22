@@ -21,9 +21,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
-from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
 from datetime import datetime
 from .utils import parse_rfc3339_timestamp, empty_to_none, cache_decorator
@@ -31,6 +30,7 @@ from .types.user import UserType, UserImages, Tier, Types
 from .channel import Channel
 from .stream import Stream
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types import channel as ch
     from .types import stream as stm
