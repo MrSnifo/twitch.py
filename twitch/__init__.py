@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE.
 """
 
 __title__ = 'Twitchify'
-__version__ = '1.0.6'
+__version__ = '1.1.0'
 __license__ = 'MIT License'
 __author__ = 'Snifo'
 __email__ = 'Snifo@mail.com'

@@ -46,6 +46,10 @@ class TwitchServerError(TwitchException):
         super().__init__('Twitch API server error.')
 
 
+# ------------------------------------------
+#               HTTPException
+# ------------------------------------------
+
 class HTTPException(TwitchException):
     """
     Exception raised when an HTTP request operation fail.
@@ -87,6 +91,10 @@ class Forbidden(HTTPException):
         super().__init__(message)
 
 
+# -------------------------------------------
+#                  Websocket
+# -------------------------------------------
+
 class WebSocketError(HTTPException):
     """
     Exception raised when websocket error occurred.
@@ -102,6 +110,19 @@ class WebsocketClosed(WebSocketError):
     """
     pass
 
+
+class WsReconnect(WebSocketError):
+    """
+    Exception raised to indicate that WebSocket should reconnect to a new url.
+    """
+
+    def __init__(self, url: str):
+        super().__init__(url)
+
+
+# -------------------------------------------
+#               ClientException
+# -------------------------------------------
 
 class ClientException(TwitchException):
     """

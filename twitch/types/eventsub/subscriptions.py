@@ -75,5 +75,4 @@ Subscriptions: Dict[str, SubscriptionPayload] = {
     'shoutout_create': {'name': 'channel.shoutout.create', 'version': '1'},
     'shoutout_receive': {'name': 'channel.shoutout.receive', 'version': '1'},
     'stream_online': {'name': 'stream.online', 'version': '1'},
-    'stream_offline': {'name': 'stream.offline', 'version': '1'},
-    'user_update': {'name': 'user.update', 'version': '1'}}
+    'stream_offline': {'name': 'stream.offline', 'version': '1'}}

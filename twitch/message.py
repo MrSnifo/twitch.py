@@ -25,16 +25,18 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from .types import message as msg
-    from typing import List, Optional
+    from typing import List
 
 
 class Emote:
     """
     Represents a message emote.
+
+    :param emote: A dictionary representing the emote with 'id', 'begin', and 'end' keys.
     """
+
     __slots__ = ('id', 'begin', 'end')
 
     def __init__(self, *, emote: msg.Emote) -> None:
@@ -49,7 +51,10 @@ class Emote:
 class Message:
     """
     Represents a chat message.
+
+    :param message: A dictionary representing the message with 'text' and 'emotes' keys.
     """
+
     __slots__ = ('content', '_emotes')
 
     def __init__(self, *, message: msg.Message) -> None:
@@ -63,8 +68,10 @@ class Message:
         return self.content
 
     @property
-    def emotes(self) -> Optional[List[Emote]]:
-        if len(self._emotes) != 0:
-            return [Emote(emote=emote) for emote in self._emotes]
+    def emotes(self) -> List[Emote]:
+        """
+        Retrieve the list of emotes in the message, if any.
 
-        return None
+        :return: List of Emote objects.
+        """
+        return [Emote(emote=emote) for emote in self._emotes]

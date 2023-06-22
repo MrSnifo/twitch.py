@@ -24,18 +24,19 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
-from .errors import (WebSocketError, WebsocketClosed, NotFound, SessionClosed, Forbidden, SubscriptionError)
+from .errors import (WebSocketError, WebsocketClosed, NotFound, SessionClosed, Forbidden,
+                     SubscriptionError, WsReconnect)
 from .utils import to_json, get_subscriptions
 
 # Libraries
-from asyncio import wait_for, sleep, TimeoutError, AbstractEventLoop
+from asyncio import wait_for, sleep, TimeoutError
 from json import JSONDecodeError
 from aiohttp import WSMsgType
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionPayload
+    from asyncio import AbstractEventLoop
     from typing import Optional, List, Dict, Any
     from aiohttp import ClientWebSocketResponse
     from .state import ConnectionState
@@ -46,36 +47,27 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
-class WsReconnect(Exception):
-    """
-    Reconnect to a new websocket.
-    """
-
-    def __init__(self, url: str):
-        super().__init__(url)
-
-
 class EventSubWebSocket:
     DEFAULT_URL = 'wss://eventsub.wss.twitch.tv/ws'
 
-    __slots__ = ('_http', '__connection', '__loop', 'subscriptions', '_ready', '_keep_alive', '_ws', '_ws_switch',
-                 'session_id', 'retry_count')
+    __slots__ = ('__http', '__connection', '__loop', 'subscriptions', '_ready', '_keep_alive',
+                 '_ws', '_ws_switch', 'session_id', 'retry_count')
 
-    def __init__(self, *, http: HTTPClient, connection: ConnectionState, loop, events: List[str]) -> None:
+    def __init__(self, *, http: HTTPClient, cnx: ConnectionState, loop, events: List[str]) -> None:
         """
         Initialize the EventSubWebSocket.
 
-        :param http:
-         The HTTP client for making API requests.
-
-        :param events:
-         A list of events.
-       """
-        self._http: HTTPClient = http
-        self.__connection = connection
+        :param http: The HTTP client for making API requests.
+        :param cnx: The ConnectionState object.
+        :param loop: The event loop.
+        :param events: A list of events.
+        """
+        self.__http: HTTPClient = http
+        self.__connection: ConnectionState = cnx
         self.__loop: AbstractEventLoop = loop
         self.subscriptions: List[SubscriptionPayload] = get_subscriptions(events=events)
-
+        # Default subscription
+        self.subscriptions.append({'name': 'user.update', 'version': '1'})
         # Default Session KeepAlive.
         self._keep_alive: int = 10
         self._ws: Optional[ClientWebSocketResponse] = None
@@ -87,13 +79,11 @@ class EventSubWebSocket:
         """
         Establish a WebSocket connection.
 
-        :param url:
-         The URL to connect to.
+        :param url: The URL to connect to.
         """
-
-        if self._http.is_open:
-            _ws = await self._http.ws_connect(url=url)
-            if (self._ws is not None) and (not self._ws.closed):
+        if self.__http.is_open:
+            _ws = await self.__http.ws_connect(url=url)
+            if self._ws is not None and not self._ws.closed:
                 self._ws_switch = self._ws
                 self._ws = _ws
             else:
@@ -107,31 +97,30 @@ class EventSubWebSocket:
         """
         Connect to the WebSocket.
 
-        :param url:
-         The URL to connect to. Default is the DEFAULT_URL.
-       """
+        :param url: The URL to connect to. Default is the DEFAULT_URL.
+        """
         while True:
             try:
                 await self._connect(url=url)
             except WsReconnect as reconnect_url:
                 url = reconnect_url.__str__()
-                _logger.debug("Reconnecting to URL: %s", url)
+                _logger.debug(f'Reconnecting to URL: {url}')
                 continue
             except (OSError, WebSocketError, SessionClosed, TimeoutError) as error:
                 self.retry_count += 1
                 if 3 >= self.retry_count:
                     if isinstance(error, WebSocketError):
-                        _logger.error(f'WebSocket connection closed. Retrying in %s seconds...', (5 * self.retry_count))
+                        _logger.error(f'WebSocket connection closed. Retrying'
+                                      f' in {5 * self.retry_count} seconds...')
                     elif isinstance(error, SessionClosed):
-                        _logger.error(f'Cannot connect because the session is closed. Retrying in %s seconds...',
-                                      (5 * self.retry_count))
+                        _logger.error(f'Cannot connect because the session is closed. Retrying in'
+                                      f' {5 * self.retry_count} seconds...')
                     elif isinstance(error, TimeoutError):
-                        _logger.error(
-                            f'Timeout occurred while waiting for WebSocket message. Retrying in %s seconds...',
-                            (5 * self.retry_count))
+                        _logger.error(f'Timeout occurred while waiting for WebSocket message.'
+                                      f' Retrying in {5 * self.retry_count} seconds...')
                     else:
-                        _logger.info(f'Retrying to connect to the WebSocket (%s) in %s seconds...', url,
-                                     5 * self.retry_count)
+                        _logger.info(f'Retrying to connect to the WebSocket ({url})'
+                                     f' in {5 * self.retry_count} seconds...')
                 else:
                     if isinstance(error, OSError):
                         raise WebSocketError
@@ -152,19 +141,21 @@ class EventSubWebSocket:
                     _logger.error('WebSocket connection closed by the server')
                     close_code = self._ws.close_code
                     if close_code == 4004:
-                        raise WebsocketClosed(
-                            'Failed to reconnect to a new WebSocket within the specified time (30 seconds).')
+                        raise WebsocketClosed('Failed to reconnect to a new WebSocket within'
+                                              ' the specified time.')
                     elif close_code == 4007:
-                        raise WebsocketClosed(
-                            'Failed to reconnect to a new WebSocket. The reconnect URL provided is invalid.')
+                        raise WebsocketClosed('Failed to reconnect to a new WebSocket.'
+                                              ' The reconnect URL provided is invalid.')
                     elif close_code in [4000, 4001, 4002, 4003, 4005, 4006]:
-                        raise WebSocketError(f'WebSocket connection closed by the server. Close code: {close_code}')
+                        raise WebSocketError(
+                            f'WebSocket connection closed by the server. Close code:{close_code}')
                     else:
-                        raise WebSocketError(f'WebSocket connection closed by the server. Close code: {close_code}')
+                        raise WebSocketError(
+                            f'WebSocket connection closed by the server. Close code:{close_code}')
                 elif msg.type == WSMsgType.ERROR:
                     exception = self._ws.exception()
                     error_message = str(exception) if exception else 'Unknown error occurred'
-                    raise WebSocketError('WebSocket connection closed with error: %s' % error_message)
+                    raise WebSocketError(f'WebSocket connection closed with error:{error_message}')
             except TimeoutError:
                 raise
 
@@ -172,37 +163,39 @@ class EventSubWebSocket:
         """
         Process the received response.
 
-       :param response:
-        The response received from the WebSocket.
-       """
+        :param response: The response received from the WebSocket.
+        """
         try:
             response: dict = to_json(text=response)
         except (UnicodeDecodeError, JSONDecodeError) as error:
-            _logger.error('Failed to parse response as JSON: %s. Response: %s', error, response)
+            _logger.error(f'Failed to parse response as JSON: {error}. Response: {response}')
         else:
             if response.get('metadata') is not None:
                 metadata = response['metadata']
                 # ====> Session Keepalive <====
                 if metadata['message_type'] == 'session_keepalive':
-                    _logger.debug('Received a keepalive message. The WebSocket connection is healthy.')
+                    _logger.debug(
+                        'Received a keepalive message. The WebSocket connection is healthy.')
                 # ====> Session Welcome <====
                 elif metadata['message_type'] == 'session_welcome':
                     _session: Session = response['payload']['session']
-                    _logger.debug('Connected to WebSocket. Session ID: %s', _session['id'])
-                    # Close the old connection until the new reconnect websocket receive a Welcome message.
+                    _logger.debug(f'Connected to WebSocket. Session ID: {_session["id"]}')
+                    # Close the old connection until the new reconnect websocket receive a
+                    # Welcome message.
                     if self._ws_switch is not None and not self._ws_switch.closed:
                         # Closing the old connection.
                         await self._ws_switch.close()
                         self._ws_switch = None
                     else:
                         # Subscribing to events.
-                        task = self._http.subscribe(user_id=self.__connection.broadcaster.id,
-                                                    session_id=_session['id'],
-                                                    subscriptions=self.subscriptions)
+                        task = self.__http.subscribe(user_id=self.__connection.broadcaster.id,
+                                                     session_id=_session['id'],
+                                                     subscriptions=self.subscriptions)
                         self.__loop.create_task(task, name='Twitchify:Subscriptions')
                     if _session['id'] != self.session_id:
                         if self.session_id is not None:
-                            _logger.debug('A new WebSocket Session has been detected ID: %s', _session['id'])
+                            _logger.debug(f'A new WebSocket Session has been detected ID:'
+                                          f' {_session["id"]}')
                         self.session_id = _session['id']
                     # KeepAlive timeout.
                     self._keep_alive = _session['keepalive_timeout_seconds']
@@ -224,8 +217,8 @@ class EventSubWebSocket:
                     _status = _subscription['status']
                     # Revoked the authorization token that the subscription relied on.
                     if _status == 'authorization_revoked':
-                        raise Forbidden(
-                            'The user has revoked authorization for the `%s` subscription.' % _subscription['type'])
+                        raise Forbidden(f'The user has revoked authorization for the'
+                                        f' `{_subscription["type"]}` subscription.')
                     # The user mentioned in the subscription no longer exists.
                     elif _status == 'user_removed':
                         raise NotFound(

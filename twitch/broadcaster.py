@@ -21,93 +21,81 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
-
 from __future__ import annotations
 
-# Core
-from .types.user import (UserPayload, UserPayloadWithEmail)
-from .utils import empty_to_none, parse_rfc3339_timestamp
+from .utils import parse_rfc3339_timestamp, empty_to_none, cache_decorator
+from .types.user import (UserType, UserImages, Tier, Types)
+from .channel import Channel
 from .stream import Stream
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
-    from typing import Union, Optional
+    from .types import channel as ch
+    from .types import stream as stm
+    from typing import Optional
     from .http import HTTPClient
     from datetime import datetime
+
+
+class Images:
+    """
+    Represents images associated with a Twitch user.
+
+    :param user: The user's image data.
+    """
+    def __init__(self, *, user: UserImages) -> None:
+        self.profile = user['profile_image_url']
+        self.offline = user['offline_image_url']
+
+    def __repr__(self) -> str:
+        return f'<Images profile={self.profile} offline={self.profile}>'
 
 
 class Broadcaster:
     """
     Represents a Twitch broadcaster.
-    """
-    __slots__ = ('_data', '_http', 'id', 'name', 'display_name', '_type', '_broadcaster_type', '_description',
-                 'profile_image_url', '_offline_image_url', 'view_count', 'email', 'created_at')
 
-    def __init__(self, data: Union[UserPayload, UserPayloadWithEmail], http):
-        self._data: Union[UserPayload, UserPayloadWithEmail] = data
-        self._http: HTTPClient = http
-        self.id: str = self._data['id']
-        self.name: str = self._data['login']
-        self.display_name: str = self._data['display_name']
-        self._type: str = self._data['type']
-        self._broadcaster_type: str = self._data['broadcaster_type']
-        self._description: str = self._data['description']
-        self.profile_image_url: str = self._data['profile_image_url']
-        self._offline_image_url: str = self._data['offline_image_url']
-        self.email: Optional[str] = self._data.get('email')
-        self.created_at: datetime = parse_rfc3339_timestamp(timestamp=self._data['created_at'])
+    :param http: The HTTPClient instance for making HTTP requests.
+    :param user: The user data representing the broadcaster.
+   """
+    def __init__(self, *, http: HTTPClient, user: UserType):
+        self.__http = http
+        self.id: str = user['id']
+        self.name: str = user['login']
+        self.display_name: str = user['display_name']
+        self.email: Optional[str] = empty_to_none(text=user['email'])
+        self.images: Images = Images(user=user)
+        # Set the broadcaster tier.
+        self.tier: Tier = user['broadcaster_type'] if user['broadcaster_type'] != '' else 'regular'
+        # Set the user type.
+        self.type: Types = user['type'] if user['type'] != '' else 'regular'
+        self.joined_at: datetime = parse_rfc3339_timestamp(user['created_at'])
+        # Updating the channel description from the user.
+        self.bio = empty_to_none(text=user['description'])
 
-    def __repr__(self) -> str:
-        return f'<User id={self.id} login={self.name} display_name={self.display_name}>'
+    @cache_decorator(expiry_seconds=20)
+    async def get_channel(self) -> Channel:
+        """
+        Retrieve the channel associated with the broadcaster.
 
-    async def refresh(self) -> Broadcaster:
+        :return: An instance of the Channel class representing the channel.
+        :rtype: Channel
         """
-        Refreshes the broadcaster's information from the server.
-        """
-        self._data = await self._http.get_client()
-        return self
+        data: ch.Channel = await self.__http.get_channel(broadcaster_id=self.id)
+        _channel = Channel(channel=data)
+        _channel.description = self.bio
+        return _channel
 
-    @property
-    def description(self) -> Optional[str]:
-        """
-        Returns the user's description, if available.
-        """
-        return empty_to_none(text=self._description)
-
-    @property
-    def url(self) -> Optional[str]:
-        """
-        Returns the channel URL.
-        """
-        return f'https://www.twitch.tv/{self.name}'
-
-    @property
-    def user_type(self) -> Optional[str]:
-        """
-        Returns the user's type.
-        """
-        return empty_to_none(text=self._type)
-
-    @property
-    def broadcaster_type(self) -> Optional[str]:
-        """
-        Returns the user's broadcaster type.
-        """
-        return empty_to_none(text=self._broadcaster_type)
-
-    @property
-    def offline_image(self) -> Optional[str]:
-        """
-        Returns the URL of the user's offline image, if available.
-        """
-        return empty_to_none(text=self._offline_image_url)
-
+    @cache_decorator(expiry_seconds=12)
     async def get_stream(self) -> Optional[Stream]:
         """
-        Retrieves the stream associated with the broadcaster.
+        Retrieve the stream of the broadcaster if currently live.
+
+        :return: An instance of the Stream class representing the stream if live, otherwise None.
+        :rtype: Optional[Stream]
         """
-        data = await self._http.get_stream(user_id=self.id)
+        data: Optional[stm.Stream] = await self.__http.get_stream(user_id=self.id)
         if data:
-            return Stream(stream=data)
+            _stream = Stream(stream=data)
+            return _stream
         return None

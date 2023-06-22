@@ -25,6 +25,25 @@ DEALINGS IN THE SOFTWARE.
 # Libraries
 from typing import TypedDict, Literal, Optional
 
+Types = Literal['admin', 'global_mod', 'staff', '']
+Tier = Literal['affiliate', 'partner', '']
+
+
+class UserImages(TypedDict):
+    profile_image_url: str
+    offline_image_url: str
+
+
+class UserType(UserImages):
+    id: str
+    login: str
+    display_name: str
+    email: str
+    type: Types
+    broadcaster_type: Tier
+    description: str
+    created_at: str
+
 
 class Broadcaster(TypedDict):
     broadcaster_id: str
@@ -66,35 +85,3 @@ class SpecificUser(TypedDict):
     user_id: str
     user_login: str
     user_name: str
-
-
-class BaseUser(TypedDict):
-    """
-    Base user.
-    """
-    id: str
-    login: str
-    display_name: str
-
-
-_user_type = Literal['admin', 'global_mod', 'staff', '']
-_broadcaster_type = Literal['affiliate', 'partner', '']
-
-
-class UserPayload(BaseUser):
-    """
-    Represents a user.
-    """
-    type: _user_type
-    broadcaster_type: _broadcaster_type
-    description: str
-    profile_image_url: str
-    offline_image_url: str
-    created_at: str
-
-
-class UserPayloadWithEmail(UserPayload):
-    """
-    Represents a user with email.
-    """
-    email: str

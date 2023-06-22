@@ -29,18 +29,61 @@ from .types.eventsub.subscriptions import Subscriptions
 
 # Libraries
 from datetime import datetime
-import json
+from functools import wraps
 import logging
+import json
+import time
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionPayload
-    from typing import Optional, List
+    from typing import Optional, List, Callable, Awaitable, Any
 try:
     # noinspection PyPackageRequirements
     import orjson
 except ImportError:
     orjson = None
+
+
+def cache_decorator(expiry_seconds: int) -> Callable:
+    """
+    Cache decorator that caches the result of a function with a specified expiry time.
+
+    :param expiry_seconds: The number of seconds to cache the result.
+    :return: The decorated function.
+    """
+    cache = {}
+    cache_expiry = {}
+
+    def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+        """
+        Decorator function that wraps the original function with caching logic.
+
+        :param func: The original function to be decorated.
+        :return: The wrapped function.
+        """
+        @wraps(func)
+        async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+            """
+            Wrapper function that performs the caching logic before calling the original function.
+
+            :param self: The instance object.
+            :param args: The positional arguments passed to the function.
+            :param kwargs: The keyword arguments passed to the function.
+            :return: The result of the original function.
+            """
+            cache_key = (func.__name__, self, *args, frozenset(kwargs.items()))
+            if cache_key in cache and time.time() < cache_expiry[cache_key]:
+                return cache[cache_key]
+            result = await func(self, *args, **kwargs)
+            cache[cache_key] = result
+            cache_expiry[cache_key] = time.time() + expiry_seconds
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 def to_json(text: str, encoding='utf-8') -> dict:
@@ -68,7 +111,8 @@ def to_json(text: str, encoding='utf-8') -> dict:
 
 def format_seconds(seconds: int) -> str:
     """
-    Formats the given number of seconds into a string representation of days, hours, minutes, and seconds.
+    Formats the given number of seconds into a string representation of days, hours, minutes,
+    and seconds.
 
     :param seconds:
      The number of seconds.
@@ -113,7 +157,7 @@ def empty_to_none(text: Optional[str]) -> Optional[str]:
         return None
 
 
-def parse_rfc3339_timestamp(*, timestamp: str) -> datetime:
+def parse_rfc3339_timestamp(timestamp: str) -> datetime:
     """
     Parses a string representing a timestamp in RFC3339 format and returns a datetime object.
 

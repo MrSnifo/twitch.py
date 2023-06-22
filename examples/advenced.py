@@ -27,7 +27,7 @@ class Twitch(Client):
         """
         Event handler triggered when the client receives a new access token.
 
-        Note: The refresh_token and client_secret are required for the on_refresh_token event to trigger.
+        Note: The refresh_token and client_secret are required.
         """
         # Store this access_token for future use.
         print("Received a new access token:", access_token)

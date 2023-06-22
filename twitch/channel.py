@@ -24,56 +24,82 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
 from .message import Message
 from .user import User
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types.eventsub import channel as chl
-    from typing import Optional
+    from .types import channel as ch
+    from typing import Optional, List, Union
 
 
 class Category:
     """
     Represents a category for a channel.
+
+    :param channel: The channel data.
     """
     __slots__ = ('id', 'name')
 
-    def __init__(self, channel: chl.Update) -> None:
-        self.id: Optional[str] = channel['category_id']
-        self.name: Optional[str] = channel['category_name']
+    def __init__(self, channel: Union[chl.Update, ch.Channel]) -> None:
+        self.id: Optional[str] = channel.get('category_id') or channel.get('game_id')
+        self.name: Optional[str] = channel['category_name'] or channel.get('game_name')
+
+    def __repr__(self):
+        return f'Category id={self.id} name={self.name}'
 
 
 class Channel:
     """
     Represents a channel.
+
+    :param channel: The channel data.
     """
-    __slots__ = ('title', 'language', '_category', 'is_mature')
+    __slots__ = ('title', 'description', 'delay', 'tags', 'category')
+
+    def __init__(self, channel: ch.Channel):
+        self.description: Optional[str] = None
+        self.title: Optional[str] = channel['title']
+        self.delay: int = channel['delay']
+        self.tags: List[str] = channel['tags']
+        # Category.
+        _c = Category(channel=channel) if channel['game_id'] != '' else None
+        self.category: Optional[Category] = _c
+
+    def __repr__(self) -> str:
+        return f'<Channel title={self.title} description={self.description}>'
+
+
+# -------------------------------------------
+#                  EventSub
+# -------------------------------------------
+
+class Update:
+    """
+    Represents when a channel updates their information.
+
+    :param channel: The channel update data.
+    """
+    __slots__ = ('title', 'language', 'is_mature', 'category')
 
     def __init__(self, channel: chl.Update) -> None:
         self.title: str = channel['title']
         self.language: str = channel['language']
-        self._category: Category = Category(channel=channel)
         self.is_mature: bool = channel['is_mature']
+        # Category.
+        _c = Category(channel=channel) if channel['category_id'] != '' else None
+        self.category: Optional[Category] = _c
 
     def __repr__(self) -> str:
-        return f'<Channel title={self.title} language={self.language}>'
-
-    @property
-    def category(self) -> Optional[Category]:
-        """
-        Retrieves the category of the channel.
-        """
-        if self._category.id:
-            return self._category
-        else:
-            return None
+        return f'<Update title={self.title} language={self.language}>'
 
 
 class Subscription:
     """
     Represents a channel subscription.
+
+    :param channel: The subscription data.
     """
     __slots__ = ('user', 'tier', 'is_gift')
 
@@ -89,6 +115,8 @@ class Subscription:
 class SubscriptionGift:
     """
     Represents a channel subscription gift.
+
+    :param channel: The subscription gift data.
     """
     __slots__ = ('user', 'tier', 'total', 'cumulative_total', 'is_anonymous')
 
@@ -106,6 +134,8 @@ class SubscriptionGift:
 class SubscriptionMessage:
     """
     Represents a channel re-subscription.
+
+    :param channel: The subscription message data.
     """
     __slots__ = ('user', 'tier', 'message', 'cumulative', 'duration', 'streak')
 
@@ -118,12 +148,14 @@ class SubscriptionMessage:
         self.streak: Optional[int] = channel['streak_months']
 
     def __repr__(self) -> str:
-        return f'<SubscriptionMessage tier={self.tier} duration={self.duration} message={self.message.__repr__()}>'
+        return f'<SubscriptionMessage tier={self.tier} message={self.message.__repr__()}>'
 
 
 class Cheer:
     """
     Represents a channel cheer.
+
+    :param channel: The cheer data.
     """
     __slots__ = ('user', 'bits', 'message', 'is_anonymous')
 
@@ -140,6 +172,8 @@ class Cheer:
 class Raid:
     """
     Represents a channel raid.
+
+    :param raid: The raid data.
     """
     __slots__ = ('from_user', 'to_user', 'viewers')
 
@@ -149,4 +183,4 @@ class Raid:
         self.viewers: int = raid['viewers']
 
     def __repr__(self) -> str:
-        return f'<Raid from_user={self.from_user.__repr__()} to_user={self.to_user.__repr__()} viewers={self.viewers}>'
+        return f'<Raid from_user={self.from_user.__repr__()} to_user={self.to_user.__repr__()}'

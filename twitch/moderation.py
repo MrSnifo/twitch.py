@@ -85,7 +85,8 @@ class ShieldMode:
         self._ended_at: Optional[str] = mode.get('ended_at')
 
     def __repr__(self) -> str:
-        return f'<UnBan moderator={self.moderator} _started_at={self._started_at} _ended_at={self._ended_at}>'
+        return f'<UnBan moderator={self.moderator} _started_at={self._started_at}' \
+               f' _ended_at={self._ended_at}>'
 
     @property
     def is_enabled(self) -> bool:

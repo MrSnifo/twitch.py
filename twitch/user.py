@@ -75,4 +75,4 @@ class Update(User):
         self.email_verified: bool = update['email_verified']
 
     def __repr__(self) -> str:
-        return f'<Update user={super().__repr__()} description={self.description} email={self.email}>'
+        return f'<Update user={super().__repr__()} description={self.description}>'

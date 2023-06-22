@@ -72,8 +72,8 @@ class Poll:
     """
     Represents a channel poll.
     """
-    __slots__ = ('id', 'title', '_choices', 'bits_voting', 'points_voting', 'started_at', '_ends_at', '_ended_at',
-                 '_status')
+    __slots__ = ('id', 'title', '_choices', 'bits_voting', 'points_voting', 'started_at',
+                 '_ends_at', '_ended_at', '_status')
 
     def __init__(self, poll: Union[pl.Begin, pl.Progress, pl.End]):
         self.id: str = poll['id']
@@ -167,7 +167,8 @@ class Prediction:
     """
     Represents a channel prediction.
     """
-    __slots__ = ('id', 'title', '_outcomes', 'started_at', '_locks_at', '_locked_at', '_ended_at', '_status')
+    __slots__ = ('id', 'title', '_outcomes', 'started_at', '_locks_at', '_locked_at', '_ended_at',
+                 '_status')
 
     def __init__(self, *, prediction: Union[pd.Begin, pd.Progress, pd.Lock, pd.End]):
         self.id: str = prediction['id']

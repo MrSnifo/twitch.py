@@ -25,7 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 # Core
-from .channel import Channel, Subscription, SubscriptionGift, SubscriptionMessage, Cheer, Raid
+from .channel import Update, Subscription, SubscriptionGift, SubscriptionMessage, Cheer, Raid
 from .goals import Donation, Charity, Goal, HyperTrain
 from .user import Follower, User, Update
 from .broadcaster import Broadcaster
@@ -36,9 +36,11 @@ from .survey import Poll, Prediction
 from asyncio import Task
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Optional, Dict, Callable, Any
+    from typing import Optional, Dict, Callable, Any, List
     from .http import HTTPClient
+    from .types.eventsub.reward import Redemption as Rp
     from .types.eventsub import (
         channel as chl,
         moderation as md,
@@ -60,19 +62,21 @@ class ConnectionState:
     """
     Represents the state of the connection.
     """
-    __slots__ = ('_http', 'broadcaster', '_dispatch')
+    __slots__ = ('_http', 'broadcaster', '_dispatch', 'is_streaming', 'events')
 
-    def __init__(self, dispatcher: Callable[..., Any], http: HTTPClient) -> None:
+    def __init__(self, dispatcher: Callable[..., Any], http: HTTPClient, ev: List[str]) -> None:
         self._http: HTTPClient = http
         self._dispatch: Callable[[str, Any, Any], Task] = dispatcher
         self.broadcaster: Optional[Broadcaster] = None
+        self.events: List[str] = ev
 
     async def get_client(self) -> None:
         """
-        Retrieves the broadcaster's data from the connection's HTTP client and initializes the Broadcaster object.
+        Retrieves the broadcaster's data from the connection's HTTP client and initializes the
+        Broadcaster object.
         """
         _data = await self._http.get_client()
-        self.broadcaster = Broadcaster(data=_data, http=self._http)
+        self.broadcaster = Broadcaster(http=self._http, user=_data)
 
     async def parse(self, event: str, data: Optional[Dict[str, Any]] = None) -> None:
         """
@@ -97,7 +101,7 @@ class ConnectionState:
         """
         Parse a channel update event.
         """
-        _channel = Channel(channel=data)
+        _channel = Update(channel=data)
         self._dispatch('channel_update', _channel)
 
     async def parse_channel_follow(self, data: chl.Follow) -> None:
@@ -200,14 +204,14 @@ class ConnectionState:
         _reward = Reward(reward=data)
         self._dispatch('points_reward_remove', _reward)
 
-    async def parse_channel_channel_points_custom_reward_redemption_add(self, data: rd.Redemption) -> None:
+    async def parse_channel_channel_points_custom_reward_redemption_add(self, data: Rp) -> None:
         """
         Parse a channel custom reward redemption add event for channel points.
         """
         _redemption = Redemption(redemption=data)
         self._dispatch('points_reward_redemption', _redemption)
 
-    async def parse_channel_channel_points_custom_reward_redemption_update(self, data: rd.Redemption) -> None:
+    async def parse_channel_channel_points_custom_reward_redemption_update(self, data: Rp) -> None:
         """
         Parse a channel custom reward redemption update event for channel points.
         """
@@ -390,6 +394,7 @@ class ConnectionState:
         # Updating the broadcaster
         self.broadcaster.name = _update.name
         self.broadcaster.display_name = _update.display_name
-        self.broadcaster._description = _update.description
+        self.broadcaster.description = _update.description
         self.broadcaster.email = _update.email
-        self._dispatch('user_update', _update)
+        if 'user_update' in self.events:
+            self._dispatch('user_update', _update)

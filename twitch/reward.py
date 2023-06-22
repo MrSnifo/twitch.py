@@ -103,7 +103,8 @@ class _Appearance:
     Represents the appearance settings for a reward.
     """
 
-    __slots__ = ('title', 'description', 'is_in_stock', 'background_color', 'image', 'default_image')
+    __slots__ = ('title', 'description', 'is_in_stock', 'background_color', 'image',
+                 'default_image')
 
     def __init__(self, *, reward: rd.Reward) -> None:
         self.title: str = reward['title']
@@ -150,7 +151,8 @@ class Reward:
     """
     Represents a channel reward.
     """
-    __slots__ = ('id', 'cost', 'status', 'appearance', 'options', 'cooldown', 'redeemed_current_stream')
+    __slots__ = ('id', 'cost', 'status', 'appearance', 'options', 'cooldown',
+                 'redeemed_current_stream')
 
     def __init__(self, *, reward: rd.Reward) -> None:
         self.id: str = reward['id']
@@ -162,7 +164,7 @@ class Reward:
         self.redeemed_current_stream: Optional[int] = reward['redemptions_redeemed_current_stream']
 
     def __repr__(self) -> str:
-        return f'<Reward id={self.id} cost={self.cost} redeemed_current_stream={self.redeemed_current_stream}>'
+        return f'<Reward id={self.id} redeemed_current_stream={self.redeemed_current_stream}>'
 
 
 class _Reward:
@@ -195,4 +197,4 @@ class Redemption:
         self.redeemed_at: datetime = parse_rfc3339_timestamp(timestamp=redemption['redeemed_at'])
 
     def __repr__(self) -> str:
-        return f'<Redemption id={self.id} user={self.user} reward={self.reward.__repr__()} status={self.status}>'
+        return f'<Redemption id={self.id} user={self.user} reward={self.reward.__repr__()}>'

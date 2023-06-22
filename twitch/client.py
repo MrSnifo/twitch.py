@@ -29,14 +29,15 @@ from .gateway import EventSubWebSocket
 from .state import ConnectionState
 from .utils import setup_logging
 from .http import HTTPClient
-
+from .channel import Channel
+from .stream import Stream
 # Libraries
 import asyncio
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, List, Optional, Callable
-    from .user import Broadcaster
+    from .broadcaster import Broadcaster
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -44,29 +45,37 @@ _logger = logging.getLogger(__name__)
 
 class Client:
     """
-    Represents a Twitch client for interacting with the Twitch API and receiving event notifications.
+    Represents a Twitch client for interacting with the Twitch API and receiving event
+    notifications.
 
     :param client_id: The client ID associated with the Twitch application.
     :param client_secret: The client secret for the Twitch application, if applicable.
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None) -> None:
-        self.client_secret = client_secret
-        self.client_id = client_id
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self._http = HTTPClient(dispatcher=self.dispatch, client_id=self.client_id, client_secret=self.client_secret)
-        self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch, http=self._http)
+        self._http = HTTPClient(dispatcher=self.dispatch, client=client_id, secret=client_secret)
+        self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch,
+                                                            http=self._http,
+                                                            ev=self._sub_events)
 
     @property
-    def user(self) -> Optional[Broadcaster]:
+    def user(self) -> Broadcaster:
         return self._connection.broadcaster
+
+    async def get_channel(self) -> Channel:
+        return await self._connection.broadcaster.get_channel()
+
+    async def get_stream(self) -> Stream:
+        return await self._connection.broadcaster.get_stream()
 
     @property
     def _sub_events(self) -> List[str]:
         """Retrieve the names of the subscribed events."""
         return [attr.replace('on_', '', 1) for attr in dir(self) if attr.startswith('on_')]
 
-    async def _run_event(self, coro: Callable[..., Any], event_name: str, *args: Any, **kwargs: Any) -> None:
+    async def _run_event(self, coro: Callable[..., Any], event_name: str, *args: Any,
+                         **kwargs: Any) -> None:
         """
         Execute the specified event coroutine with the given arguments.
         """
@@ -105,7 +114,8 @@ class Client:
         :param args: Variable length argument list passed to the event when the error occurred.
         :param kwargs: Arbitrary keyword arguments passed to the event when the error occurred.
         """
-        _logger.exception('Ignoring error: %s from %s, args: %s kwargs: %s', error, event_name, args, kwargs)
+        _logger.exception('Ignoring error: %s from %s, args: %s kwargs: %s', error, event_name,
+                          args, kwargs)
 
     def event(self, coro: Callable[..., Any], /):
         """
@@ -131,23 +141,21 @@ class Client:
         if self.loop is None:
             self.loop = asyncio.get_running_loop()
         # Validating the access key and opening a new session.
-        validation = await self._http.open_session(access_token=access_token, refresh_token=refresh_token)
+        validation = await self._http.open_session(token=access_token,
+                                                   refresh_token=refresh_token,)
         # Retrieving the client.
         await self._connection.get_client()
         # Creating an EventSub websocket.
-        EventSub = EventSubWebSocket(http=self._http, connection=self._connection,
+        EventSub = EventSubWebSocket(http=self._http, cnx=self._connection,
                                      loop=self.loop,
                                      events=self._sub_events)
-        # Creating tasks.
+
         tasks = [
             self.loop.create_task(self._http.Refresher(expires_in=validation['expires_in']),
-                                  name="Twitchify:Refresher")
+                                  name="Twitchify:Refresher"),
+            self.loop.create_task(EventSub.connect(), name="Twitchify:EventSub")
         ]
         self.dispatch('connect')
-        # Makes sure that there are events to subscribe to.
-        if len(EventSub.subscriptions) >= 1:
-            tasks.append(self.loop.create_task(EventSub.connect(), name="Twitchify:EventSub"))
-
         await asyncio.gather(*tasks)
 
     async def start(self, access_token: str, refresh_token: Optional[str] = None) -> None:
@@ -173,6 +181,8 @@ class Client:
        :param access_token: The access token for authentication.
        :param refresh_token: The refresh token for refreshing the access token, if applicable.
        """
+
         async def runner():
             await self.start(access_token, refresh_token)
+
         asyncio.run(runner())

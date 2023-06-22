@@ -24,11 +24,11 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
 from .utils import parse_rfc3339_timestamp
 from .user import User
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .types.eventsub import hypertrain as ht
     from .types.eventsub import charity as ch
@@ -37,9 +37,11 @@ if TYPE_CHECKING:
     from datetime import datetime
 
 
-class _CharityInfo:
+class CharityInfo:
     """
     Information about a charity.
+
+    :param charity: A dictionary containing charity information.
     """
     __slots__ = ('name', 'description', 'logo', 'website')
 
@@ -50,16 +52,18 @@ class _CharityInfo:
         self.website: Optional[str] = charity.get('charity_website')  # Beta
 
     def __repr__(self) -> str:
-        return f'<_CharityInfo name={self.name} description={self.description}>'
+        return f'<CharityInfo name={self.name} description={self.description}>'
 
 
-class _CharityAmount:
+class CharityAmount:
     """
     Represents an amount with its value and currency.
+
+    :param amount: A dictionary containing amount information.
     """
     __slots__ = ('value', 'currency')
 
-    def __init__(self, *, amount: ch.Amount) -> None:
+    def __init__(self, amount: ch.Amount) -> None:
         self.value: float = (amount['value'] / 10 ** amount['decimal_places'])
         self.currency: str = amount['currency']
 
@@ -70,40 +74,53 @@ class _CharityAmount:
 class Charity:
     """
     Represents a channel charity.
+
+    :param charity: An object representing a charity.
     """
     __slots__ = ('id', 'charity', 'current_amount', 'target_amount', '_started_at', '_stopped_at')
 
     def __init__(self, charity: Union[ch.Start, ch.Progress, ch.Stop]) -> None:
         self.id: str = charity['id']
-        self.charity: _CharityInfo = _CharityInfo(charity=charity)
-        self.current_amount: _CharityAmount = _CharityAmount(amount=charity['current_amount'])
-        self.target_amount: _CharityAmount = _CharityAmount(amount=charity['target_amount'])
+        self.charity: CharityInfo = CharityInfo(charity=charity)
+        self.current_amount: CharityAmount = CharityAmount(amount=charity['current_amount'])
+        self.target_amount: CharityAmount = CharityAmount(amount=charity['target_amount'])
         self._started_at: Optional[str] = charity.get('started_at')
         self._stopped_at: Optional[str] = charity.get('stopped_at')
 
-    def __repr__(self) -> str:
-        return f'<Charity id={self.id} current_amount={self.current_amount.__repr__()}>'
+    @property
+    def started_at(self) -> Optional[datetime]:
+        """The datetime when the charity started."""
+        return parse_rfc3339_timestamp(self._started_at) if self._started_at else None
+
+    @property
+    def stopped_at(self) -> Optional[datetime]:
+        """The datetime when the charity stopped."""
+        return parse_rfc3339_timestamp(self._stopped_at) if self._stopped_at else None
 
 
 class Donation:
     """
     Represents a donation made to a charity.
+
+    :param donation: An object representing a donation.
     """
     __slots__ = ('id', 'charity', 'user', 'amount')
 
     def __init__(self, donation: ch.Donation) -> None:
         self.id: str = donation['id']
-        self.charity: _CharityInfo = _CharityInfo(charity=donation)
+        self.charity: CharityInfo = CharityInfo(charity=donation)
         self.user: User = User(user=donation)
-        self.amount: _CharityAmount = _CharityAmount(amount=donation['amount'])
+        self.amount: CharityAmount = CharityAmount(amount=donation['amount'])
 
     def __repr__(self) -> str:
-        return f'<Donation id={self.id} user={self.user.__repr__()} amount={self.amount.__repr__()}>'
+        return f'<Donation id={self.id} user={self.user.__repr__()}>'
 
 
 class _GoalAmount:
     """
     Represents the amount and type of goal.
+
+    :param goal: A dictionary containing goal information.
     """
 
     def __init__(self, goal: gl.Goal) -> None:
@@ -117,6 +134,8 @@ class _GoalAmount:
 class Goal:
     """
     Represents a channel goal.
+
+    :param goal: An object representing a goal.
     """
     __slots__ = ('id', 'description', 'amount', 'started_at', 'is_achieved', '_ended_at')
 
@@ -124,21 +143,28 @@ class Goal:
         self.id: str = goal['id']
         self.description: str = goal['description']
         self.amount: _GoalAmount = _GoalAmount(goal=goal)
-        self.started_at: datetime = parse_rfc3339_timestamp(timestamp=goal['started_at'])
+        self.started_at: datetime = parse_rfc3339_timestamp(goal['started_at'])
         self.is_achieved: bool = goal.get('is_achieved') or False
         self._ended_at: Optional[str] = goal.get('ended_at')
 
     def __repr__(self) -> str:
         return f'<Goal id={self.id} amount={self.amount.__repr__()} started_at={self.started_at}>'
 
+    @property
+    def ended_at(self) -> Optional[datetime]:
+        """The datetime when the goal ended."""
+        return parse_rfc3339_timestamp(self._ended_at) if self._ended_at else None
+
 
 class _Contributor:
     """
     Hyper train top contributor.
+
+    :param contributor: A dictionary containing contributor information.
     """
     __slots__ = ('user', 'type', 'total')
 
-    def __init__(self, *, contributor: ht.Contributor) -> None:
+    def __init__(self, contributor: ht.Contributor) -> None:
         self.user: User = User(user=contributor)
         self.type: str = contributor['type']
         self.total: int = contributor['total']
@@ -156,7 +182,7 @@ class Train:
     def __init__(self, train: ht.Begin) -> None:
         self.goal: int = train['goal']
         self.progress: int = train['progress']
-        self.expires_at: datetime = parse_rfc3339_timestamp(timestamp=train['expires_at'])
+        self.expires_at: datetime = parse_rfc3339_timestamp(train['expires_at'])
         self._last_contribution: List[ht.Contributor] = train['last_contribution']
 
     def __repr__(self) -> str:
@@ -164,15 +190,19 @@ class Train:
 
     @property
     def last_contribution(self) -> List[_Contributor]:
+        """The list of top contributors in the last contribution."""
         return [_Contributor(contributor=c) for c in self._last_contribution]
 
 
 class HyperTrain:
     """
     Represents a channel Hyper Train.
+
+    :param hypertrain: An object representing a Hyper Train.
     """
-    __slots__ = ('__hypertrain', 'id', 'total', 'level', '_top_contributions', 'started_at', '_ended_at',
-                 '_cooldown_ends_at')
+    __slots__ = (
+        '__hypertrain', 'id', 'total', 'level', '_top_contributions', 'started_at', '_ended_at',
+        '_cooldown_ends_at')
 
     def __init__(self, hypertrain: Union[ht.Begin, ht.Progress, ht.End]) -> None:
         self.__hypertrain = hypertrain
@@ -180,7 +210,7 @@ class HyperTrain:
         self.level: int = hypertrain['level']
         self.total: int = hypertrain['total']
         self._top_contributions: List[ht.Contributor] = hypertrain['top_contributions']
-        self.started_at: datetime = parse_rfc3339_timestamp(timestamp=hypertrain['started_at'])
+        self.started_at: datetime = parse_rfc3339_timestamp(hypertrain['started_at'])
         self._ended_at: Optional[str] = hypertrain.get('ended_at')
         self._cooldown_ends_at: Optional[str] = hypertrain.get('cooldown_ends_at')
 
@@ -189,22 +219,22 @@ class HyperTrain:
 
     @property
     def top_contributions(self) -> List[_Contributor]:
+        """The list of top contributors in the Hyper Train."""
         return [_Contributor(contributor=c) for c in self._top_contributions]
 
     @property
     def train(self) -> Optional[Train]:
+        """The Hyper Train progress if it's ongoing, None otherwise."""
         if not self._ended_at:
             return Train(train=self.__hypertrain)
         return None
 
     @property
     def ended_at(self) -> Optional[datetime]:
-        if self._ended_at:
-            return parse_rfc3339_timestamp(timestamp=self._ended_at)
-        return None
+        """The datetime when the Hyper Train ended."""
+        return parse_rfc3339_timestamp(self._ended_at) if self._ended_at else None
 
     @property
     def cooldown_ends_at(self) -> Optional[datetime]:
-        if self._cooldown_ends_at:
-            return parse_rfc3339_timestamp(timestamp=self._cooldown_ends_at)
-        return None
+        """The datetime when the Hyper Train cooldown ends."""
+        return parse_rfc3339_timestamp(self._cooldown_ends_at) if self._cooldown_ends_at else None

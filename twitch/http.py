@@ -24,28 +24,28 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
-from .errors import (UnknownError, TwitchServerError, BadRequest, Unauthorized,
-                     Forbidden, HTTPException, SubscriptionError, NotFound)
-from . import __version__, __github__
-from .utils import format_seconds
-from .types.user import UserPayload, UserPayloadWithEmail
-from .types.stream import Stream
-
-# Libraries
-from aiohttp import (ClientSession, helpers)
+import logging
+from aiohttp import ClientSession, helpers
 from asyncio import Lock, sleep, Task
 from time import time
+from typing import TYPE_CHECKING, Optional, List, Callable, Any
 
-from typing import TYPE_CHECKING
+from .errors import (
+    UnknownError, TwitchServerError, BadRequest, Unauthorized,
+    Forbidden, HTTPException, SubscriptionError, NotFound
+)
+from . import __version__, __github__
+from .utils import format_seconds
 
 if TYPE_CHECKING:
+    from .types.stream import Stream
+    from .types.user import UserType
+    from .types.channel import Channel
     from .types.eventsub.subscriptions import SubscriptionPayload
     from aiohttp import ClientWebSocketResponse
     from .types.http import Validate, Refresh
-    from typing import Optional, List, Union, Callable, Any
 
-import logging
+
 _logger = logging.getLogger(__name__)
 
 
@@ -58,13 +58,9 @@ class Route:
         """
         Initialize a Route object.
 
-        :param method:
-         The HTTP method of the route.
-        :param path:
-         The path of the route.
-
-        :param url:
-         The complete URL of the route (overrides BASE_ROUTE + path). Defaults to None.
+        :param method: The HTTP method of the route.
+        :param path: The path of the route.
+        :param url: The complete URL of the route (overrides BASE_ROUTE + path). Defaults to None.
         """
         self.method: str = method
         if path is None and url is None:
@@ -82,19 +78,18 @@ class Route:
 class HTTPClient:
     """Serves as an HTTP client responsible for sending HTTP requests to the Twitch API."""
 
-    __slots__ = ('_dispatch', '_client_id', '_client_secret', '__session', '_session_lock', '_user_agent',
-                 '_refresh_token')
+    __slots__ = ('_dispatch', '_client_id', '_client_secret', '__session', '_session_lock',
+                 '_user_agent', '_refresh_token')
 
-    def __init__(self, *, dispatcher: Callable[..., Any], client_id: str, client_secret: Optional[str]) -> None:
+    def __init__(self, dispatcher: Callable[..., Any], client: str, secret: Optional[str]) -> None:
         """
         Initialize the HTTPClient object.
         """
         self._dispatch: Callable[[str, Any, Any], Task] = dispatcher
-        self._client_id = client_id
-        self._client_secret = client_secret
+        self._client_id = client
+        self._client_secret = secret
         self.__session: Optional[ClientSession] = None
         self._session_lock: Lock = Lock()
-
         self._user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
         self._refresh_token: Optional[str] = None
 
@@ -103,8 +98,7 @@ class HTTPClient:
         """
         Checks if the HTTP session is open.
 
-        :return:
-         True if the session is open, False otherwise.
+        :return: True if the session is open, False otherwise.
         """
         return self.__session is not None and not self.__session.closed
 
@@ -112,8 +106,7 @@ class HTTPClient:
         """
         Opens an HTTP session.
 
-        :param access_token:
-         The access token to use for authentication.
+        :param access_token: The access token to use for authentication.
         """
         async with self._session_lock:
             if not self.is_open:
@@ -139,11 +132,11 @@ class HTTPClient:
                 _logger.debug('HTTP session has been closed.')
         return not self.is_open
 
-    async def open_session(self, access_token: str, refresh_token: Optional[str] = None) -> Validate:
+    async def open_session(self, token: str, refresh_token: Optional[str] = None) -> Validate:
         """
         Verifies the access token and opens a new session with it.
 
-        :param access_token:
+        :param token:
          The access token for authentication.
 
         :param refresh_token:
@@ -152,14 +145,16 @@ class HTTPClient:
         :return: A validation response.
         """
         # Opening a session.
-        await self._open(access_token=access_token)
+        await self._open(access_token=token)
         self._refresh_token: Optional[str] = refresh_token
         validation: Validate = await self._validate_token(generate=True)
         if validation['expires_in'] == 0:
-            _logger.debug('Old application detected, exempt from expiration rules. Investigation needed.')
+            _logger.debug('Old application detected, exempt from expiration rules.'
+                          ' Investigation needed.')
             if self._refresh_token is not None:
                 _logger.warning(
-                    'The refresh token has been removed due to the access token returning an expire time of 0.')
+                    'The refresh token has been removed due to the access token returning an'
+                    ' expire time of 0.')
         else:
             self._refresh_token = refresh_token
 
@@ -203,6 +198,7 @@ class HTTPClient:
                     if response.status in [200, 202]:
                         return await response.json()
                     elif response.status == 400:
+                        print(await response.json())
                         raise BadRequest
                     elif response.status == 401:
                         raise Unauthorized
@@ -216,14 +212,16 @@ class HTTPClient:
                         raise UnknownError
             except OSError:
                 if 3 >= retry_count:
-                    _logger.info(f'Request failed: %s. Retrying in %s seconds...', route, (5 * retry_count))
+                    _logger.info(f'Request failed: {route}. Retrying in'
+                                 f' {5 * retry_count}seconds...')
                     await sleep(5 * retry_count)
         else:
             raise HTTPException
 
     async def _generate_token(self) -> Optional[Refresh]:
         if self._refresh_token and self._client_secret:
-            # There is a chance that both the task and the normal request can refresh the token at the same time.
+            # There is a chance that both the task and the normal
+            # request can refresh the token at the same time.
             if not self._session_lock.locked():
                 async with self._session_lock:
                     # Encoding the client secret.
@@ -236,8 +234,11 @@ class HTTPClient:
                     route = Route(method='POST', url='https://id.twitch.tv/oauth2/token')
                     refresh: Refresh = await self.request(route=route, params=params)
                     # Updating the session headers.
-                    self.__session.headers.update({'Authorization': f'Bearer {refresh["access_token"]}'})
-                    _logger.debug('Session headers have been successfully updated with the new access token.')
+                    self.__session.headers.update({
+                        'Authorization': f'Bearer {refresh["access_token"]}'
+                    })
+                    _logger.debug('Session headers have been successfully updated with'
+                                  ' the new access token.')
                     self._dispatch('refresh_token', refresh['access_token'])
                     return refresh
         return None
@@ -278,13 +279,15 @@ class HTTPClient:
         start_time = time()
         # If the refresh_token or client_secret is missing,
         if self._refresh_token and self._client_secret:
-            _logger.debug("A new token will be generated in %s.", format_seconds(expires_in - 300))
+            _logger.debug(f'A new token will be generated in {format_seconds(expires_in - 300)}.')
         else:
             # Set expires_in to a default value of 3540 seconds (59 minutes).
             expires_in = 3540 + 300
-            _logger.debug('Access token generation disabled due to missing refresh token or client secret.')
+            _logger.debug('Access token generation disabled due to'
+                          ' missing refresh token or client secret.')
         while True:
-            # Create a new access token approximately 5 minutes before the current token's expiration.
+            # Create a new access token approximately 5 minutes before the
+            # current token's expiration.
             await sleep(min((expires_in - 300), 3540))
             current_time = time()
             elapsed_time = current_time - start_time
@@ -293,14 +296,15 @@ class HTTPClient:
                     # Reset the refresh token timer
                     start_time = time()
                     await self._generate_token()
-                    _logger.debug("A new token will be generated in %s.", format_seconds(expires_in - 300))
-
+                    _logger.debug(f'A new token will be generated in '
+                                  f'{format_seconds(expires_in - 300)}.')
                 # ==> Validating the access token <==
                 validation: Validate = await self._validate_token()
-                # Update the expiration time of the access token. Update the expiration time of the access token.
+                # Update the expiration time of the access token.
                 expires_in = validation['expires_in']
             except BadRequest:
-                _logger.warning('Invalid Refresh Token. The automatic generation feature has been disabled.')
+                _logger.warning('Invalid Refresh Token.'
+                                ' The automatic generation feature has been disabled.')
                 self._refresh_token = None
 
     async def request(self, *, route: Route, **kwargs) -> _request:
@@ -318,18 +322,20 @@ class HTTPClient:
         """
         while True:
             try:
-                _logger.debug(f'Sending request: %s %s, kwargs: %s.', route.method, route.url, kwargs)
+                _logger.debug(f'Sending request: {route} kwargs: {kwargs}.')
                 data: dict = await self._request(route=route, **kwargs)
-                _logger.debug(f'Received response: %s', data)
+                _logger.debug(f'Received response: {data}')
                 return data
             except Unauthorized:
                 try:
-                    _logger.error(f'Unable to make the request to URL: %s. Unauthorized access.', route.url)
+                    _logger.error(f'Unable to make the request to URL: {route.url}.'
+                                  f' Unauthorized access.')
                     await self._validate_token(generate=True)
                 except (Unauthorized, BadRequest):
                     raise
 
-    async def subscribe(self, *, user_id: str, session_id: str, subscriptions: List[SubscriptionPayload]) -> None:
+    async def subscribe(self, *, user_id: str, session_id: str,
+                        subscriptions: List[SubscriptionPayload]) -> None:
         """
         Subscribes to multiple events with the specified subscriptions.
 
@@ -358,21 +364,31 @@ class HTTPClient:
                         'session_id': session_id
                     }
                 }
-                _logger.debug(f'Subscribing to `%s` event version %s.', subscription['name'], subscription['version'])
+                _logger.debug(f'Subscribing to '
+                              f'`{subscription["name"]}` event version {subscription["version"]}.')
                 route = Route(method='POST', path='eventsub/subscriptions')
                 await self.request(route=route, json=data)
             except Forbidden:
-                raise Forbidden('Subscription `%s` is missing proper authorization' % subscription['name'])
+                raise Forbidden(f'Subscription'
+                                f' `{subscription["name"]}` is missing proper authorization')
             except BadRequest:
                 raise SubscriptionError(subscription=subscription['name'],
                                         version=subscription['version'])
         self._dispatch('ready')
 
-    async def get_client(self) -> Union[UserPayload, UserPayloadWithEmail]:
+    async def get_client(self) -> UserType:
         """
         Retrieves the broadcaster with the associated access token.
         """
         data = await self.request(route=Route(method='GET', path='users'))
+        return data['data'][0]
+
+    async def get_channel(self, broadcaster_id: str) -> Channel:
+        """
+        Retrieves the channel information.
+        """
+        _route = Route(method='GET', path=f'channels?broadcaster_id={broadcaster_id}')
+        data = await self.request(route=_route)
         return data['data'][0]
 
     async def get_stream(self, user_id: str) -> Optional[Stream]:
@@ -380,10 +396,9 @@ class HTTPClient:
         Retrieves the stream.
         """
         try:
-
-            data = await self.request(route=Route(method='GET', path=f'streams?user_id={user_id}'))
+            _route = Route(method='GET', path=f'streams?user_id={user_id}')
+            data = await self.request(route=_route)
             if len(data['data']) == 1:
-                print(data['data'][0])
                 return data['data'][0]
         except NotFound:
             pass
