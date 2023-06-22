@@ -52,7 +52,7 @@ class TwitchServerError(TwitchException):
 
 class HTTPException(TwitchException):
     """
-    Exception raised when an HTTP request operation fail.
+    Exception raised when an HTTP request operation fails.
     """
     pass
 
@@ -66,7 +66,7 @@ class SessionClosed(HTTPException):
 
 class BadRequest(HTTPException):
     """
-    Exception raised when twitch refused the request.
+    Exception raised when Twitch refuses the request.
     """
 
     def __init__(self, message: str = ''):
@@ -97,7 +97,7 @@ class Forbidden(HTTPException):
 
 class WebSocketError(HTTPException):
     """
-    Exception raised when websocket error occurred.
+    Exception raised when a websocket error occurs.
     """
 
     def __init__(self, message: str = ''):
@@ -106,14 +106,14 @@ class WebSocketError(HTTPException):
 
 class WebsocketClosed(WebSocketError):
     """
-    Exception raised when the websocket connection closed.
+    Exception raised when the websocket connection is closed.
     """
     pass
 
 
 class WsReconnect(WebSocketError):
     """
-    Exception raised to indicate that WebSocket should reconnect to a new url.
+    Exception raised to indicate that WebSocket should reconnect to a new URL.
     """
 
     def __init__(self, url: str):
@@ -126,7 +126,7 @@ class WsReconnect(WebSocketError):
 
 class ClientException(TwitchException):
     """
-    Exception raised when Client operation fails.
+    Exception raised when a Client operation fails.
     """
     pass
 
@@ -146,5 +146,5 @@ class SubscriptionError(ClientException):
     """
 
     def __init__(self, subscription: str, version: str):
-        message = f'Subscription type `%s` and version `%s`.' % (subscription, version)
+        message = f'Subscription type `{subscription}` and version `{version}`.'
         super().__init__(message)
