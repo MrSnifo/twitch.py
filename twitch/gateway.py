@@ -29,9 +29,9 @@ from .errors import (WebSocketError, WebsocketClosed, NotFound, SessionClosed, F
 from .utils import to_json, get_subscriptions
 
 # Libraries
-from asyncio import wait_for, sleep, TimeoutError
 from json import JSONDecodeError
 from aiohttp import WSMsgType
+import asyncio
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -104,29 +104,26 @@ class EventSubWebSocket:
                 await self._connect(url=url)
             except WsReconnect as reconnect_url:
                 url = reconnect_url.__str__()
-                _logger.debug(f'Reconnecting to URL: {url}')
+                _logger.debug('Reconnecting to URL: %s', url)
                 continue
             except (OSError, WebSocketError, SessionClosed, TimeoutError) as error:
                 self.retry_count += 1
                 if 3 >= self.retry_count:
                     if isinstance(error, WebSocketError):
-                        _logger.error(f'WebSocket connection closed. Retrying'
-                                      f' in {5 * self.retry_count} seconds...')
+                        _logger.error('WebSocket connection closed. Retrying in %s seconds...',
+                                      (5 * self.retry_count))
                     elif isinstance(error, SessionClosed):
-                        _logger.error(f'Cannot connect because the session is closed. Retrying in'
-                                      f' {5 * self.retry_count} seconds...')
-                    elif isinstance(error, TimeoutError):
-                        _logger.error(f'Timeout occurred while waiting for WebSocket message.'
-                                      f' Retrying in {5 * self.retry_count} seconds...')
+                        _logger.error('Cannot connect because the session is closed.'
+                                      ' Retrying in %s seconds...', (5 * self.retry_count))
+                    elif isinstance(error, asyncio.TimeoutError):
+                        _logger.error('Timeout occurred while waiting for WebSocket message. '
+                                      'Retrying in %s seconds...', (5 * self.retry_count))
                     else:
-                        _logger.info(f'Retrying to connect to the WebSocket ({url})'
-                                     f' in {5 * self.retry_count} seconds...')
+                        _logger.info('Retrying to connect to the WebSocket (%s) in %s seconds...',
+                                     url, (5 * self.retry_count))
                 else:
-                    if isinstance(error, OSError):
-                        raise WebSocketError
-                    else:
-                        raise
-                await sleep(5 * self.retry_count)
+                    raise  # Re-raise the original error
+                await asyncio.sleep(5 * self.retry_count)
 
     async def handle_messages(self) -> None:
         """
@@ -134,7 +131,7 @@ class EventSubWebSocket:
         """
         while True:
             try:
-                msg = await wait_for(self._ws.receive(), timeout=(self._keep_alive + 10))
+                msg = await asyncio.wait_for(self._ws.receive(), timeout=(self._keep_alive + 10))
                 if msg.type == WSMsgType.TEXT:
                     await self.received_response(response=str(msg.data))
                 elif msg.type == WSMsgType.CLOSED:
@@ -156,7 +153,7 @@ class EventSubWebSocket:
                     exception = self._ws.exception()
                     error_message = str(exception) if exception else 'Unknown error occurred'
                     raise WebSocketError(f'WebSocket connection closed with error:{error_message}')
-            except TimeoutError:
+            except asyncio.TimeoutError:
                 raise
 
     async def received_response(self, response: str) -> None:
@@ -168,7 +165,8 @@ class EventSubWebSocket:
         try:
             response: dict = to_json(text=response)
         except (UnicodeDecodeError, JSONDecodeError) as error:
-            _logger.error(f'Failed to parse response as JSON: {error}. Response: {response}')
+            _logger.error('Failed to parse response as JSON: %s. Response: %s', error, response)
+            raise  # Re-raise the original error
         else:
             if response.get('metadata') is not None:
                 metadata = response['metadata']
@@ -179,7 +177,7 @@ class EventSubWebSocket:
                 # ====> Session Welcome <====
                 elif metadata['message_type'] == 'session_welcome':
                     _session: Session = response['payload']['session']
-                    _logger.debug(f'Connected to WebSocket. Session ID: {_session["id"]}')
+                    _logger.debug('Connected to WebSocket. Session ID: %s', _session['id'])
                     # Close the old connection until the new reconnect websocket receive a
                     # Welcome message.
                     if self._ws_switch is not None and not self._ws_switch.closed:
@@ -194,8 +192,8 @@ class EventSubWebSocket:
                         self.__loop.create_task(task, name='Twitchify:Subscriptions')
                     if _session['id'] != self.session_id:
                         if self.session_id is not None:
-                            _logger.debug(f'A new WebSocket Session has been detected ID:'
-                                          f' {_session["id"]}')
+                            _logger.debug(f'A new WebSocket Session has been detected ID: %s',
+                                          _session['id'])
                         self.session_id = _session['id']
                     # KeepAlive timeout.
                     self._keep_alive = _session['keepalive_timeout_seconds']
