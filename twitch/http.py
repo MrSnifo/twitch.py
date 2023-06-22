@@ -328,7 +328,7 @@ class HTTPClient:
                     _logger.error('Unable to make the request to URL: %s Unauthorized access.',
                                   route.url)
                     await self._validate_token(generate=True)
-                    break
+                    continue
                 except (Unauthorized, BadRequest):
                     raise
 
