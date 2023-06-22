@@ -1,15 +1,16 @@
-from setuptools import setup
 import re
+from setuptools import setup
 
 
 def version() -> str:
-    with open('twitch/__init__.py') as f:
-        text = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', f.read(), re.MULTILINE).group(1)
+    with open('twitch/__init__.py', encoding='utf-8') as file:
+        text = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]', file.read(),
+                         re.MULTILINE).group(1)
         return text
 
 
 def readme() -> str:
-    with open('README.md') as file:
+    with open('README.md', encoding='utf-8') as file:
         text = file.read()
         return text
 
@@ -30,17 +31,17 @@ setup(
     install_requires=['aiohttp>=3.8.0'],
     license='MIT',
     classifiers=[
-            'Development Status :: 5 - Production/Stable',
-            'License :: OSI Approved :: MIT License',
-            'Intended Audience :: Developers',
-            'Natural Language :: English',
-            'Operating System :: OS Independent',
-            'Programming Language :: Python :: 3.8',
-            'Programming Language :: Python :: 3.9',
-            'Programming Language :: Python :: 3.10',
-            'Topic :: Software Development :: Libraries',
-            'Topic :: Software Development :: Libraries :: Python Modules',
-            'Topic :: Utilities',
-            'Typing :: Typed',
-        ],
+        'Development Status :: 5 - Production/Stable',
+        'License :: OSI Approved :: MIT License',
+        'Intended Audience :: Developers',
+        'Natural Language :: English',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Topic :: Software Development :: Libraries',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Utilities',
+        'Typing :: Typed',
+    ],
 )
