@@ -23,7 +23,8 @@ DEALINGS IN THE SOFTWARE.
 """
 
 # Core
-from ..user import SpecificBroadcaster, SpecificUser, SpecificAnonymous, ToSpecificBroadcaster, FromSpecificBroadcaster
+from ..user import SpecificBroadcaster, SpecificUser, SpecificAnonymous, ToSpecificBroadcaster,\
+    FromSpecificBroadcaster
 from ..message import Message
 
 # Libraries
