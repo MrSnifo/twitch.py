@@ -150,8 +150,7 @@ def empty_to_none(text: Optional[str]) -> Optional[str]:
 
     if text and text != '':
         return text
-    else:
-        return None
+    return None
 
 
 def parse_rfc3339_timestamp(timestamp: str) -> datetime:
