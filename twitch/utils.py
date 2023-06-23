@@ -35,7 +35,6 @@ import json
 import time
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionPayload
     from typing import Optional, List, Callable, Awaitable, Any
@@ -80,7 +79,6 @@ def cache_decorator(expiry_seconds: int) -> Callable:
             cache[cache_key] = result
             cache_expiry[cache_key] = time.time() + expiry_seconds
             return result
-
         return wrapper
 
     return decorator
@@ -105,8 +103,7 @@ def to_json(text: str, encoding='utf-8') -> dict:
     if orjson is not None:
         encoded_text = text.encode(encoding)
         return orjson.loads(encoded_text)  # type: ignore
-    else:
-        return json.loads(text)
+    return json.loads(text)
 
 
 def format_seconds(seconds: int) -> str:
