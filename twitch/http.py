@@ -34,7 +34,7 @@ from .errors import (
     UnknownError, TwitchServerError, BadRequest, Unauthorized,
     Forbidden, HTTPException, SubscriptionError, NotFound
 )
-from . import __version__, __github__
+
 from .utils import format_seconds
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ class HTTPClient:
         self._client_secret = secret
         self.__session: Optional[ClientSession] = None
         self._session_lock: Lock = Lock()
-        self._user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
+        self._user_agent: str = f'Twitchify/{1} (GitHub: {2})'
         self._refresh_token: Optional[str] = None
 
     @property
