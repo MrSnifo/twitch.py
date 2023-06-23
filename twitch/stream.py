@@ -74,15 +74,13 @@ class Shoutout:
     def sender(self) -> User:
         if self._cooldown_ends_at:
             return User(user=self.__shoutout, prefix='broadcaster_user')
-        else:
-            return User(user=self.__shoutout, prefix='from_broadcaster_user')
+        return User(user=self.__shoutout, prefix='from_broadcaster_user')
 
     @property
     def receiver(self):
         if self._cooldown_ends_at is None:
             return User(user=self.__shoutout, prefix='broadcaster_user')
-        else:
-            return User(user=self.__shoutout, prefix='to_broadcaster_user')
+        return User(user=self.__shoutout, prefix='to_broadcaster_user')
 
     @property
     def cooldown_ends_at(self) -> Optional[datetime]:
@@ -117,7 +115,7 @@ class Offline:
     """
     Represents an offline stream.
     """
-    __slots__ = 'user'
+    __slots__ = ('user',)
 
     def __init__(self, stream: sm.Offline) -> None:
         self.user: User = User(user=stream, prefix='broadcaster_user')
