@@ -56,7 +56,7 @@ class Ban:
         return None
 
     def __repr__(self) -> str:
-        return f'<Ban user={self.user.__repr__()} moderator={self.moderator.__repr__()} reason={self.reason}>'
+        return f'<Ban user={self.user.__repr__()} moderator={self.moderator.__repr__()}>'
 
 
 class UnBan:
