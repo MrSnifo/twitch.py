@@ -27,7 +27,7 @@ from __future__ import annotations
 # Core
 from .channel import Update, Subscription, SubscriptionGift, SubscriptionMessage, Cheer, Raid
 from .goals import Donation, Charity, Goal, HyperTrain
-from .user import Follower, User, Update
+from .user import Follower, User, UserUpdate
 from .broadcaster import Broadcaster
 from .moderation import Ban, UnBan, ShieldMode
 from .stream import Online, Offline, Shoutout
@@ -78,18 +78,18 @@ class ConnectionState:
         _data = await self._http.get_client()
         self.broadcaster = Broadcaster(http=self._http, user=_data)
 
-    async def parse(self, event: str, data: Optional[Dict[str, Any]] = None) -> None:
+    async def parse(self, method: str, data: Optional[Dict[str, Any]] = None) -> None:
         """
         Parse an event and dispatch it to the appropriate handler.
         """
         try:
-            parse = self.__getattribute__('parse_' + event.replace('.', '_'))
+            parse = getattr(self, 'parse_' + method.replace('.', '_'))
             if data is None:
                 await parse()
             else:
                 await parse(data)
         except Exception as error:
-            _logger.error(f'Failed to parse event: {event}, {error}')
+            _logger.error('Failed to parse event: %s, %s', method, error)
 
     async def parse_ready(self) -> None:
         """
@@ -390,7 +390,7 @@ class ConnectionState:
         """
         Parse a user update event.
         """
-        _update = Update(update=data)
+        _update = UserUpdate(update=data)
         # Updating the broadcaster
         self.broadcaster.name = _update.name
         self.broadcaster.display_name = _update.display_name
