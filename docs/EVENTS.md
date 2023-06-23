@@ -4,7 +4,7 @@
 - [on_connect()](#on_connect)
 - [on_ready()](#on_ready)
 - [on_refresh_token(access_token: str)](#on_refresh_tokenaccess_token-str)
-- [on_channel_update(channel: Channel)](#on_channel_updatechannel-channel)
+- [on_channel_update(channel: Update)](#on_channel_updatechannel-update)
 - [on_follow(user: Follower)](#on_followuser-follower)
 - [on_subscribe(subscribe: Subscription)](#on_subscribesubscribe-subscription)
 - [on_subscription_end(subscription: Subscription)](#on_subscription_endsubscribe-subscription)
@@ -43,7 +43,7 @@
 - [on_shoutout_receive(shoutout: Shoutout)](#on_shoutout_receiveshoutout-shoutout)
 - [on_stream_online(stream: Online)](#on_stream_onlinestream-online)
 - [on_stream_offline(stream: Offline)](#on_stream_offlinestream-offline)
-- [on_user_update(user: Update)](#on_user_updateuser-update)
+- [on_user_update(user: Update)](#on_user_updateuser-userupdate)
 
 ---
 
@@ -67,11 +67,11 @@ This event is triggered when the client receives a new access token.
 
 ---
 
-### on_channel_update(channel: Channel)
+### on_channel_update(channel: Update)
 
 This event is triggered when a channel is updated.
 
-- `channel` (twitch.channel.Channel): The updated channel.
+- `channel` (twitch.channel.Update): The updated channel.
 
 ---
 
@@ -379,7 +379,7 @@ This event is triggered when the channel stops streaming and goes offline.
 
 ---
 
-### on_user_update(user: Update)
+### on_user_update(user: UserUpdate)
 
 This event is triggered when a user's information is updated.
 
