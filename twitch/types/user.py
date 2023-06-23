@@ -22,7 +22,6 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-# Libraries
 from typing import TypedDict, Literal, Optional
 
 Types = Literal['admin', 'global_mod', 'staff', '']

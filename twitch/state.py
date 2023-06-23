@@ -64,11 +64,11 @@ class ConnectionState:
     """
     __slots__ = ('_http', 'broadcaster', '_dispatch', 'is_streaming', 'events')
 
-    def __init__(self, dispatcher: Callable[..., Any], http: HTTPClient, ev: List[str]) -> None:
+    def __init__(self, dispatcher: Callable[..., Any], http: HTTPClient, events: List[str]) -> None:
         self._http: HTTPClient = http
         self._dispatch: Callable[[str, Any, Any], Task] = dispatcher
         self.broadcaster: Optional[Broadcaster] = None
-        self.events: List[str] = ev
+        self.events: List[str] = events
 
     async def get_client(self) -> None:
         """
@@ -115,15 +115,15 @@ class ConnectionState:
         """
         Parse a channel subscribe event.
         """
-        _user = Subscription(channel=data)
-        self._dispatch('subscribe', _user)
+        _subscription = Subscription(channel=data)
+        self._dispatch('subscribe', _subscription)
 
     async def parse_channel_subscription_end(self, data: chl.SubscriptionEnd) -> None:
         """
         Parse a channel subscription end event.
         """
-        _user = Subscription(channel=data)
-        self._dispatch('subscription_end', _user, _user)
+        _subscription = Subscription(channel=data)
+        self._dispatch('subscription_end', _subscription)
 
     async def parse_channel_subscription_gift(self, data: chl.SubscriptionGift) -> None:
         """

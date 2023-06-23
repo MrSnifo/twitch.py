@@ -28,14 +28,13 @@ from .errors import (WebSocketError, WebsocketClosed, NotFound, SessionClosed, F
                      SubscriptionError, WsReconnect)
 from .utils import to_json, get_subscriptions
 
-# Libraries
 from json import JSONDecodeError
 from aiohttp import WSMsgType
 import asyncio
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .types.eventsub.subscriptions import SubscriptionPayload
+    from .types.eventsub.subscriptions import SubscriptionInfo
     from asyncio import AbstractEventLoop
     from typing import Optional, List, Dict, Any
     from aiohttp import ClientWebSocketResponse
@@ -65,7 +64,7 @@ class EventSubWebSocket:
         self.__http: HTTPClient = http
         self.__connection: ConnectionState = cnx
         self.__loop: AbstractEventLoop = loop
-        self.subscriptions: List[SubscriptionPayload] = get_subscriptions(events=events)
+        self.subscriptions: List[SubscriptionInfo] = get_subscriptions(events=events)
         # Default subscription
         self.subscriptions.append({'name': 'user.update', 'version': '1'})
         # Default Session KeepAlive.

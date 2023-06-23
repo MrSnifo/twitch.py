@@ -28,7 +28,7 @@ from .utils import parse_rfc3339_timestamp
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .types.eventsub import (channel as chl, user as us)
+    from .types.eventsub import (channel as chl, user as us, prediction as pd)
     from typing import Optional, Dict, Any
     from datetime import datetime
 
@@ -76,3 +76,31 @@ class UserUpdate(User):
 
     def __repr__(self) -> str:
         return f'<Update user={super().__repr__()} description={self.description}>'
+
+
+class Predictor:
+    """
+    Represents a predictor in a prediction.
+
+    :param predictor: The predictor data.
+    """
+
+    __slots__ = ('user', 'points_used', 'points_won', '_points_won')
+
+    def __init__(self, predictor: pd.Predictor) -> None:
+        self.user = User(user=predictor)
+        self.points_used: int = predictor['channel_points_used']
+        self.points_won: int = predictor['channel_points_won'] or 0
+        self._points_won: Optional[int] = predictor['channel_points_won']
+
+    @property
+    def is_won(self) -> bool:
+        """
+       Check if the predictor has won.
+
+       :return: True if the predictor has won, False otherwise.
+       """
+        return self._points_won is not None and self.points_won != 0
+
+    def __repr__(self) -> str:
+        return f'<Predictor user={super().__repr__()} points_won={self.points_won}>'

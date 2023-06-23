@@ -24,20 +24,23 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
 from .utils import parse_rfc3339_timestamp
 from .user import User
-from datetime import datetime
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types.eventsub import stream as sm
-    from typing import Optional, Union, List
+    from typing import Optional, Union
     from .types import stream as mst
+    from datetime import datetime
 
 
 class Stream:
-    __slots__ = ('id', 'language', 'viewers', 'thumbnail_url', 'is_mature', 'started_at')
+    """
+    Represents a stream.
+
+    :param stream: The stream data.
+    """
 
     def __init__(self, stream: mst.Stream) -> None:
         self.id: str = stream['id']
@@ -54,13 +57,11 @@ class Stream:
 class Shoutout:
     """
     Represents a stream shoutout.
+
+    :param shoutout: The shoutout data.
     """
-    __slots__ = (
-        '__shoutout', 'viewer_count', 'started_at', '_cooldown_ends_at',
-        '_target_cooldown_ends_at')
 
     def __init__(self, shoutout: Union[sm.ShoutoutCreate, sm.ShoutoutReceived]) -> None:
-
         self.__shoutout = shoutout
         self.viewer_count: int = shoutout['viewer_count']
         self.started_at: datetime = parse_rfc3339_timestamp(timestamp=shoutout['started_at'])
@@ -72,24 +73,44 @@ class Shoutout:
 
     @property
     def sender(self) -> User:
+        """
+        Get the sender of the shoutout.
+
+        :return: The sender User object.
+        """
         if self._cooldown_ends_at:
             return User(user=self.__shoutout, prefix='broadcaster_user')
         return User(user=self.__shoutout, prefix='from_broadcaster_user')
 
     @property
     def receiver(self):
+        """
+        Get the receiver of the shoutout.
+
+        :return: The receiver User object.
+        """
         if self._cooldown_ends_at is None:
             return User(user=self.__shoutout, prefix='broadcaster_user')
         return User(user=self.__shoutout, prefix='to_broadcaster_user')
 
     @property
     def cooldown_ends_at(self) -> Optional[datetime]:
+        """
+        Get the cooldown end time.
+
+        :return: The cooldown end time as a datetime object.
+        """
         if self._cooldown_ends_at:
             return parse_rfc3339_timestamp(timestamp=self._cooldown_ends_at)
         return None
 
     @property
     def target_cooldown_ends_at(self) -> Optional[datetime]:
+        """
+        Get the target cooldown end time.
+
+        :return: The target cooldown end time as a datetime object.
+        """
         if self._target_cooldown_ends_at:
             return parse_rfc3339_timestamp(timestamp=self._target_cooldown_ends_at)
         return None
@@ -98,8 +119,9 @@ class Shoutout:
 class Online:
     """
     Represents an online stream.
+
+    :param stream: The online stream data.
     """
-    __slots__ = ('user', 'id', 'type', 'started_at')
 
     def __init__(self, stream: sm.Online) -> None:
         self.user: User = User(user=stream, prefix='broadcaster_user')
@@ -114,8 +136,9 @@ class Online:
 class Offline:
     """
     Represents an offline stream.
+
+    :param stream: The offline stream data.
     """
-    __slots__ = ('user',)
 
     def __init__(self, stream: sm.Offline) -> None:
         self.user: User = User(user=stream, prefix='broadcaster_user')

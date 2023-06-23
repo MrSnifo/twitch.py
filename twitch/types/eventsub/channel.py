@@ -22,12 +22,9 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-# Core
-from ..user import SpecificBroadcaster, SpecificUser, SpecificAnonymous, ToSpecificBroadcaster,\
-    FromSpecificBroadcaster
+from ..user import (SpecificBroadcaster, SpecificUser, SpecificAnonymous,
+                    ToSpecificBroadcaster, FromSpecificBroadcaster)
 from ..message import Message
-
-# Libraries
 from typing import Optional
 
 

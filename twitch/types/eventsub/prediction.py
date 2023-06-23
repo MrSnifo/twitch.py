@@ -22,9 +22,7 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-# Core
 from ..user import SpecificBroadcaster
-# Libraries
 from typing import TypedDict, Optional, Literal, List
 
 

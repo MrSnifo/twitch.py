@@ -23,9 +23,8 @@ DEALINGS IN THE SOFTWARE.
 """
 
 # Core
-from ..user import SpecificBroadcaster, SpecificModerator, ToSpecificBroadcaster,\
-    FromSpecificBroadcaster
-# Libraries
+from ..user import (SpecificBroadcaster, SpecificModerator,
+                    ToSpecificBroadcaster, FromSpecificBroadcaster)
 from typing import Literal
 
 

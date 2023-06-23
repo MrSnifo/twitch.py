@@ -24,14 +24,13 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
 from .gateway import EventSubWebSocket
 from .state import ConnectionState
 from .utils import setup_logging
 from .http import HTTPClient
 from .channel import Channel
 from .stream import Stream
-# Libraries
+
 import asyncio
 
 from typing import TYPE_CHECKING
@@ -47,6 +46,12 @@ class Client:
     """
     Represents a Twitch client for interacting with the Twitch API and receiving event
     notifications.
+
+    :param client_id: Client id
+    :rtype: str
+
+    :param client_secret: Client secret needed to re-generate a new access token.
+    :rtype: Optional[str]
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None) -> None:
@@ -54,16 +59,34 @@ class Client:
         self._http = HTTPClient(dispatcher=self.dispatch, client=client_id, secret=client_secret)
         self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch,
                                                             http=self._http,
-                                                            ev=self._sub_events)
+                                                            events=self._sub_events)
 
     @property
     def user(self) -> Broadcaster:
+        """
+        Retrieve the Broadcaster.
+
+        :return: An instance of the Broadcaster class representing the user.
+        :rtype: Broadcaster
+        """
         return self._connection.broadcaster
 
     async def get_channel(self) -> Channel:
+        """
+       Retrieve the channel associated with the broadcaster.
+
+       :return: An instance of the Channel class representing the channel.
+       :rtype: Channel
+       """
         return await self._connection.broadcaster.get_channel()
 
     async def get_stream(self) -> Stream:
+        """
+        Retrieve the stream of the broadcaster if currently live.
+
+        :return: An instance of the Stream class representing the stream if live, otherwise None.
+        :rtype: Optional[Stream]
+        """
         return await self._connection.broadcaster.get_stream()
 
     @property
@@ -103,7 +126,7 @@ class Client:
         _logger.exception('Ignoring error: %s from %s, args: %s kwargs: %s', error, event_name,
                           args, kwargs)
 
-    def event(self, coro: Callable[..., Any], /):
+    def event(self, coro: Callable[..., Any], /) -> None:
         """
         Decorator to register an event coroutine.
         """
@@ -129,7 +152,7 @@ class Client:
         EventSub = EventSubWebSocket(http=self._http, cnx=self._connection,
                                      loop=self.loop,
                                      events=self._sub_events)
-
+        # Creating tasks.
         tasks = [
             self.loop.create_task(self._http.Refresher(expires_in=validation['expires_in']),
                                   name="Twitchify:Refresher"),
@@ -154,7 +177,7 @@ class Client:
                 await self._http.close()
             raise error
 
-    def run(self, access_token: str, refresh_token: Optional[str] = None):
+    def run(self, access_token: str, refresh_token: Optional[str] = None) -> None:
         """
         Runs the Twitch client by establishing a connection and initiating the event loop.
         """

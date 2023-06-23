@@ -24,10 +24,6 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
-from .types.eventsub.subscriptions import Subscriptions
-
-# Libraries
 from datetime import datetime
 from functools import wraps
 import logging
@@ -35,9 +31,10 @@ import json
 import time
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from .types.eventsub.subscriptions import SubscriptionPayload
-    from typing import Optional, List, Callable, Awaitable, Any
+    from .types.eventsub.subscriptions import SubscriptionInfo
+    from typing import Optional, List, Callable, Awaitable, Any, Dict
 try:
     # noinspection PyPackageRequirements
     import orjson
@@ -62,6 +59,7 @@ def cache_decorator(expiry_seconds: int) -> Callable:
         :param func: The original function to be decorated.
         :return: The wrapped function.
         """
+
         @wraps(func)
         async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
             """
@@ -79,6 +77,7 @@ def cache_decorator(expiry_seconds: int) -> Callable:
             cache[cache_key] = result
             cache_expiry[cache_key] = time.time() + expiry_seconds
             return result
+
         return wrapper
 
     return decorator
@@ -199,7 +198,94 @@ def setup_logging() -> logging.getLogger:
     return logger
 
 
-def get_subscriptions(*, events: List[str]) -> List[SubscriptionPayload]:
+# -------------------------------------------
+#     Documentation Changelog last check
+#              Date: 2023‑06‑15
+# -------------------------------------------
+Subscriptions: Dict[str, SubscriptionInfo] = {
+    'channel_update':
+        {'name': 'channel.update', 'version': '1'},
+    'follow':
+        {'name': 'channel.follow', 'version': '2'},
+    'subscribe':
+        {'name': 'channel.subscribe', 'version': '1'},
+    'subscription_end':
+        {'name': 'channel.subscription.end', 'version': '1'},
+    'subscription_gift':
+        {'name': 'channel.subscription.gift', 'version': '1'},
+    'subscription_message':
+        {'name': 'channel.subscription.message', 'version': '1'},
+    'cheer':
+        {'name': 'channel.cheer', 'version': '1'},
+    'raid':
+        {'name': 'channel.raid', 'version': '1'},
+    'ban':
+        {'name': 'channel.ban', 'version': '1'},
+    'unban':
+        {'name': 'channel.unban', 'version': '1'},
+    'moderator_add':
+        {'name': 'channel.moderator.add', 'version': '1'},
+    'moderator_remove':
+        {'name': 'channel.moderator.remove', 'version': '1'},
+    'points_reward_add':
+        {'name': 'channel.channel_points_custom_reward.add', 'version': '1'},
+    'points_reward_update':
+        {'name': 'channel.channel_points_custom_reward.update', 'version': '1'},
+    'points_reward_remove':
+        {'name': 'channel.channel_points_custom_reward.remove', 'version': '1'},
+    'points_reward_redemption':
+        {'name': 'channel.channel_points_custom_reward_redemption.add', 'version': '1'},
+    'points_reward_redemption_update':
+        {'name': 'channel.channel_points_custom_reward_redemption.update', 'version': '1'},
+    'poll_begin':
+        {'name': 'channel.poll.begin', 'version': '1'},
+    'poll_progress':
+        {'name': 'channel.poll.progress', 'version': '1'},
+    'poll_end':
+        {'name': 'channel.poll.end', 'version': '1'},
+    'prediction_begin':
+        {'name': 'channel.prediction.begin', 'version': '1'},
+    'prediction_progress':
+        {'name': 'channel.prediction.progress', 'version': '1'},
+    'prediction_lock':
+        {'name': 'channel.prediction.lock', 'version': '1'},
+    'prediction_end':
+        {'name': 'channel.prediction.end', 'version': '1'},
+    'charity_campaign_donate':
+        {'name': 'channel.charity_campaign.donate', 'version': '1'},
+    'charity_campaign_start':
+        {'name': 'channel.charity_campaign.start', 'version': '1'},
+    'charity_campaign_progress':
+        {'name': 'channel.charity_campaign.progress', 'version': '1'},
+    'charity_campaign_stop':
+        {'name': 'channel.charity_campaign.stop', 'version': '1'},
+    'goal_begin':
+        {'name': 'channel.goal.begin', 'version': '1'},
+    'goal_progress':
+        {'name': 'channel.goal.progress', 'version': '1'},
+    'goal_end':
+        {'name': 'channel.goal.end', 'version': '1'},
+    'hype_train_begin':
+        {'name': 'channel.hype_train.begin', 'version': '1'},
+    'hype_train_progress':
+        {'name': 'channel.hype_train.progress', 'version': '1'},
+    'hype_train_end':
+        {'name': 'channel.hype_train.end', 'version': '1'},
+    'shield_mode_begin':
+        {'name': 'channel.shield_mode.begin', 'version': '1'},
+    'shield_mode_end':
+        {'name': 'channel.shield_mode.end', 'version': '1'},
+    'shoutout_create':
+        {'name': 'channel.shoutout.create', 'version': '1'},
+    'shoutout_receive':
+        {'name': 'channel.shoutout.receive', 'version': '1'},
+    'stream_online':
+        {'name': 'stream.online', 'version': '1'},
+    'stream_offline':
+        {'name': 'stream.offline', 'version': '1'}}
+
+
+def get_subscriptions(*, events: List[str]) -> List[SubscriptionInfo]:
     """
     Retrieve a list of subscriptions that needed for subscribing to event.
     """

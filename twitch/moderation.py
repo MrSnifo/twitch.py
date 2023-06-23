@@ -24,7 +24,6 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
 from .utils import parse_rfc3339_timestamp
 from .user import User
 
@@ -38,8 +37,9 @@ if TYPE_CHECKING:
 class Ban:
     """
     Represents a channel ban.
+
+    :param ban: The ban data.
     """
-    __slots__ = ('user', 'moderator', 'reason', 'banned_at', '_ends_at', 'is_permanent')
 
     def __init__(self, ban: md.Ban) -> None:
         self.user: User = User(user=ban)
@@ -51,6 +51,11 @@ class Ban:
 
     @property
     def ends_at(self) -> Optional[datetime]:
+        """
+        Get the end time of the ban.
+
+        :return: The end time as a datetime object.
+        """
         if self._ends_at:
             return parse_rfc3339_timestamp(timestamp=self._ends_at)
         return None
@@ -62,8 +67,9 @@ class Ban:
 class UnBan:
     """
     Represents a channel unban.
+
+    :param unban: The unban data.
     """
-    __slots__ = ('user', 'moderator')
 
     def __init__(self, unban: md.UnBan) -> None:
         self.user: User = User(user=unban)
@@ -76,8 +82,9 @@ class UnBan:
 class ShieldMode:
     """
     Represents a channel Shield Mode.
+
+    :param mode: The Shield Mode data.
     """
-    __slots__ = ('moderator', '_started_at', '_ended_at')
 
     def __init__(self, mode: Union[md.ShieldModeBegin, md.ShieldModeEnd]) -> None:
         self.moderator: User = User(user=mode, prefix='moderator_user')
@@ -85,21 +92,36 @@ class ShieldMode:
         self._ended_at: Optional[str] = mode.get('ended_at')
 
     def __repr__(self) -> str:
-        return f'<UnBan moderator={self.moderator} _started_at={self._started_at}' \
+        return f'<ShieldMode moderator={self.moderator} _started_at={self._started_at}' \
                f' _ended_at={self._ended_at}>'
 
     @property
     def is_enabled(self) -> bool:
+        """
+        Check if Shield Mode is enabled.
+
+        :return: True if Shield Mode is enabled, False otherwise.
+        """
         return self._started_at is not None
 
     @property
     def started_at(self) -> Optional[datetime]:
+        """
+        Get the start time of Shield Mode.
+
+        :return: The start time as a datetime object.
+        """
         if self._started_at:
             return parse_rfc3339_timestamp(timestamp=self._started_at)
         return None
 
     @property
     def ended_at(self) -> Optional[datetime]:
+        """
+        Get the end time of Shield Mode.
+
+        :return: The end time as a datetime object.
+        """
         if self._ended_at:
             return parse_rfc3339_timestamp(timestamp=self._ended_at)
         return None

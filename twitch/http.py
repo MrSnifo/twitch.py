@@ -24,6 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
+from . import __version__, __github__
 from aiohttp import ClientSession, helpers
 from asyncio import Lock, sleep, Task
 from time import time
@@ -34,11 +35,12 @@ from .errors import (
     Forbidden, HTTPException, SubscriptionError, NotFound)
 from .utils import format_seconds
 
+
 if TYPE_CHECKING:
     from .types.stream import Stream
     from .types.user import UserType
     from .types.channel import Channel
-    from .types.eventsub.subscriptions import SubscriptionPayload
+    from .types.eventsub.subscriptions import SubscriptionInfo
     from aiohttp import ClientWebSocketResponse
     from .types.http import Validate, Refresh
 
@@ -86,8 +88,7 @@ class HTTPClient:
         self._client_secret = secret
         self.__session: Optional[ClientSession] = None
         self._session_lock: Lock = Lock()
-        github = 'https://github.com/Rapptz/discord.py/blob/master/discord/http.py'
-        self._user_agent: str = f'Twitchify/1.1.0 (GitHub: {github})'
+        self._user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
         self._refresh_token: Optional[str] = None
 
     @property
@@ -330,8 +331,8 @@ class HTTPClient:
                 except (Unauthorized, BadRequest):
                     raise
 
-    async def subscribe(self, *, user_id: str, session_id: str,
-                        subscriptions: List[SubscriptionPayload]) -> None:
+    async def subscribe(self, *,
+                        user_id: str, session_id: str, subscriptions: List[SubscriptionInfo]) -> None:
         """
         Subscribes to multiple events with the specified subscriptions.
 
