@@ -52,7 +52,7 @@ class Follower(User):
     """
     Represents a follower user.
     """
-    __slots__ = 'followed_at'
+    __slots__ = ('followed_at',)
 
     def __init__(self, *, channel: chl.Follow) -> None:
         super().__init__(user=channel)
