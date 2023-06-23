@@ -32,9 +32,7 @@ from typing import TYPE_CHECKING, Optional, List, Callable, Any
 
 from .errors import (
     UnknownError, TwitchServerError, BadRequest, Unauthorized,
-    Forbidden, HTTPException, SubscriptionError, NotFound
-)
-
+    Forbidden, HTTPException, SubscriptionError, NotFound)
 from .utils import format_seconds
 
 if TYPE_CHECKING:
@@ -77,7 +75,7 @@ class Route:
 
 class HTTPClient:
     """Serves as an HTTP client responsible for sending HTTP requests to the Twitch API."""
-
+    
     __slots__ = ('_dispatch', '_client_id', '_client_secret', '__session', '_session_lock',
                  '_user_agent', '_refresh_token')
 
@@ -90,7 +88,8 @@ class HTTPClient:
         self._client_secret = secret
         self.__session: Optional[ClientSession] = None
         self._session_lock: Lock = Lock()
-        self._user_agent: str = f'Twitchify/{1} (GitHub: {2})'
+        github = 'https://github.com/Rapptz/discord.py/blob/master/discord/http.py'
+        self._user_agent: str = f'Twitchify/1.1.0 (GitHub: {github})'
         self._refresh_token: Optional[str] = None
 
     @property
