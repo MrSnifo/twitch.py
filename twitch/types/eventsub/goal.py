@@ -29,7 +29,8 @@ from typing import TypedDict, Literal
 
 
 class Goal(TypedDict):
-    type: Literal['follow', 'subscription', 'subscription_count', 'new_subscription', 'new_subscription_count']
+    type: Literal['follow', 'subscription', 'subscription_count', 'new_subscription',
+                  'new_subscription_count']
     current_amount: int
 
 
