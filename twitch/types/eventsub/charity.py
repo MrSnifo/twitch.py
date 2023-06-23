@@ -84,9 +84,3 @@ class Stop(_CharityBase):
     current_amount: Amount
     target_amount: Amount
     stopped_at: str
-
-
-
-
-
-
