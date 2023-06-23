@@ -204,7 +204,7 @@ class EventSubWebSocket:
                 elif metadata['message_type'] == 'notification':
                     _subscription: Subscription = response['payload']['subscription']
                     _event: Dict[Any] = response['payload']['event']
-                    await self.__connection.parse(event=_subscription['type'], data=_event)
+                    await self.__connection.parse(method=_subscription['type'], data=_event)
 
                 # ====> Subscription Revocation <====
                 elif metadata['message_type'] == 'revocation':
