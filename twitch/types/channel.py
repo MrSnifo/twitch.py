@@ -9,4 +9,3 @@ class Channel(Broadcaster):
     title: str
     delay: int
     tags: List[str]
-
