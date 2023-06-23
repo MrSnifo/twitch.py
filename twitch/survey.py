@@ -188,7 +188,7 @@ class Prediction:
     def status(self) -> Literal['open', 'locked', 'resolved', 'canceled']:
         if self._locks_at:
             return 'open'
-        elif self._locked_at:
+        if self._locked_at:
             return 'locked'
         return self._status
 
