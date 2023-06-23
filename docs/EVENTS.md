@@ -383,4 +383,4 @@ This event is triggered when the channel stops streaming and goes offline.
 
 This event is triggered when a user's information is updated.
 
-- `user` (twitch.user.Update): The updated user information.
+- `user` (twitch.user.UserUpdate): The updated user information.
