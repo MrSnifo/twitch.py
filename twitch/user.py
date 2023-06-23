@@ -62,7 +62,7 @@ class Follower(User):
         return f'<Follower {super().__repr__()} followed_at={self.followed_at}>'
 
 
-class Update(User):
+class UserUpdate(User):
     """
     Represents a user who has updated their information.
     """
