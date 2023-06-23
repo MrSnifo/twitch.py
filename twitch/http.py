@@ -260,6 +260,7 @@ class HTTPClient:
                     try:
                         # Generating a new access token.
                         await self._generate_token()
+                        continue
                     except (BadRequest, Forbidden):
                         raise Unauthorized(message='Invalid refresh token or client secret.'
                                            ) from exc
