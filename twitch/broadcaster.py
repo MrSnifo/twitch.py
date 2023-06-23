@@ -37,6 +37,8 @@ if TYPE_CHECKING:
     from typing import Optional
     from .http import HTTPClient
 
+__all__ = ('Broadcaster',)
+
 
 class Images:
     """
@@ -80,7 +82,6 @@ class Broadcaster:
         Retrieve the channel associated with the broadcaster.
 
         :return: An instance of the Channel class representing the channel.
-        :rtype: Channel
         """
         data: ch.Channel = await self.__http.get_channel(broadcaster_id=self.id)
         _channel = Channel(channel=data)
@@ -93,7 +94,6 @@ class Broadcaster:
         Retrieve the stream of the broadcaster if currently live.
 
         :return: An instance of the Stream class representing the stream if live, otherwise None.
-        :rtype: Optional[Stream]
         """
         data: Optional[stm.Stream] = await self.__http.get_stream(user_id=self.id)
         if data:

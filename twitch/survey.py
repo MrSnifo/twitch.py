@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from .types.eventsub import poll as pl
     from datetime import datetime
 
+__all__ = ('Poll', 'Prediction')
+
 
 class Voting:
     """

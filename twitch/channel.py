@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from .types import channel as ch
     from typing import Optional, List, Union
 
+__all__ = ('Channel', 'Update', 'Subscription', 'SubscriptionGift', 'SubscriptionMessage', 'Cheer', 'Raid')
+
 
 class Category:
     """

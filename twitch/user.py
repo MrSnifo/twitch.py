@@ -28,9 +28,14 @@ from .utils import parse_rfc3339_timestamp
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .types.eventsub import (channel as chl, user as us, prediction as pd)
+    from .types.eventsub import (channel as chl,
+                                 user as us,
+                                 prediction as pd,
+                                 hypertrain as ht)
     from typing import Optional, Dict, Any
     from datetime import datetime
+
+__all__ = ('User', 'Follower', 'UserUpdate', 'Predictor', 'Contributor')
 
 
 class User:
@@ -104,3 +109,20 @@ class Predictor:
 
     def __repr__(self) -> str:
         return f'<Predictor user={super().__repr__()} points_won={self.points_won}>'
+
+
+class Contributor:
+    """
+    Represents a Hyper train contributor.
+
+    :param contributor: A dictionary containing contributor information.
+    """
+    __slots__ = ('user', 'type', 'total')
+
+    def __init__(self, contributor: ht.Contributor) -> None:
+        self.user: User = User(user=contributor)
+        self.type: str = contributor['type']
+        self.total: int = contributor['total']
+
+    def __repr__(self) -> str:
+        return f'<_Contributor user={self.user.__repr__()} total={self.total} type={self.type}>'

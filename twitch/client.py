@@ -41,6 +41,8 @@ if TYPE_CHECKING:
 import logging
 _logger = logging.getLogger(__name__)
 
+__all__ = ('Client',)
+
 
 class Client:
     """
@@ -48,10 +50,7 @@ class Client:
     notifications.
 
     :param client_id: Client id
-    :rtype: str
-
     :param client_secret: Client secret needed to re-generate a new access token.
-    :rtype: Optional[str]
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None) -> None:
@@ -67,7 +66,6 @@ class Client:
         Retrieve the Broadcaster.
 
         :return: An instance of the Broadcaster class representing the user.
-        :rtype: Broadcaster
         """
         return self._connection.broadcaster
 
@@ -76,7 +74,6 @@ class Client:
        Retrieve the channel associated with the broadcaster.
 
        :return: An instance of the Channel class representing the channel.
-       :rtype: Channel
        """
         return await self._connection.broadcaster.get_channel()
 
@@ -85,7 +82,6 @@ class Client:
         Retrieve the stream of the broadcaster if currently live.
 
         :return: An instance of the Stream class representing the stream if live, otherwise None.
-        :rtype: Optional[Stream]
         """
         return await self._connection.broadcaster.get_stream()
 

@@ -25,7 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .utils import parse_rfc3339_timestamp
-from .user import User
+from .user import User, Contributor
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -34,6 +34,8 @@ if TYPE_CHECKING:
     from typing import Optional, Union, List
     from .types.eventsub import goal as gl
     from datetime import datetime
+
+__all__ = ('Charity', 'Donation', 'Goal', 'Train', 'HyperTrain')
 
 
 class CharityInfo:
@@ -115,7 +117,7 @@ class Donation:
         return f'<Donation id={self.id} user={self.user.__repr__()}>'
 
 
-class _GoalAmount:
+class GoalAmount:
     """
     Represents the amount and type of goal.
 
@@ -141,7 +143,7 @@ class Goal:
     def __init__(self, goal: Union[gl.Begin, gl.Progress, gl.End]) -> None:
         self.id: str = goal['id']
         self.description: str = goal['description']
-        self.amount: _GoalAmount = _GoalAmount(goal=goal)
+        self.amount: GoalAmount = GoalAmount(goal=goal)
         self.started_at: datetime = parse_rfc3339_timestamp(goal['started_at'])
         self.is_achieved: bool = goal.get('is_achieved') or False
         self._ended_at: Optional[str] = goal.get('ended_at')
@@ -153,23 +155,6 @@ class Goal:
     def ended_at(self) -> Optional[datetime]:
         """The datetime when the goal ended."""
         return parse_rfc3339_timestamp(self._ended_at) if self._ended_at else None
-
-
-class _Contributor:
-    """
-    Hyper train top contributor.
-
-    :param contributor: A dictionary containing contributor information.
-    """
-    __slots__ = ('user', 'type', 'total')
-
-    def __init__(self, contributor: ht.Contributor) -> None:
-        self.user: User = User(user=contributor)
-        self.type: str = contributor['type']
-        self.total: int = contributor['total']
-
-    def __repr__(self) -> str:
-        return f'<_Contributor user={self.user.__repr__()} total={self.total} type={self.type}>'
 
 
 class Train:
@@ -188,9 +173,9 @@ class Train:
         return f'<_Train goal={self.goal} progress={self.progress} expires_at={self.expires_at}>'
 
     @property
-    def last_contribution(self) -> List[_Contributor]:
+    def last_contribution(self) -> List[Contributor]:
         """The list of top contributors in the last contribution."""
-        return [_Contributor(contributor=c) for c in self._last_contribution]
+        return [Contributor(contributor=c) for c in self._last_contribution]
 
 
 class HyperTrain:
@@ -217,9 +202,9 @@ class HyperTrain:
         return f'<HyperTrain id={self.id} level={self.level} total={self.total}>'
 
     @property
-    def top_contributions(self) -> List[_Contributor]:
+    def top_contributions(self) -> List[Contributor]:
         """The list of top contributors in the Hyper Train."""
-        return [_Contributor(contributor=c) for c in self._top_contributions]
+        return [Contributor(contributor=c) for c in self._top_contributions]
 
     @property
     def train(self) -> Optional[Train]:

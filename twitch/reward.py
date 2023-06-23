@@ -24,7 +24,6 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
 from .utils import parse_rfc3339_timestamp
 from .user import User
 
@@ -34,110 +33,110 @@ if TYPE_CHECKING:
     from datetime import datetime
     from typing import Optional
 
+__all__ = ('Reward', 'Redemption')
 
-class _Image:
+
+class Image:
     """
     Represents a custom image for a reward.
+
+    :param image: The image data.
     """
 
-    __slots__ = ('url_1x', 'url_2x', 'url_4x')
-
-    def __init__(self, *, image: rd.Image) -> None:
+    def __init__(self, image: rd.Image) -> None:
         self.url_1x: str = image['url_1x']
         self.url_2x: str = image['url_2x']
         self.url_4x: str = image['url_4x']
 
 
-class _OptionalImage:
+class OptionalImage:
     """
     Represents an optional custom image for a reward.
+
+    :param image: The image data.
     """
 
-    __slots__ = ('url_1x', 'url_2x', 'url_4x')
-
-    def __init__(self, *, image: rd.OptionalImage) -> None:
+    def __init__(self, image: rd.OptionalImage) -> None:
         self.url_1x: Optional[str] = image['url_1x']
         self.url_2x: Optional[str] = image['url_2x']
         self.url_4x: Optional[str] = image['url_4x']
 
 
-class _MaxValue:
+class MaxValue:
     """
     Represents a maximum value setting for a reward.
+
+    :param data: The maximum value data.
     """
 
-    __slots__ = ('is_enabled', 'value')
-
-    def __init__(self, *, data: rd.MaxValue) -> None:
+    def __init__(self, data: rd.MaxValue) -> None:
         self.is_enabled: bool = data['is_enabled']
         self.value: int = data['value']
 
 
-class _MaxCooldown:
+class MaxCooldown:
     """
     Represents a maximum cooldown setting for a reward.
+
+    :param data: The maximum cooldown data.
     """
 
-    __slots__ = ('is_enabled', 'seconds')
-
-    def __init__(self, *, data: rd.Cooldown):
+    def __init__(self, data: rd.Cooldown) -> None:
         self.is_enabled: bool = data['is_enabled']
         self.seconds: int = data['seconds']
 
 
-class _Status:
+class Status:
     """
     Represents the status of a reward.
+
+    :param reward: The reward data.
     """
 
-    __slots__ = ('is_enabled', 'is_paused', 'is_in_stock')
-
-    def __init__(self, *, reward: rd.Reward) -> None:
+    def __init__(self, reward: rd.Reward) -> None:
         self.is_enabled: bool = reward['is_enabled']
         self.is_paused: bool = reward['is_paused']
         self.is_in_stock: bool = reward['is_in_stock']
 
 
-class _Appearance:
+class Appearance:
     """
     Represents the appearance settings for a reward.
+
+    :param reward: The reward data.
     """
 
-    __slots__ = ('title', 'description', 'is_in_stock', 'background_color', 'image',
-                 'default_image')
-
-    def __init__(self, *, reward: rd.Reward) -> None:
+    def __init__(self, reward: rd.Reward) -> None:
         self.title: str = reward['title']
         self.description: str = reward['prompt']
         self.background_color: str = reward['background_color']
-        self.image: _OptionalImage = _OptionalImage(image=reward['image'])
-        self.default_image: _Image = _Image(image=reward['default_image'])
+        self.image: OptionalImage = OptionalImage(image=reward['image'])
+        self.default_image: Image = Image(image=reward['default_image'])
 
 
-class _Options:
+class Options:
     """
     Represents the options for a reward.
+
+    :param reward: The reward data.
     """
 
-    __slots__ = ('redemptions_skip_request_queue', 'max_per_stream', 'max_per_user_per_stream',
-                 'is_user_input_required')
-
-    def __init__(self, *, reward: rd.Reward) -> None:
+    def __init__(self, reward: rd.Reward) -> None:
         self.redemptions_skip_request_queue: bool = reward['should_redemptions_skip_request_queue']
-        self.max_per_stream: _MaxValue = _MaxValue(data=reward['max_per_stream'])
-        self.max_per_user_per_stream: _MaxValue = _MaxValue(data=reward['max_per_user_per_stream'])
+        self.max_per_stream: MaxValue = MaxValue(data=reward['max_per_stream'])
+        self.max_per_user_per_stream: MaxValue = MaxValue(data=reward['max_per_user_per_stream'])
         self.is_user_input_required: bool = reward['is_user_input_required']
 
 
-class _Cooldown:
+class Cooldown:
     """
     Represents the cooldown settings for a reward.
+
+    :param reward: The reward data.
     """
 
-    __slots__ = ('duration', '_cooldown_expires_at')
-
-    def __init__(self, *, reward: rd.Reward) -> None:
-        self.duration: _MaxCooldown = _MaxCooldown(data=reward['global_cooldown'])
+    def __init__(self, reward: rd.Reward) -> None:
+        self.duration: MaxCooldown = MaxCooldown(data=reward['global_cooldown'])
         self._cooldown_expires_at: Optional[str] = reward['cooldown_expires_at']
 
     @property
@@ -150,30 +149,31 @@ class _Cooldown:
 class Reward:
     """
     Represents a channel reward.
-    """
-    __slots__ = ('id', 'cost', 'status', 'appearance', 'options', 'cooldown',
-                 'redeemed_current_stream')
 
-    def __init__(self, *, reward: rd.Reward) -> None:
+    :param reward: The reward data.
+    """
+
+    def __init__(self, reward: rd.Reward) -> None:
         self.id: str = reward['id']
         self.cost: int = reward['cost']
-        self.status: _Status = _Status(reward=reward)
-        self.appearance: _Appearance = _Appearance(reward=reward)
-        self.options: _Options = _Options(reward=reward)
-        self.cooldown: _Cooldown = _Cooldown(reward=reward)
+        self.status: Status = Status(reward=reward)
+        self.appearance: Appearance = Appearance(reward=reward)
+        self.options: Options = Options(reward=reward)
+        self.cooldown: Cooldown = Cooldown(reward=reward)
         self.redeemed_current_stream: Optional[int] = reward['redemptions_redeemed_current_stream']
 
     def __repr__(self) -> str:
         return f'<Reward id={self.id} redeemed_current_stream={self.redeemed_current_stream}>'
 
 
-class _Reward:
+class RewardInfo:
     """
-    Represents a base reward.
-    """
-    __slots__ = ('id', 'title', 'cost', 'description')
+    Represents reward information.
 
-    def __init__(self, reward: rd.BaseReward):
+    :param reward: The reward data.
+    """
+
+    def __init__(self, reward: rd.BaseReward) -> None:
         self.id: str = reward['id']
         self.title: str = reward['title']
         self.cost: int = reward['cost']
@@ -186,14 +186,15 @@ class _Reward:
 class Redemption:
     """
     Represents a reward redemption.
+
+    :param redemption: The redemption data.
     """
-    __slots__ = ('id', 'user', 'status', 'reward', 'redeemed_at')
 
     def __init__(self, redemption: rd.Redemption) -> None:
         self.id: str = redemption['id']
         self.user: User = User(user=redemption)
         self.status: str = redemption['status']
-        self.reward: _Reward = _Reward(reward=redemption['reward'])
+        self.reward: RewardInfo = RewardInfo(reward=redemption['reward'])
         self.redeemed_at: datetime = parse_rfc3339_timestamp(timestamp=redemption['redeemed_at'])
 
     def __repr__(self) -> str:
