@@ -24,7 +24,6 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-import logging
 from aiohttp import ClientSession, helpers
 from asyncio import Lock, sleep, Task
 from time import time
@@ -43,7 +42,7 @@ if TYPE_CHECKING:
     from aiohttp import ClientWebSocketResponse
     from .types.http import Validate, Refresh
 
-
+import logging
 _logger = logging.getLogger(__name__)
 
 
@@ -75,7 +74,6 @@ class Route:
 
 class HTTPClient:
     """Serves as an HTTP client responsible for sending HTTP requests to the Twitch API."""
-    
     __slots__ = ('_dispatch', '_client_id', '_client_secret', '__session', '_session_lock',
                  '_user_agent', '_refresh_token')
 
