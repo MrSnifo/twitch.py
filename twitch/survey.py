@@ -101,15 +101,13 @@ class Poll:
     def status(self) -> Literal['active', 'completed', 'archived', 'terminated']:
         if self._ended_at:
             return self._status
-        else:
-            return 'active'
+        return 'active'
 
     @property
     def end_at(self) -> datetime:
         if self._ended_at is not None:
             return parse_rfc3339_timestamp(timestamp=self._ended_at)
-        else:
-            return parse_rfc3339_timestamp(timestamp=self._ends_at)
+        return parse_rfc3339_timestamp(timestamp=self._ends_at)
 
 
 class _Predictor:
@@ -153,8 +151,7 @@ class _Outcome:
     def users(self) -> int:
         if self._top_predictors is None:
             return self._users
-        else:
-            return len(self._top_predictors)
+        return len(self._top_predictors)
 
     @property
     def top_predictors(self) -> List[_Predictor]:
@@ -193,8 +190,7 @@ class Prediction:
             return 'open'
         elif self._locked_at:
             return 'locked'
-        else:
-            return self._status
+        return self._status
 
     @property
     def is_locked(self) -> bool:
@@ -212,7 +208,7 @@ class Prediction:
     def lock_at(self) -> Optional[datetime]:
         if self._locks_at:
             return parse_rfc3339_timestamp(timestamp=self._locks_at)
-        elif self._locked_at:
+        if self._locked_at:
             return parse_rfc3339_timestamp(timestamp=self._locked_at)
         return None
 
