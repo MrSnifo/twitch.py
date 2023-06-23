@@ -88,12 +88,12 @@ class Client:
         Dispatch the specified event with the given arguments.
         """
         _logger.debug('Dispatching event %s', event)
-        event_name = "on_" + event
-        coro = getattr(self, event_name, None)
+        method = "on_" + event
+        coro = getattr(self, method)
         if coro is not None and asyncio.iscoroutinefunction(coro):
-            wrapped = self._run_event(coro, event_name, *args, **kwargs)
+            wrapped = self._run_event(coro, method, *args, **kwargs)
             # Schedule the task
-            self.loop.create_task(wrapped, name=f'Twitchify:{event_name}')
+            self.loop.create_task(wrapped, name=f'Twitchify:{method}')
 
     @staticmethod
     async def on_error(event_name: str, error: str, /, *args: Any, **kwargs: Any) -> None:
