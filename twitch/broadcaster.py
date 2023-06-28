@@ -75,10 +75,10 @@ class Broadcaster:
         self.joined_at: datetime = parse_rfc3339_timestamp(user['created_at'])
         # Updating the channel description from the user.
         self.bio = empty_to_none(text=user['description'])
-    
+        
     def __repr__(self) -> str:
         return f'<Broadcaster id={self.id} name={self.name}>'
-
+        
     @cache_decorator(expiry_seconds=20)
     async def get_channel(self) -> Channel:
         """
