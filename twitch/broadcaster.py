@@ -51,7 +51,7 @@ class Images:
         self.offline = user['offline_image_url']
 
     def __repr__(self) -> str:
-        return f'<Images profile={self.profile} offline={self.profile}>'
+        return f'<Images profile={self.profile} offline={self.offline}>'
 
 
 class Broadcaster:
