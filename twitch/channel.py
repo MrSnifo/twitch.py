@@ -83,12 +83,12 @@ class Update:
 
     :param channel: The channel update data.
     """
-    __slots__ = ('title', 'language', 'is_mature', 'category')
+    __slots__ = ('title', 'language', 'classification', 'category')
 
     def __init__(self, channel: chl.Update) -> None:
         self.title: str = channel['title']
         self.language: str = channel['language']
-        self.is_mature: bool = channel['is_mature']
+        self.classification: List[str] = channel['content_classification_labels']
         # Category.
         _c = Category(channel=channel) if channel['category_id'] != '' else None
         self.category: Optional[Category] = _c

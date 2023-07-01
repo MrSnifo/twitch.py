@@ -25,20 +25,20 @@ DEALINGS IN THE SOFTWARE.
 from ..user import (SpecificBroadcaster, SpecificUser, SpecificAnonymous,
                     ToSpecificBroadcaster, FromSpecificBroadcaster)
 from ..message import Message
-from typing import Optional
+from typing import Optional, List
 
 
 class Update(SpecificBroadcaster):
     """
     Type: Channel Update
     Name: `channel.update`
-    Version: 1
+    Version: beta
     """
     title: str
     language: str
     category_id: str
     category_name: str
-    is_mature: bool
+    content_classification_labels: List[str]
 
 
 class Follow(SpecificBroadcaster, SpecificUser):
