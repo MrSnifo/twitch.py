@@ -79,7 +79,7 @@ class Broadcaster:
     def __repr__(self) -> str:
         return f'<Broadcaster id={self.id} name={self.name}>'
 
-    @cache_decorator(expiry_seconds=20)
+    @cache_decorator(expiry_seconds=14)
     async def get_channel(self) -> Channel:
         """
         Retrieve the channel associated with the broadcaster.
@@ -91,7 +91,7 @@ class Broadcaster:
         _channel.description = self.bio
         return _channel
 
-    @cache_decorator(expiry_seconds=12)
+    @cache_decorator(expiry_seconds=8)
     async def get_stream(self) -> Optional[Stream]:
         """
         Retrieve the stream of the broadcaster if currently live.

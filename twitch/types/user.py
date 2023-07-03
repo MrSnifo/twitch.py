@@ -68,12 +68,6 @@ class SpecificBroadcaster(TypedDict):
     broadcaster_user_name: str
 
 
-class SpecificModerator(TypedDict):
-    moderator_user_id: str
-    moderator_user_login: str
-    moderator_user_name: str
-
-
 class SpecificAnonymous(TypedDict):
     user_id: Optional[str]
     user_login: Optional[str]
@@ -84,3 +78,27 @@ class SpecificUser(TypedDict):
     user_id: str
     user_login: str
     user_name: str
+
+
+class SpecificModerator(TypedDict):
+    moderator_user_id: str
+    moderator_user_login: str
+    moderator_user_name: str
+
+
+class SpecificOpModerator(TypedDict):
+    moderator_user_id: Optional[str]
+    moderator_user_login: Optional[str]
+    moderator_user_name: Optional[str]
+
+
+class SpecificGuest(TypedDict):
+    guest_user_id: str
+    guest_user_name: str
+    guest_user_login: str
+
+
+class SpecificOpGuest(TypedDict):
+    guest_user_id: Optional[str]
+    guest_user_name: Optional[str]
+    guest_user_login: Optional[str]

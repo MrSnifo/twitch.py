@@ -24,25 +24,24 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from . import __version__, __github__
-from aiohttp import ClientSession, helpers
-from asyncio import Lock, sleep, Task
-from time import time
-from typing import TYPE_CHECKING, Optional, List, Callable, Any
-
 from .errors import (
     UnknownError, TwitchServerError, BadRequest, Unauthorized,
     Forbidden, HTTPException, SubscriptionError, NotFound)
+from aiohttp import ClientSession, helpers
+from . import __version__, __github__
+from asyncio import Lock, sleep, Task
 from .utils import format_seconds
+from time import time
 
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from .types.eventsub.subscriptions import SubscriptionInfo
+    from typing import Optional, List, Callable, Any
+    from aiohttp import ClientWebSocketResponse
+    from .types.http import Validate, Refresh
     from .types.stream import Stream
     from .types.user import UserType
     from .types.channel import Channel
-    from .types.eventsub.subscriptions import SubscriptionInfo
-    from aiohttp import ClientWebSocketResponse
-    from .types.http import Validate, Refresh
 
 import logging
 _logger = logging.getLogger(__name__)

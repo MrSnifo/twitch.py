@@ -43,6 +43,7 @@ class Stream:
 
     :param stream: The stream data.
     """
+    __slots__ = ('id', 'language', 'viewers', 'thumbnail_url', 'is_mature', 'started_at')
 
     def __init__(self, stream: mst.Stream) -> None:
         self.id: str = stream['id']
@@ -62,6 +63,8 @@ class Shoutout:
 
     :param shoutout: The shoutout data.
     """
+    __slots__ = ('__shoutout', 'viewer_count', 'started_at', '_cooldown_ends_at',
+                 '_target_cooldown_ends_at')
 
     def __init__(self, shoutout: Union[sm.ShoutoutCreate, sm.ShoutoutReceived]) -> None:
         self.__shoutout = shoutout
@@ -85,7 +88,7 @@ class Shoutout:
         return User(user=self.__shoutout, prefix='from_broadcaster_user')
 
     @property
-    def receiver(self):
+    def receiver(self) -> User:
         """
         Get the receiver of the shoutout.
 
@@ -124,6 +127,7 @@ class Online:
 
     :param stream: The online stream data.
     """
+    __slots__ = ('user', 'id', 'type', 'started_at')
 
     def __init__(self, stream: sm.Online) -> None:
         self.user: User = User(user=stream, prefix='broadcaster_user')
@@ -141,6 +145,7 @@ class Offline:
 
     :param stream: The offline stream data.
     """
+    __slots__ = ('user',)
 
     def __init__(self, stream: sm.Offline) -> None:
         self.user: User = User(user=stream, prefix='broadcaster_user')

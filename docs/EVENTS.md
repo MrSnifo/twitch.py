@@ -4,7 +4,7 @@
 - [on_connect()](#on_connect)
 - [on_ready()](#on_ready)
 - [on_refresh_token(access_token: str)](#on_refresh_tokenaccess_token-str)
-- [on_channel_update(channel: Update)](#on_channel_updatechannel-update)
+- [on_channel_update(channel: ChannelUpdate)](#on_channel_updatechannel-update)
 - [on_follow(user: Follower)](#on_followuser-follower)
 - [on_subscribe(subscribe: Subscription)](#on_subscribesubscribe-subscription)
 - [on_subscription_end(subscription: Subscription)](#on_subscription_endsubscribe-subscription)
@@ -44,6 +44,11 @@
 - [on_stream_online(stream: Online)](#on_stream_onlinestream-online)
 - [on_stream_offline(stream: Offline)](#on_stream_offlinestream-offline)
 - [on_user_update(user: Update)](#on_user_updateuser-userupdate)
+- [on_guest_star_session_begin(guest_star: GuestStar)](#on_guest_star_session_beginguest_star-gueststar)
+- [on_guest_star_session_end(guest_star: GuestStar)](#on_guest_star_session_endguest_star-gueststar)
+- [on_guest_star_guest_update(guest_star: GuestStarUpdate)](#on_guest_star_guest_updateguest_star-gueststarupdate)
+- [on_guest_star_slot_update(guest_star: GuestStarSlotUpdate)](#on_guest_star_slot_updateguest_star-gueststarslotupdate)
+- [on_guest_star_settings_update(guest_star: GuestStarSettingsUpdate)](#on_guest_star_settings_updateguest_star-gueststarsettingsupdate)
 
 ---
 
@@ -67,11 +72,11 @@ This event is triggered when the client receives a new access token.
 
 ---
 
-### on_channel_update(channel: Update)
+### on_channel_update(channel: ChannelUpdate)
 
 This event is triggered when a channel is updated.
 
-- `channel` (twitch.channel.Update): The updated channel.
+- `channel` (twitch.channel.ChannelUpdate): The updated channel.
 
 ---
 
@@ -384,3 +389,43 @@ This event is triggered when the channel stops streaming and goes offline.
 This event is triggered when a user's information is updated.
 
 - `user` (twitch.user.UserUpdate): The updated user information.
+
+---
+
+### on_guest_star_session_begin(guest_star: GuestStar)
+
+This event is triggered when a guest star session begins in the channel.
+
+- `guest_star` (twitch.guest.GuestStar): The guest star session information.
+
+---
+
+### on_guest_star_session_end(guest_star: GuestStar)
+
+This event is triggered when a guest star session ends in the channel.
+
+- `guest_star` (twitch.guest.GuestStar): The guest star session information.
+
+---
+
+### on_guest_star_guest_update(guest_star: GuestStarUpdate)
+
+This event is triggered when there is an update in the guest star information.
+
+- `guest_star` (twitch.guest.GuestStarUpdate): The updated guest star information.
+
+---
+
+### on_guest_star_slot_update(guest_star: GuestStarSlotUpdate)
+
+This event is triggered when there is an update in the guest star slot information.
+
+- `guest_star` (twitch.guest.GuestStarSlotUpdate): The updated guest star slot information.
+
+---
+
+### on_guest_star_settings_update(guest_star: GuestStarSettingsUpdate)
+
+This event is triggered when there is an update in the guest star settings.
+
+- `guest_star` (twitch.guest.GuestStarSettingsUpdate): The updated guest star settings.

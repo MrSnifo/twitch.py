@@ -33,7 +33,8 @@ if TYPE_CHECKING:
     from .types import channel as ch
     from typing import Optional, List, Union
 
-__all__ = ('Channel', 'Update', 'Subscription', 'SubscriptionGift', 'SubscriptionMessage', 'Cheer', 'Raid')
+__all__ = ('Channel', 'ChannelUpdate', 'Subscription', 'SubscriptionGift', 'SubscriptionMessage',
+           'Cheer', 'Raid')
 
 
 class Category:
@@ -77,7 +78,7 @@ class Channel:
 #                  EventSub
 # -------------------------------------------
 
-class Update:
+class ChannelUpdate:
     """
     Represents when a channel updates their information.
 

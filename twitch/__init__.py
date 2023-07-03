@@ -8,7 +8,7 @@ A Python library for Twitch's WebSocket EventSub integration.
 """
 
 __title__ = 'Twitchify'
-__version__ = '1.1.2'
+__version__ = '1.2.0'
 __license__ = 'MIT License'
 __author__ = 'Snifo'
 __email__ = 'Snifo@mail.com'
@@ -23,3 +23,4 @@ from .moderation import *
 from .reward import *
 from .goals import *
 from .survey import *
+from .guest import *

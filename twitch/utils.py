@@ -125,7 +125,17 @@ Subscriptions: Dict[str, SubscriptionInfo] = {
     'stream_online':
         {'name': 'stream.online', 'version': '1'},
     'stream_offline':
-        {'name': 'stream.offline', 'version': '1'}}
+        {'name': 'stream.offline', 'version': '1'},
+    'guest_star_session_begin':
+        {'name': 'channel.guest_star_session.begin', 'version': 'beta'},
+    'guest_star_session_end':
+        {'name': 'channel.guest_star_session.end', 'version': 'beta'},
+    'guest_star_guest_update':
+        {'name': 'channel.guest_star_guest.update', 'version': 'beta'},
+    'guest_star_slot_update':
+        {'name': 'channel.guest_star_slot.update', 'version': 'beta'},
+    'guest_star_settings_update':
+        {'name': 'channel.guest_star_settings.update', 'version': 'beta'}}
 
 
 def get_subscriptions(*, events: List[str]) -> List[SubscriptionInfo]:

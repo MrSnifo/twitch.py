@@ -24,23 +24,21 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-# Core
-from .channel import Update, Subscription, SubscriptionGift, SubscriptionMessage, Cheer, Raid
+from .channel import ChannelUpdate, Subscription, SubscriptionGift, SubscriptionMessage, Cheer, Raid
+from .guest import GuestStar, GuestStarUpdate, GuestStarSlotUpdate, GuestStarSettingsUpdate
 from .goals import Donation, Charity, Goal, HyperTrain
-from .user import Follower, User, UserUpdate
-from .broadcaster import Broadcaster
 from .moderation import Ban, UnBan, ShieldMode
 from .stream import Online, Offline, Shoutout
+from .user import Follower, User, UserUpdate
 from .reward import Reward, Redemption
 from .survey import Poll, Prediction
+from .broadcaster import Broadcaster
 from asyncio import Task
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from typing import Optional, Dict, Callable, Any, List
     from .http import HTTPClient
-    from .types.eventsub.reward import Redemption as Rp
     from .types.eventsub import (
         channel as chl,
         moderation as md,
@@ -51,10 +49,10 @@ if TYPE_CHECKING:
         goal as gl,
         hypertrain as ht,
         stream as sm,
-        user as us)
+        user as us,
+        guest as gt)
 
 import logging
-
 _logger = logging.getLogger(__name__)
 
 
@@ -101,7 +99,7 @@ class ConnectionState:
         """
         Parse a channel update event.
         """
-        _channel = Update(channel=data)
+        _channel = ChannelUpdate(channel=data)
         self._dispatch('channel_update', _channel)
 
     async def parse_channel_follow(self, data: chl.Follow) -> None:
@@ -204,18 +202,18 @@ class ConnectionState:
         _reward = Reward(reward=data)
         self._dispatch('points_reward_remove', _reward)
 
-    async def parse_channel_channel_points_custom_reward_redemption_add(self, data: Rp) -> None:
+    async def parse_channel_channel_points_custom_reward_redemption_add(self, d: rd.Redemption) -> None:
         """
         Parse a channel custom reward redemption add event for channel points.
         """
-        _redemption = Redemption(redemption=data)
+        _redemption = Redemption(redemption=d)
         self._dispatch('points_reward_redemption', _redemption)
 
-    async def parse_channel_channel_points_custom_reward_redemption_update(self, data: Rp) -> None:
+    async def parse_channel_channel_points_custom_reward_redemption_update(self, d: rd.Redemption) -> None:
         """
         Parse a channel custom reward redemption update event for channel points.
         """
-        _redemption = Redemption(redemption=data)
+        _redemption = Redemption(redemption=d)
         self._dispatch('points_reward_redemption_update', _redemption)
 
     # ========================> Survey <========================
@@ -398,3 +396,38 @@ class ConnectionState:
         self.broadcaster.email = _update.email
         if 'user_update' in self.events:
             self._dispatch('user_update', _update)
+
+    async def parse_beta_channel_guest_star_session_begin(self, data: gt.Begin):
+        """
+        Parse channel guest star session begin event.
+        """
+        _guest_star = GuestStar(session=data)
+        self._dispatch('guest_star_session_begin', _guest_star)
+
+    async def parse_beta_channel_guest_star_session_end(self, data: gt.End):
+        """
+        Parse channel guest star session end event.
+        """
+        _guest_star = GuestStar(session=data)
+        self._dispatch('guest_star_session_end', _guest_star)
+
+    async def parse_beta_channel_guest_star_guest_update(self, data: gt.Update):
+        """
+        Parse channel guest star guest update event.
+        """
+        _guest_star = GuestStarUpdate(session=data)
+        self._dispatch('guest_star_guest_update', _guest_star)
+
+    async def parse_beta_channel_guest_star_slot_update(self, data: gt.SlotUpdate):
+        """
+        Parse channel guest star slot update event.
+        """
+        _guest_star = GuestStarSlotUpdate(slot=data)
+        self._dispatch('guest_star_slot_update', _guest_star)
+
+    async def parse_beta_channel_guest_star_settings_update(self, data: gt.SettingsUpdate):
+        """
+        Parse channel guest star settings update event.
+        """
+        _guest_star = GuestStarSettingsUpdate(settings=data)
+        self._dispatch('guest_star_settings_update', _guest_star)

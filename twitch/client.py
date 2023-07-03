@@ -63,7 +63,7 @@ class Client:
     @property
     def user(self) -> Broadcaster:
         """
-        Retrieve the Broadcaster.
+        Retrieves the Broadcaster.
 
         :return: An instance of the Broadcaster class representing the user.
         """
@@ -71,15 +71,15 @@ class Client:
 
     async def get_channel(self) -> Channel:
         """
-       Retrieve the channel associated with the broadcaster.
+        Retrieves the channel associated with the broadcaster.
 
-       :return: An instance of the Channel class representing the channel.
-       """
+        :return: An instance of the Channel class representing the channel.
+        """
         return await self._connection.broadcaster.get_channel()
 
-    async def get_stream(self) -> Stream:
+    async def get_stream(self) -> Optional[Stream]:
         """
-        Retrieve the stream of the broadcaster if currently live.
+        Retrieves the stream of the broadcaster if currently live.
 
         :return: An instance of the Stream class representing the stream if live, otherwise None.
         """
@@ -175,7 +175,7 @@ class Client:
 
     def run(self, access_token: str, refresh_token: Optional[str] = None) -> None:
         """
-        Runs the Twitch client by establishing a connection and initiating the event loop.
+        Runs the Twitch client without establishing a connection and initiating the event loop.
         """
         async def runner():
             await self.start(access_token, refresh_token)
