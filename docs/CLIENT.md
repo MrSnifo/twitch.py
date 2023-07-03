@@ -1,4 +1,4 @@
-``## Client
+## Client
 Represents the Twitch client
 ### Attributes
 - `user`: retrieves the [Broadcaster](#Broadcaster)
