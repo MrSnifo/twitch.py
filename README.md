@@ -26,7 +26,7 @@ python3 -m pip install -U twitchify
 ```
 
 ## Documentation
-Please refer to the [Events Documentation](https://github.com/MrSniFo/Twitchify/blob/main/docs/EVENTS.md) for detailed information on handling events with Twitchify.
+Please refer to the [Events Documentation](https://github.com/MrSniFo/Twitchify/blob/main/docs) for detailed information on handling events with Twitchify.
 
 ## Quick Example
 ```python
