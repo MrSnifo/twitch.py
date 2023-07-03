@@ -5,7 +5,7 @@ Represents the Twitch client
 - `async get_channel()`: Retrieves the [Channel](#Channel) associated with the broadcaster
 - `async get_stream()`: Retrieve the [Stream](#Stream) of the broadcaster **if currently live**.
 - `async start()`:  Starts the client by establishing a connection and initiating the event loop.
-- `run()`: Runs the Client without establishing a connection and initiating the event loop.
+- `run()`: Runs the Client without establishing an event loop.
 
 
 ---
