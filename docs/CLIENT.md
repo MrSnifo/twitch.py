@@ -36,6 +36,7 @@ Retrieve the stream of the broadcaster if currently live.
 ##### Caching Timeout
 Both the `get_channel` and `get_stream` methods are decorated with a caching mechanism. The cache timeout for `get_channel` is **14 seconds**, while the cache timeout for `get_stream` is **8 seconds**. This means that once the channel or stream data is fetched, it will be cached for the specified timeout period before making another request to the Twitch API. This helps to reduce the number of API calls and improve performance.
 
+---
 
 ### Images
 Images associated with a Twitch user.
@@ -43,6 +44,8 @@ Images associated with a Twitch user.
 ##### Attributes
 - `profile: str`: The URL of the user's profile image.
 - `offline: str`: The URL of the user's offline image.
+  
+---
 
 ### Channel
 Represents a Twitch channel.
@@ -54,6 +57,7 @@ Represents a Twitch channel.
 - `tags: List[str]`: The tags associated with the channel.
 - `category: Optional[Category]`: The category of the channel, if available.
 
+---
 
 ### Stream
 Represents a twitch stream.
