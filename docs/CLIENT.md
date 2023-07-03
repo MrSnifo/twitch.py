@@ -1,4 +1,4 @@
-## Client
+``## Client
 Represents the Twitch client
 ### Attributes
 - `user`: retrieves the [Broadcaster](#Broadcaster)
@@ -55,7 +55,16 @@ Represents a Twitch channel.
 - `description: Optional[str]`: The description of the channel.
 - `delay: int`: The delay of the channel in seconds.
 - `tags: List[str]`: The tags associated with the channel.
-- `category: Optional[Category]`: The category of the channel, if available.
+- `category: Optional[Category]`: The [Category](#category) of the channel, if available.
+
+---
+
+#### Category
+Represents a category for a channel.
+
+### Attributes
+- `id: str`: Category ID.
+- `name: str`: Category name.
 
 ---
 
