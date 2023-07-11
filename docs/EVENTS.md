@@ -62,222 +62,222 @@ This event is triggered when the client is ready to start processing events.
 #
 ### `async def on_refresh_token(access_token: str)`
 This event is triggered when the client receives a new access token.
-- `access_token` (str)`: The new access token.
+- `access_token` (str): The new access token.
 
 ---
 
 # Channel
 ### `async def on_channel_update(channel: ChannelUpdate)`
 This event is triggered when a channel is updated.
-- `channel` (twitch.channel.ChannelUpdate)`: The updated channel.
+- `channel` (twitch.channel.ChannelUpdate): The updated channel.
 #
 ### `async def on_follow(user: Follower)`
 This event is triggered when a user follows the channel.
-- `user` (twitch.user.Follower)`: The user who followed the channel.
+- `user` (twitch.user.Follower): The user who followed the channel.
 #
 ### `async def on_subscribe(subscribe: Subscription)`
 This event is triggered when a user subscribes to the channel.
-- `subscribe` (twitch.channel.Subscription)`: The subscription information.
+- `subscribe` (twitch.channel.Subscription): The subscription information.
 #
 ### `async def on_subscription_end(subscribe: Subscription)`
 This event is triggered when a user's subscription to the channel ends.
-- `subscribe` (twitch.channel.Subscription)`: The subscription information.
+- `subscribe` (twitch.channel.Subscription): The subscription information.
 #
 ### `async def on_subscription_gift(subscription: SubscriptionGift)`
 This event is triggered when a user gifts a subscription to the channel.
-- `subscription` (twitch.channel.SubscriptionGift)`: The subscription gift information.
+- `subscription` (twitch.channel.SubscriptionGift): The subscription gift information.
 #
 ### `async def on_subscription_message(subscription: SubscriptionMessage)`
 This event is triggered when a user resubscribes to the channel.
-- `subscription` (twitch.channel.SubscriptionMessage)`: The resubscription information.
+- `subscription` (twitch.channel.SubscriptionMessage): The resubscription information.
 #
 ### `async def on_cheer(cheer: Cheer)`
 This event is triggered when a user sends a cheer to the channel.
-- `cheer` (twitch.channel.Cheer)`: The cheer information.
+- `cheer` (twitch.channel.Cheer): The cheer information.
 #
 ### `async def on_raid(raid: Raid)`
 This event is triggered when the channel receives a raid from another channel.
-- `raid` (twitch.channel.Raid)`: The raid information.
+- `raid` (twitch.channel.Raid): The raid information.
 
 ---
 
 # Moderation
 ### `async def on_ban(ban: Ban)`
 This event is triggered when a user is banned from the channel.
-- `ban` (twitch.moderation.Ban)`: The banned user information.
+- `ban` (twitch.moderation.Ban): The banned user information.
 #
 ### `async def on_unban(unban: UnBan)`
 This event is triggered when a user is unbanned from the channel.
-- `unban` (twitch.moderation.UnBan)`: The unbanned user information.
+- `unban` (twitch.moderation.UnBan): The unbanned user information.
 #
 ### `async def on_moderator_add(user: User)`
 This event is triggered when a user is added as a moderator for the channel.
-- `user` (twitch.user.User)`: The user who was added as a moderator.
+- `user` (twitch.user.User): The user who was added as a moderator.
 #
 ### `async def on_moderator_remove(user: User)`
 This event is triggered when a user is removed as a moderator from the channel.
-- `user` (twitch.user.User)`: The user who was removed as a moderator.
+- `user` (twitch.user.User): The user who was removed as a moderator.
 
 ---
 
 # Reward
 ### `async def on_points_reward_add(reward: Reward)`
 This event is triggered when a new channel points reward is added.
-- `reward` (twitch.reward.Reward)`: The new reward information.
+- `reward` (twitch.reward.Reward): The new reward information.
 #
 ### `async def on_points_reward_update(reward: Reward)`
 This event is triggered when an existing channel points reward is updated.
-- `reward` (twitch.reward.Reward)`: The updated reward information.
+- `reward` (twitch.reward.Reward): The updated reward information.
 #
 ### `async def on_points_reward_remove(reward: Reward)`
 This event is triggered when a channel points reward is removed.
-- `reward` (twitch.reward.Reward)`: The removed reward information.
+- `reward` (twitch.reward.Reward): The removed reward information.
 #
 ### `async def on_points_reward_redemption(redemption: Redemption)`
 This event is triggered when a viewer redeems a channel points reward.
-- `redemption` (twitch.reward.Redemption)`: The redemption information.
+- `redemption` (twitch.reward.Redemption): The redemption information.
 #
 ### `async def on_points_reward_redemption_update(redemption: Redemption)`
 This event is triggered when the status of a channel points reward redemption is updated.
-- `redemption` (twitch.reward.Redemption)`: The updated redemption information.
+- `redemption` (twitch.reward.Redemption): The updated redemption information.
 
 ---
 
 # Poll
 ### `async def on_poll_begin(poll: Poll)`
 This event is triggered when a poll begins in the channel.
-- `poll` (twitch.survey.Poll)`: The poll information.
+- `poll` (twitch.survey.Poll): The poll information.
 #
 ### `async def on_poll_progress(poll: Poll)`
 This event is triggered when there is progress or updates in an ongoing poll.
-- `poll` (twitch.survey.Poll)`: The poll information.
+- `poll` (twitch.survey.Poll): The poll information.
 #
 ### `async def on_poll_end(poll: Poll)`
 This event is triggered when a poll ends in the channel.
-- `poll` (twitch.survey.Poll)`: The poll information.
+- `poll` (twitch.survey.Poll): The poll information.
 
 ---
 
 # Prediction
 ### `async def on_prediction_begin(prediction: Prediction)`
 This event is triggered when a prediction begins in the channel.
-- `prediction` (twitch.survey.Prediction)`: The prediction information.
+- `prediction` (twitch.survey.Prediction): The prediction information.
 #
 ### `async def on_prediction_progress(prediction: Prediction)`
 This event is triggered when there is progress or updates in an ongoing prediction.
-- `prediction` (twitch.survey.Prediction)`: The prediction information.
+- `prediction` (twitch.survey.Prediction): The prediction information.
 #
 ### `async def on_prediction_lock(prediction: Prediction)`
 This event is triggered when a prediction is locked and can no longer be modified.
-- `prediction` (twitch.survey.Prediction)`: The prediction information.
+- `prediction` (twitch.survey.Prediction): The prediction information.
 
 ---
 
 # Charity
 ### `async def on_charity_campaign_donate(donation: Donation)`
 This event is triggered when a viewer donates to a charity campaign.
-- `donation` (twitch.goals.Donation)`: The donation information.
+- `donation` (twitch.goals.Donation): The donation information.
 #
 ### `async def on_charity_campaign_start(charity: Charity)`
 This event is triggered when a charity campaign starts in the channel.
-- `charity` (twitch.goals.Charity)`: The charity campaign information.
+- `charity` (twitch.goals.Charity): The charity campaign information.
 #
 ### `async def on_charity_campaign_progress(charity: Charity)`
 This event is triggered when there is progress or updates in an ongoing charity campaign.
-- `charity` (twitch.goals.Charity)`: The charity campaign information.
+- `charity` (twitch.goals.Charity): The charity campaign information.
 #
 ### `async def on_charity_campaign_stop(charity: Charity)`
 This event is triggered when a charity campaign ends in the channel.
-- `charity` (twitch.goals.Charity)`: The charity campaign information.
+- `charity` (twitch.goals.Charity): The charity campaign information.
 
 ---
 
 # Goal
 ### `async def on_goal_begin(goal: Goal)`
 This event is triggered when a goal begins in the channel.
-- `goal` (twitch.goals.Goal)`: The goal information.
+- `goal` (twitch.goals.Goal): The goal information.
 #
 ### `async def on_goal_progress(goal: Goal)`
 This event is triggered when there is progress or updates in an ongoing goal.
-- `goal` (twitch.goals.Goal)`: The goal information.
+- `goal` (twitch.goals.Goal): The goal information.
 #
 ### `async def on_goal_end(goal: Goal)`
 This event is triggered when a goal ends in the channel.
-- `goal` (twitch.goals.Goal)`: The goal information.
+- `goal` (twitch.goals.Goal): The goal information.
 
 ---
 
 # HyperTrain
 ### `async def on_hype_train_begin(train: HyperTrain)`
 This event is triggered when a Hype Train begins in the channel.
-- `train` (twitch.goals.HyperTrain)`: The Hype Train information.
+- `train` (twitch.goals.HyperTrain): The Hype Train information.
 #
 ### `async def on_hype_train_progress(train: HyperTrain)`
 This event is triggered when there is progress or updates in an ongoing Hype Train.
-- `train` (twitch.goals.HyperTrain)`: The Hype Train information.
+- `train` (twitch.goals.HyperTrain): The Hype Train information.
 #
 ### `async def on_hype_train_end(train: HyperTrain)`
 This event is triggered when a Hype Train ends in the channel.
-- `train` (twitch.goals.HyperTrain)`: The Hype Train information.
+- `train` (twitch.goals.HyperTrain): The Hype Train information.
 
 ---
 
 # ShieldMode
 ### `async def on_shield_mode_begin(mode: ShieldMode)`
 This event is triggered when the channel enters Shield Mode.
-- `mode` (twitch.moderation.ShieldMode)`: The Shield Mode information.
+- `mode` (twitch.moderation.ShieldMode): The Shield Mode information.
 #
 ### `async def on_shield_mode_end(mode: ShieldMode)`
 This event is triggered when the channel exits Shield Mode.
-- `mode` (twitch.moderation.ShieldMode)`: The Shield Mode information.
+- `mode` (twitch.moderation.ShieldMode): The Shield Mode information.
 
 ---
 
 # Shoutout
 ### `async def on_shoutout_create(shoutout: Shoutout)`
 This event is triggered when a shoutout is created for another channel.
-- `shoutout` (twitch.stream.Shoutout)`: The shoutout information.
+- `shoutout` (twitch.stream.Shoutout): The shoutout information.
 #
 ### `async def on_shoutout_receive(shoutout: Shoutout)`
 This event is triggered when the channel receives a shoutout from another channel.
-- `shoutout` (twitch.stream.Shoutout)`: The shoutout information.
+- `shoutout` (twitch.stream.Shoutout): The shoutout information.
 
 ---
 
 # Stream
 ### `async def on_stream_online(stream: Online)`
 This event is triggered when the channel goes live and starts streaming.
-- `stream` (twitch.stream.Online)`: The stream information.
+- `stream` (twitch.stream.Online): The stream information.
 #
 ### `async def on_stream_offline(stream: Offline)`
 This event is triggered when the channel stops streaming and goes offline.
-- `stream` (twitch.stream.Offline)`: The stream information.
+- `stream` (twitch.stream.Offline): The stream information.
 
 ---
 
 # User
 ### `async def on_user_update(user: UserUpdate)`
 This event is triggered when a user's information is updated.
-- `user` (twitch.user.UserUpdate)`: The updated user information.
+- `user` (twitch.user.UserUpdate): The updated user information.
 
 ---
 
 # GuestStar
 ### `async def on_guest_star_session_begin(guest_star: GuestStar)`
 This event is triggered when a guest star session begins in the channel.
-- `guest_star` (twitch.guest.GuestStar)`: The guest star session information.
+- `guest_star` (twitch.guest.GuestStar): The guest star session information.
 #
 ### `async def on_guest_star_session_end(guest_star: GuestStar)`
 This event is triggered when a guest star session ends in the channel.
-- `guest_star` (twitch.guest.GuestStar)`: The guest star session information.
+- `guest_star` (twitch.guest.GuestStar): The guest star session information.
 #
 ### `async def on_guest_star_guest_update(guest_star: GuestStarUpdate)`
 This event is triggered when there is an update in the guest star information.
-- `guest_star` (twitch.guest.GuestStarUpdate)`: The updated guest star information.
+- `guest_star` (twitch.guest.GuestStarUpdate): The updated guest star information.
 #
 ### `async def on_guest_star_slot_update(guest_star: GuestStarSlotUpdate)`
 This event is triggered when there is an update in the guest star slot information.
-- `guest_star` (twitch.guest.GuestStarSlotUpdate)`: The updated guest star slot information.
+- `guest_star` (twitch.guest.GuestStarSlotUpdate): The updated guest star slot information.
 #
 ### `async def on_guest_star_settings_update(guest_star: GuestStarSettingsUpdate)`
 This event is triggered when there is an update in the guest star settings.
