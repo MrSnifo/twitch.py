@@ -145,7 +145,7 @@ class Client:
                 # Schedule the task
                 self.loop.create_task(wrapped, name=f'Twitchify:{method}')
         except AttributeError as error:
-            _logger.error('Event: %s Error:', event, error)
+            _logger.error('Event: %s Error: %s', event, error)
 
     @staticmethod
     async def on_error(event_name: str, error: str, /, *args: Any, **kwargs: Any) -> None:
