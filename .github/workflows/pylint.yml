@@ -21,4 +21,4 @@ jobs:
           pip install aiohttp>=3.8.0
       - name: Analysing the code with pylint
         run: |
-          pylint --disable=missing-class-docstring,missing-module-docstring,missing-function-docstring,R0801,R0903,R0902,C041f3,C0411,W0107,W0718,C0325,R1720,R0912,W0706,R0904,R0401 --max-line-length=109 $(git ls-files '*.py')
+          pylint --disable=missing-class-docstring,missing-module-docstring,missing-function-docstring,R0801,R0903,R0902,C0413,C0411,W0107,W0718,C0325,R1720,R0912,W0706,R0904,R0401 --max-line-length=109 $(git ls-files '*.py')
