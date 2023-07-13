@@ -27,23 +27,26 @@ from __future__ import annotations
 from datetime import datetime
 from functools import wraps
 import logging
+import string
+import random
 import json
 import time
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionInfo
     from typing import Optional, List, Callable, Awaitable, Any, Dict
+    from .types.scoopes import ScopesType
 try:
     # noinspection PyPackageRequirements
     import orjson
 except ImportError:
     orjson = None
 
-
 # -------------------------------------------
 #     Documentation Changelog last check
-#     Date: 2023‑06‑29
+#     Date: 2023‑07‑10
 # -------------------------------------------
 Subscriptions: Dict[str, SubscriptionInfo] = {
     'channel_update':
@@ -137,6 +140,69 @@ Subscriptions: Dict[str, SubscriptionInfo] = {
     'guest_star_settings_update':
         {'name': 'channel.guest_star_settings.update', 'version': 'beta'}}
 
+Scopes: ScopesType = [
+    'analytics:read:extensions',
+    'analytics:read:games',
+    'bits:read',
+    'channel:edit:commercial',
+    'channel:manage:broadcast',
+    'channel:manage:extensions',
+    'channel:manage:guest_star',
+    'channel:manage:moderators',
+    'channel:manage:polls',
+    'channel:manage:predictions',
+    'channel:manage:raids',
+    'channel:manage:redemptions',
+    'channel:manage:schedule',
+    'channel:manage:videos',
+    'channel:manage:vips',
+    'channel:moderate',
+    'channel:read:charity',
+    'channel:read:editors',
+    'channel:read:goals',
+    'channel:read:guest_star',
+    'channel:read:hype_train',
+    'channel:read:polls',
+    'channel:read:predictions',
+    'channel:read:redemptions',
+    'channel:read:stream_key',
+    'channel:read:subscriptions',
+    'channel:read:vips',
+    'chat:edit',
+    'chat:read',
+    'clips:edit',
+    'moderation:read',
+    'moderator:manage:announcements',
+    'moderator:manage:automod',
+    'moderator:manage:automod_settings',
+    'moderator:manage:banned_users',
+    'moderator:manage:blocked_terms',
+    'moderator:manage:chat_messages',
+    'moderator:manage:chat_settings',
+    'moderator:manage:shield_mode',
+    'moderator:manage:shoutouts',
+    'moderator:read:automod_settings',
+    'moderator:read:blocked_terms',
+    'moderator:read:chat_settings',
+    'moderator:read:chatters',
+    'moderator:read:followers',
+    'moderator:read:guest_star',
+    'moderator:read:shield_mode',
+    'moderator:read:shoutouts',
+    'user:edit',
+    'user:edit:broadcast',
+    'user:edit:follows',
+    'user:manage:blocked_users',
+    'user:manage:chat_color',
+    'user:manage:whispers',
+    'user:read:blocked_users',
+    'user:read:broadcast',
+    'user:read:email',
+    'user:read:follows',
+    'user:read:subscriptions',
+    'whispers:edit',
+    'whispers:read']
+
 
 def get_subscriptions(*, events: List[str]) -> List[SubscriptionInfo]:
     """
@@ -150,7 +216,7 @@ def cache_decorator(expiry_seconds: int) -> Callable:
     Cache decorator that caches the result of a function with a specified expiry time.
 
     :param expiry_seconds: The number of seconds to cache the result.
-    :return: The decorated function.
+    :returns: The decorated function.
     """
     cache = {}
     cache_expiry = {}
@@ -160,7 +226,7 @@ def cache_decorator(expiry_seconds: int) -> Callable:
         Decorator function that wraps the original function with caching logic.
 
         :param func: The original function to be decorated.
-        :return: The wrapped function.
+        :returns: The wrapped function.
         """
 
         @wraps(func)
@@ -171,7 +237,7 @@ def cache_decorator(expiry_seconds: int) -> Callable:
             :param self: The instance object.
             :param args: The positional arguments passed to the function.
             :param kwargs: The keyword arguments passed to the function.
-            :return: The result of the original function.
+            :returns: The result of the original function.
             """
             cache_key = (func.__name__, self, *args, frozenset(kwargs.items()))
             if cache_key in cache and time.time() < cache_expiry[cache_key]:
@@ -196,7 +262,7 @@ def to_json(text: str, encoding='utf-8') -> dict:
     :param encoding:
      The encoding to use when decoding the text. Defaults to 'utf-8'.
 
-    :return:
+    :returns:
      The JSON object (dict) representing the converted text.
 
     :raises UnicodeDecodeError: If the text cannot be decoded using the specified encoding.
@@ -216,7 +282,7 @@ def format_seconds(seconds: int) -> str:
     :param seconds:
      The number of seconds.
 
-    :return:
+    :returns:
      The formatted time string.
     """
     days, remainder = divmod(seconds, 86400)
@@ -246,7 +312,7 @@ def empty_to_none(text: Optional[str]) -> Optional[str]:
     :param text:
      The string to be checked.
 
-    :return:
+    :returns:
      The input text if it is not empty, or None if it is empty.
     """
 
@@ -262,7 +328,7 @@ def parse_rfc3339_timestamp(timestamp: str) -> datetime:
     :param timestamp:
      The timestamp in RFC3339 format to be parsed.
 
-    :return:
+    :returns:
      The parsed timestamp as a datetime object.
     """
     return datetime.fromisoformat(timestamp)
@@ -299,3 +365,18 @@ def setup_logging() -> logging.getLogger:
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     return logger
+
+
+def generate_random_state(length=28) -> str:
+    """
+    Generate a random state string.
+
+    :param length: Length of the state string.
+
+    :returns: Randomly generated state string.
+    """
+    characters = string.ascii_letters + string.digits
+
+    # Generate a random state string of the specified length
+    state = ''.join(random.choice(characters) for _ in range(length))
+    return state

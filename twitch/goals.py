@@ -48,9 +48,9 @@ class CharityInfo:
 
     def __init__(self, charity: ch.SpecificCharity) -> None:
         self.name: str = charity['charity_name']
-        self.description: Optional[str] = charity.get('charity_description')  # Beta
+        self.description: Optional[str] = charity.get('charity_description')
         self.logo: str = charity['charity_logo']
-        self.website: Optional[str] = charity.get('charity_website')  # Beta
+        self.website: Optional[str] = charity.get('charity_website')
 
     def __repr__(self) -> str:
         return f'<CharityInfo name={self.name} description={self.description}>'

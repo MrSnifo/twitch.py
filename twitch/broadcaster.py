@@ -66,7 +66,7 @@ class Broadcaster:
         self.id: str = user['id']
         self.name: str = user['login']
         self.display_name: str = user['display_name']
-        self.email: Optional[str] = empty_to_none(text=user['email'])
+        self.email: Optional[str] = user.get('email')
         self.images: Images = Images(user=user)
         # Set the broadcaster tier.
         self.tier: Tier = user['broadcaster_type'] if user['broadcaster_type'] else 'regular'

@@ -47,7 +47,7 @@ class TwitchServerError(TwitchException):
 
 
 # ------------------------------------------
-#               HTTPException
+#              HTTP Exception
 # ------------------------------------------
 
 class HTTPException(TwitchException):
@@ -111,6 +111,15 @@ class WebsocketClosed(WebSocketError):
     pass
 
 
+class UnusedConnection(WebSocketError):
+    """
+    Exception is raised when no subscription has been created within 10 seconds.
+    """
+
+    def __init__(self):
+        super().__init__('No subscription was created within the specified time limit of 10 seconds.')
+
+
 class WsReconnect(WebSocketError):
     """
     Exception raised to indicate that WebSocket should reconnect to a new URL.
@@ -121,7 +130,7 @@ class WsReconnect(WebSocketError):
 
 
 # -------------------------------------------
-#               ClientException
+#              Client Exception
 # -------------------------------------------
 
 class ClientException(TwitchException):
@@ -140,11 +149,13 @@ class NotFound(ClientException):
         super().__init__(message)
 
 
-class SubscriptionError(ClientException):
+# ------------------------------------------
+#               Auth Exception
+# ------------------------------------------
+class AuthorizationError(ClientException):
     """
-    Exception raised when the authorization is revoked.
+    Exception raised when access is denied.
     """
 
-    def __init__(self, subscription: str, version: str):
-        message = f'Subscription type `{subscription}` and version `{version}`.'
+    def __init__(self, message: str):
         super().__init__(message)

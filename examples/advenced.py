@@ -42,9 +42,14 @@ class Twitch(Client):
         """
         You can import the access token here and use it.
         """
+
+        # Generate the authorization URL for the Twitch client.
+        # The user should visit the provided URL to authorize the app.
+        auth = self.auth()
+
         self.run(
-            access_token='USER ACCESS TOKEN HERE',
-            refresh_token='USER REFRESH TOKEN HERE'
+            access_token=auth.access_token,
+            refresh_token=auth.refresh_token
         )
 
 

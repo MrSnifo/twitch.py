@@ -1,18 +1,21 @@
+# Twitchify Documentation
+
 ## Client
-Represents the Twitch client
+Represents the Twitch Client.
+
 ### Attributes
-- `user`: retrieves the [Broadcaster](#Broadcaster)
-- `async get_channel()`: Retrieves the [Channel](#Channel) associated with the broadcaster
-- `async get_stream()`: Retrieve the [Stream](#Stream) of the broadcaster **if currently live**.
-- `async start()`:  Starts the client by establishing a connection and initiating the event loop.
-- `run()`: Runs the Client without establishing an event loop.
-
-
+- `user`: Retrieves the [Broadcaster](#Broadcaster).
+- `def auth() -> Auth`: [Authorizes](#Auth) your app without the need for third-party apps.
+- `async def get_channel() -> Channel`: Retrieves the [Channel](#Channel) associated with the broadcaster.
+- `async def get_stream() -> Optional[Stream]`: Retrieves the [Stream](#Stream) of the broadcaster if currently live.
+- `async def start()`: Starts the client by establishing a connection and initiating the event loop.
+- `def run()`: Runs the Client without establishing an event loop.
 ---
-### Broadcaster
-Represents a Twitch broadcaster
 
-##### Attributes
+## Broadcaster
+Represents a Twitch Broadcaster.
+
+### Attributes
 - `id: str`: The ID of the broadcaster.
 - `name: str`: The username of the broadcaster.
 - `display_name: str`: The display name of the broadcaster.
@@ -21,60 +24,65 @@ Represents a Twitch broadcaster
 - `tier: Tier`: The broadcaster tier.
 - `type: Types`: The user type.
 - `joined_at: datetime`: The timestamp when the broadcaster joined.
-- `description`: The description of the broadcaster (optional).
+- `description: Optional[str]`: The description of the broadcaster (optional).
 
-####  `async` `get_channel(self) -> Channel`
-
-Retrieve the channel associated with the broadcaster.
-- Returns: An instance of the [Channel](#channel) class representing the channel.
-
-####  `async` `get_stream(self) -> Optional[Stream]`
-
-Retrieve the stream of the broadcaster if currently live.
-- Returns: An instance of the [Stream](#Stream) class representing the stream if live, otherwise `None`.
-
-##### Caching Timeout
-Both the `get_channel` and `get_stream` methods are decorated with a caching mechanism. The cache timeout for `get_channel` is **14 seconds**, while the cache timeout for `get_stream` is **8 seconds**. This means that once the channel or stream data is fetched, it will be cached for the specified timeout period before making another request to the Twitch API. This helps to reduce the number of API calls and improve performance.
+### Methods
+- `async def get_channel() -> Channel`: Retrieve the channel associated with the broadcaster.
+- `async def get_stream() -> Optional[Stream]`: Retrieve the stream of the broadcaster if currently live.
 
 ---
 
-### Images
-Images associated with a Twitch user.
+## Images
+Images associated with a Twitch User.
 
-##### Attributes
+### Attributes
 - `profile: str`: The URL of the user's profile image.
 - `offline: str`: The URL of the user's offline image.
-  
+
 ---
 
-### Channel
-Represents a Twitch channel.
+## Channel
+Represents a Twitch Channel.
 
 ### Attributes
 - `title: Optional[str]`: The title of the channel.
 - `description: Optional[str]`: The description of the channel.
 - `delay: int`: The delay of the channel in seconds.
 - `tags: List[str]`: The tags associated with the channel.
-- `category: Optional[Category]`: The [Category](#category) of the channel, if available.
+- `category: Optional[Category]`: The [Category](#Category) of the channel, if available.
+- `classification: List[str]`: Classification currently applied to the channel.
+- `is_branded_content: bool`: Indicates if the channel has branded content.
 
 ---
 
-#### Category
-Represents a category for a channel.
+## Category
+Represents a Category for a channel.
 
 ### Attributes
-- `id: str`: Category ID.
-- `name: str`: Category name.
+- `id: str`: The category ID.
+- `name: str`: The category name.
 
 ---
 
-### Stream
-Represents a twitch stream.
+## Stream
+Represents a Twitch Stream.
 
 ### Attributes
 - `id: str`: The stream ID.
-- `language: str`: The language that the stream uses.
+- `language: str`: The language used in the stream.
 - `viewers: int`: The number of users watching the stream.
-- `thumbnail_url: str`: A URL to an image of a frame from the last 5 minutes of the stream
-- `is_mature: bool` whether the stream is meant for mature audiences
-- `started_at: datetime` = The date and time of when the broadcast began.
+- `thumbnail_url: str`: A URL to an image of a frame from the last 5 minutes of the stream.
+- `is_mature: bool`: Indicates if the stream is for mature audiences.
+- `started_at: datetime`: The date and time when the broadcast began.
+
+---
+
+## Auth
+Represents Twitch Authorization.
+
+### Attributes
+- `access_token: Optional[str]`: User access token.
+- `refresh_token: Optional[str]`: User refresh token.
+- `scopes: List[str]`: Access Token Scopes.
+- `url: str`: Authorization URL.
+- `uri: str`: The URI of the server.

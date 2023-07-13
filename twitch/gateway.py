@@ -25,7 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .errors import (WebSocketError, WebsocketClosed, NotFound, SessionClosed, Forbidden,
-                     SubscriptionError, WsReconnect)
+                     UnusedConnection, WsReconnect)
 from .utils import to_json, get_subscriptions
 
 from json import JSONDecodeError
@@ -33,6 +33,7 @@ from aiohttp import WSMsgType
 import asyncio
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionInfo
     from asyncio import AbstractEventLoop
@@ -43,24 +44,27 @@ if TYPE_CHECKING:
     from .types.gateway import Session, Subscription
 
 import logging
+
 _logger = logging.getLogger(__name__)
 
 
 class EventSubWebSocket:
+    """
+    Represents EventSub WebSocket.
+
+    :param http: The HTTP client for making API requests.
+    :param cnx: The ConnectionState object.
+    :param loop: The event loop.
+    :param events: A list of events.
+    """
     DEFAULT_URL = 'wss://eventsub.wss.twitch.tv/ws'
 
     __slots__ = ('__http', '__connection', '__loop', 'subscriptions', '_ready', '_keep_alive',
                  '_ws', '_ws_switch', 'session_id', 'retry_count')
 
-    def __init__(self, *, http: HTTPClient, cnx: ConnectionState, loop, events: List[str]) -> None:
-        """
-        Initialize the EventSubWebSocket.
+    def __init__(self, *, http: HTTPClient, cnx: ConnectionState, loop: AbstractEventLoop,
+                 events: List[str]) -> None:
 
-        :param http: The HTTP client for making API requests.
-        :param cnx: The ConnectionState object.
-        :param loop: The event loop.
-        :param events: A list of events.
-        """
         self.__http: HTTPClient = http
         self.__connection: ConnectionState = cnx
         self.__loop: AbstractEventLoop = loop
@@ -105,24 +109,25 @@ class EventSubWebSocket:
                 url = str(reconnect_url)
                 _logger.debug('Reconnecting to URL: %s', url)
                 continue
-            except (OSError, WebSocketError, SessionClosed, TimeoutError) as error:
+            except (WebSocketError, asyncio.TimeoutError) as error:
                 self.retry_count += 1
                 if 3 >= self.retry_count:
-                    if isinstance(error, WebSocketError):
-                        _logger.error('WebSocket connection closed. Retrying in %s seconds...',
-                                      (5 * self.retry_count))
+                    if isinstance(error, UnusedConnection):
+                        raise
                     elif isinstance(error, SessionClosed):
                         _logger.error('Cannot connect because the session is closed.'
                                       ' Retrying in %s seconds...', (5 * self.retry_count))
                     elif isinstance(error, asyncio.TimeoutError):
                         _logger.error('Timeout occurred while waiting for WebSocket message. '
                                       'Retrying in %s seconds...', (5 * self.retry_count))
-                    else:
-                        _logger.info('Retrying to connect to the WebSocket (%s) in %s seconds...',
-                                     url, (5 * self.retry_count))
+                    elif isinstance(error, WebSocketError):
+                        _logger.error('WebSocket connection closed. Retrying in %s seconds...',
+                                      (5 * self.retry_count))
                 else:
                     raise  # Re-raise the original error
                 await asyncio.sleep(5 * self.retry_count)
+            except OSError as error:
+                raise WebSocketError from error
 
     async def handle_messages(self) -> None:
         """
@@ -141,9 +146,8 @@ class EventSubWebSocket:
                 elif close_code == 4007:
                     raise WebsocketClosed('Failed to reconnect to a new WebSocket.'
                                           ' The reconnect URL provided is invalid.')
-                elif close_code in [4000, 4001, 4002, 4003, 4005, 4006]:
-                    raise WebSocketError(
-                        f'WebSocket connection closed by the server. Close code:{close_code}')
+                elif close_code == 4003:
+                    raise UnusedConnection
                 else:
                     raise WebSocketError(
                         f'WebSocket connection closed by the server. Close code:{close_code}')
@@ -182,10 +186,12 @@ class EventSubWebSocket:
                         self._ws_switch = None
                     else:
                         # Subscribing to events.
-                        task = self.__http.subscribe(user_id=self.__connection.broadcaster.id,
-                                                     session_id=_session['id'],
-                                                     subscriptions=self.subscriptions)
-                        self.__loop.create_task(task, name='Twitchify:Subscriptions')
+                        subscribe = self.__http.subscribe(
+                            user_id=self.__connection.broadcaster.id,
+                            session_id=_session['id'],
+                            subscriptions=self.subscriptions)
+
+                        self.__loop.create_task(subscribe, name='Twitchify:Subscriptions')
                     if _session['id'] != self.session_id:
                         if self.session_id is not None:
                             _logger.debug('A new WebSocket Session has been detected ID: %s',
@@ -220,5 +226,5 @@ class EventSubWebSocket:
                         )
                     # Subscription type and version is no longer supported.
                     elif _status == 'version_removed':
-                        raise SubscriptionError(subscription=_subscription['type'],
-                                                version=_subscription['version'])
+                        _logger.warning('Subscription type `%s` version `%s` is no longer supported.',
+                                        _subscription['type'], _subscription['version'])

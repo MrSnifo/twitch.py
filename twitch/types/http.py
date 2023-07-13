@@ -33,7 +33,7 @@ class Validate(TypedDict):
     expires_in: int
 
 
-class Refresh(TypedDict):
+class Token(TypedDict):
     access_token: str
     refresh_token: str
     scope: List[str]

@@ -89,12 +89,6 @@ class ConnectionState:
         except Exception as error:
             _logger.error('Failed to parse event: %s, %s', method, error)
 
-    async def parse_ready(self) -> None:
-        """
-        Parse ready event.
-        """
-        self._dispatch('ready')
-
     async def parse_channel_update(self, data: chl.Update) -> None:
         """
         Parse a channel update event.

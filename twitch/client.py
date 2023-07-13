@@ -30,12 +30,14 @@ from .utils import setup_logging
 from .http import HTTPClient
 from .channel import Channel
 from .stream import Stream
+from .auth import Auth
 
 import asyncio
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, List, Optional, Callable
+    from .types.scoopes import ScopesType
     from .broadcaster import Broadcaster
 
 import logging
@@ -54,8 +56,11 @@ class Client:
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None) -> None:
+        setup_logging()
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self._http = HTTPClient(dispatcher=self.dispatch, client=client_id, secret=client_secret)
+
+        self._http = HTTPClient(dispatcher=self.dispatch, client_id=client_id, secret_secret=client_secret)
+        self._auth = Auth(http=self._http, client_id=client_id)
         self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch,
                                                             http=self._http,
                                                             events=self._sub_events)
@@ -85,13 +90,38 @@ class Client:
         """
         return await self._connection.broadcaster.get_stream()
 
+    def auth(self, scopes: Optional[ScopesType] = None, verify: bool = False, port: int = 3000) -> Auth:
+        """
+        Authenticates with the Twitch API using OAuth 2.0 authorization code grant flow.
+
+        :param scopes: Optional. The list of scopes to request authorization for.
+        :param verify: Optional. Whether to force verification during the authorization process.
+        :param port: Optional. The port to use for the local server during the authorization process.
+        :return: An instance of the Auth class representing the authentication result.
+        """
+        if scopes:
+            self._auth.scopes = scopes
+        _logger.info('1. Create an app on the Twitch Developer Console:\n'
+                     '   - Go to https://dev.twitch.tv/console\n'
+                     '   - Sign in with your Twitch account\n'
+                     '   - Click on \'Applications\' in the top navigation\n'
+                     '   - Click on \'Register Your Application\'\n'
+                     '   - Fill in the required details for your app\n'
+                     '   - Set \'OAuth Redirect URLs\' to your redirect URI:\n'
+                     f'     -> Redirect URI: %s\n'
+                     '   - Save your changes\n', self._auth.uri)
+        _logger.info(f'2. Navigate to the following URL in your web browser:\n'
+                     f'   -> Authorization URL: %s\n', self._auth.url)
+        self._auth.get_code(verify=verify, port=port)
+        _logger.info('Successfully authorized with the app!\n')
+        return self._auth
+
     @property
     def _sub_events(self) -> List[str]:
         """Retrieve the names of the subscribed events."""
         return [attr.replace('on_', '', 1) for attr in dir(self) if attr.startswith('on_')]
 
-    async def _run_event(self, coro: Callable[..., Any], event_name: str, *args: Any,
-                         **kwargs: Any) -> None:
+    async def _run_event(self, coro: Callable[..., Any], event_name: str, *args: Any, **kwargs: Any) -> None:
         """
         Execute the specified event coroutine with the given arguments.
         """
@@ -108,11 +138,14 @@ class Client:
         """
         _logger.debug('Dispatching event %s', event)
         method = "on_" + event
-        coro = getattr(self, method)
-        if coro is not None and asyncio.iscoroutinefunction(coro):
-            wrapped = self._run_event(coro, method, *args, **kwargs)
-            # Schedule the task
-            self.loop.create_task(wrapped, name=f'Twitchify:{method}')
+        try:
+            coro = getattr(self, method)
+            if coro is not None and asyncio.iscoroutinefunction(coro):
+                wrapped = self._run_event(coro, method, *args, **kwargs)
+                # Schedule the task
+                self.loop.create_task(wrapped, name=f'Twitchify:{method}')
+        except AttributeError as error:
+            _logger.error('Event: %s Error:', event, error)
 
     @staticmethod
     async def on_error(event_name: str, error: str, /, *args: Any, **kwargs: Any) -> None:
@@ -128,17 +161,17 @@ class Client:
         """
         if not asyncio.iscoroutinefunction(coro):
             raise TypeError("The registered event must be a coroutine function")
-
         setattr(self, coro.__name__, coro)
 
     async def connect(self, access_token: str, refresh_token: Optional[str]) -> None:
+
         """
         Establishes a connection to Twitch services.
         """
-        # Setup logger
-        setup_logging()
+        # Setup loop
         if self.loop is None:
             self.loop = asyncio.get_running_loop()
+
         # Validating the access key and opening a new session.
         validation = await self._http.open_session(token=access_token,
                                                    refresh_token=refresh_token)
@@ -150,11 +183,12 @@ class Client:
                                      events=self._sub_events)
         # Creating tasks.
         tasks = [
-            self.loop.create_task(self._http.Refresher(expires_in=validation['expires_in']),
+            self.loop.create_task(self._http.refresher(expires_in=validation['expires_in']),
                                   name="Twitchify:Refresher"),
             self.loop.create_task(EventSub.connect(), name="Twitchify:EventSub")
         ]
         self.dispatch('connect')
+
         await asyncio.gather(*tasks)
 
     async def start(self, access_token: str, refresh_token: Optional[str] = None) -> None:
@@ -163,15 +197,13 @@ class Client:
         """
         try:
             await self.connect(access_token, refresh_token)
-        # Automatically close the HTTP session when an error occurs.
-        except asyncio.CancelledError:
-            if self._http is not None and self._http.is_open:
-                await self._http.close()
-            raise
         except Exception as error:
+
             if self._http is not None and self._http.is_open:
                 await self._http.close()
             raise error
+        finally:
+            pass
 
     def run(self, access_token: str, refresh_token: Optional[str] = None) -> None:
         """
@@ -179,4 +211,13 @@ class Client:
         """
         async def runner():
             await self.start(access_token, refresh_token)
-        asyncio.run(runner())
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = asyncio.get_event_loop()
+        if self.loop.is_running():
+            # Already running in an event loop, so directly run the main function.
+            asyncio.run(runner())
+        else:
+            # No running event loop, so run the event loop and then run the main function.
+            self.loop.run_until_complete(runner())

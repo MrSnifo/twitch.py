@@ -59,13 +59,16 @@ class Channel:
 
     :param channel: The channel data.
     """
-    __slots__ = ('title', 'description', 'delay', 'tags', 'category')
+    __slots__ = ('title', 'description', 'delay', 'tags', 'category', 'classification',
+                 'is_branded_content')
 
     def __init__(self, channel: ch.Channel):
         self.description: Optional[str] = None
         self.title: Optional[str] = channel['title']
         self.delay: int = channel['delay']
         self.tags: List[str] = channel['tags']
+        self.classification: List[str] = channel['content_classification_labels']
+        self.is_branded_content: bool = channel['is_branded_content']
         # Category.
         _c = Category(channel=channel) if channel['game_id'] != '' else None
         self.category: Optional[Category] = _c
