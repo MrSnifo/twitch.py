@@ -35,4 +35,3 @@ class Channel(Broadcaster):
     tags: List[str]
     content_classification_labels: List[str]
     is_branded_content: bool
-

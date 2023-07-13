@@ -108,10 +108,10 @@ class Client:
                      '   - Click on \'Register Your Application\'\n'
                      '   - Fill in the required details for your app\n'
                      '   - Set \'OAuth Redirect URLs\' to your redirect URI:\n'
-                     f'     -> Redirect URI: %s\n'
+                     '     -> Redirect URI: %s\n'
                      '   - Save your changes\n', self._auth.uri)
-        _logger.info(f'2. Navigate to the following URL in your web browser:\n'
-                     f'   -> Authorization URL: %s\n', self._auth.url)
+        _logger.info('2. Navigate to the following URL in your web browser:\n'
+                     '   -> Authorization URL: %s\n', self._auth.url)
         self._auth.get_code(verify=verify, port=port)
         _logger.info('Successfully authorized with the app!\n')
         return self._auth

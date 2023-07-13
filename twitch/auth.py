@@ -104,7 +104,7 @@ class Auth:
 
         :param request: The web request.
         """
-        _logger.debug(f'Received request to URL: %s', request.rel_url)
+        _logger.debug('Received request to URL: %s', request.rel_url)
         query_params = request.query
         if (query_params.get('code') or query_params.get('error')) \
                 and self._state == query_params.get('state'):
@@ -137,7 +137,7 @@ class Auth:
         site = web.TCPSite(runner, uri.hostname, uri.port)
         _logger.debug('Starting the authorization server.')
         await site.start()
-        _logger.debug(f'Server is now running on %s', self.uri)
+        _logger.debug('Server is now running on %s', self.uri)
         await self._shutdown_event.wait()
         if self._code is not None:
             response: Token = await self._http.auth_code(code=self._code, redirect_uri=self.uri)
