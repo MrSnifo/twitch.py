@@ -102,7 +102,7 @@ class EventSubWebSocket:
                 continue
             except (WebsocketClosed, SessionClosed, asyncio.TimeoutError) as error:
                 if isinstance(error, WebsocketUnused):
-                    raise 
+                    raise
                 if isinstance(error, SessionClosed):
                     _logger.error('Failed to establish a WebSocket connection due to a closed session. '
                                   'Retrying in %s seconds...', _retry * 5)
@@ -117,7 +117,7 @@ class EventSubWebSocket:
                     await asyncio.sleep(5 * _retry)
                 else:
                     raise
-                
+
     async def handle_messages(self) -> None:
         """
         Handle incoming WebSocket messages.

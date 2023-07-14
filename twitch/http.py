@@ -175,8 +175,7 @@ class HTTPClient:
                 autoclose=False
             )
             return websocket
-        else:
-            raise SessionClosed
+        raise SessionClosed
 
     async def _request(self, *, route: Route, **kwargs) -> dict:
         """

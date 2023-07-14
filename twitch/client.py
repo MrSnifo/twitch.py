@@ -35,16 +35,13 @@ from .auth import Auth
 import asyncio
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from typing import Any, List, Optional, Callable
     from .types.scoopes import ScopesType
     from .broadcaster import Broadcaster
 
 import logging
-
 _logger = logging.getLogger(__name__)
-
 __all__ = ('Client',)
 
 
