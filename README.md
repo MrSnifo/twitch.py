@@ -54,7 +54,6 @@ client.run(access_token="YOUR_ACCESS_TOKEN")
 from twitch import Client
 from twitch.user import Follower
 
-# Initialize the Twitch client with your client ID and client secret.
 client = Client(client_id="YOUR_CLIENT_ID", client_secret="YOUR_CLIENT_SECRET")
 
 # Generate the authorization URL for the Twitch client.
