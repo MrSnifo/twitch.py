@@ -24,7 +24,8 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from .errors import (TwitchServerError, BadRequest, Unauthorized, Forbidden, HTTPException, NotFound)
+from .errors import (TwitchServerError, BadRequest, Unauthorized, Forbidden, HTTPException, NotFound,
+                     SessionClosed)
 from aiohttp import ClientSession, helpers
 from . import __version__, __github__
 from asyncio import Lock, sleep, Task
@@ -33,7 +34,6 @@ from time import time
 from json import JSONDecodeError
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionInfo
     from typing import Optional, List, Callable, Any
@@ -44,7 +44,6 @@ if TYPE_CHECKING:
     from .types.channel import Channel
 
 import logging
-
 _logger = logging.getLogger(__name__)
 
 
@@ -168,13 +167,16 @@ class HTTPClient:
          The created websocket.
         """
 
-        websocket: ClientWebSocketResponse = await self.__session.ws_connect(
-            url=url,
-            headers={'User-Agent': self._user_agent},
-            timeout=30,
-            autoclose=False
-        )
-        return websocket
+        if self.is_open:
+            websocket: ClientWebSocketResponse = await self.__session.ws_connect(
+                url=url,
+                headers={'User-Agent': self._user_agent},
+                timeout=30,
+                autoclose=False
+            )
+            return websocket
+        else:
+            raise SessionClosed
 
     async def _request(self, *, route: Route, **kwargs) -> dict:
         """

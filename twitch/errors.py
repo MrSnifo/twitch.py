@@ -111,20 +111,16 @@ class WebsocketClosed(WebSocketError):
     pass
 
 
-class UnusedConnection(WebSocketError):
+class WebsocketUnused(WebSocketError):
     """
     Exception is raised when no subscription has been created within 10 seconds.
     """
-
-    def __init__(self):
-        super().__init__('No subscription was created within the specified time limit of 10 seconds.')
 
 
 class WsReconnect(WebSocketError):
     """
     Exception raised to indicate that WebSocket should reconnect to a new URL.
     """
-
     def __init__(self, url: str):
         super().__init__(url)
 

@@ -35,12 +35,14 @@ from .auth import Auth
 import asyncio
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from typing import Any, List, Optional, Callable
     from .types.scoopes import ScopesType
     from .broadcaster import Broadcaster
 
 import logging
+
 _logger = logging.getLogger(__name__)
 
 __all__ = ('Client',)
@@ -57,8 +59,7 @@ class Client:
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None) -> None:
         setup_logging()
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
-
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._http = HTTPClient(dispatcher=self.dispatch, client_id=client_id, secret_secret=client_secret)
         self._auth = Auth(http=self._http, client_id=client_id)
         self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch,
@@ -143,7 +144,7 @@ class Client:
             if coro is not None and asyncio.iscoroutinefunction(coro):
                 wrapped = self._run_event(coro, method, *args, **kwargs)
                 # Schedule the task
-                self.loop.create_task(wrapped, name=f'Twitchify:{method}')
+                self._loop.create_task(wrapped, name=f'Twitchify:{method}')
         except AttributeError as error:
             _logger.error('Event: %s Error: %s', event, error)
 
@@ -163,14 +164,14 @@ class Client:
             raise TypeError("The registered event must be a coroutine function")
         setattr(self, coro.__name__, coro)
 
-    async def connect(self, access_token: str, refresh_token: Optional[str]) -> None:
+    async def connect(self, *, access_token: str, refresh_token: Optional[str], reconnect: bool) -> None:
 
         """
         Establishes a connection to Twitch services.
         """
         # Setup loop
-        if self.loop is None:
-            self.loop = asyncio.get_running_loop()
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
 
         # Validating the access key and opening a new session.
         validation = await self._http.open_session(token=access_token,
@@ -178,25 +179,26 @@ class Client:
         # Retrieving the client.
         await self._connection.get_client()
         # Creating an EventSub websocket.
-        EventSub = EventSubWebSocket(http=self._http, cnx=self._connection,
-                                     loop=self.loop,
+        EventSub = EventSubWebSocket(http=self._http, connection=self._connection,
+                                     loop=self._loop,
                                      events=self._sub_events)
         # Creating tasks.
         tasks = [
-            self.loop.create_task(self._http.refresher(expires_in=validation['expires_in']),
-                                  name="Twitchify:Refresher"),
-            self.loop.create_task(EventSub.connect(), name="Twitchify:EventSub")
+            self._loop.create_task(self._http.refresher(expires_in=validation['expires_in']),
+                                   name="Twitchify:Refresher"),
+            self._loop.create_task(EventSub.connect(reconnect=reconnect), name="Twitchify:EventSub")
         ]
         self.dispatch('connect')
 
         await asyncio.gather(*tasks)
 
-    async def start(self, access_token: str, refresh_token: Optional[str] = None) -> None:
+    async def start(self, access_token: str, refresh_token: Optional[str] = None,
+                    reconnect: bool = True) -> None:
         """
         Starts the Twitch client by establishing a connection and initiating the event loop.
         """
         try:
-            await self.connect(access_token, refresh_token)
+            await self.connect(access_token=access_token, refresh_token=refresh_token, reconnect=reconnect)
         except Exception as error:
 
             if self._http is not None and self._http.is_open:
@@ -205,19 +207,21 @@ class Client:
         finally:
             pass
 
-    def run(self, access_token: str, refresh_token: Optional[str] = None) -> None:
+    def run(self, access_token: str, refresh_token: Optional[str] = None, reconnect: bool = True) -> None:
         """
         Runs the Twitch client without establishing a connection and initiating the event loop.
         """
+
         async def runner():
-            await self.start(access_token, refresh_token)
+            await self.start(access_token=access_token, refresh_token=refresh_token, reconnect=reconnect)
+
         try:
-            self.loop = asyncio.get_running_loop()
+            self._loop = asyncio.get_running_loop()
         except RuntimeError:
-            self.loop = asyncio.get_event_loop()
-        if self.loop.is_running():
+            self._loop = asyncio.get_event_loop()
+        if self._loop.is_running():
             # Already running in an event loop, so directly run the main function.
             asyncio.run(runner())
         else:
             # No running event loop, so run the event loop and then run the main function.
-            self.loop.run_until_complete(runner())
+            self._loop.run_until_complete(runner())
