@@ -255,7 +255,7 @@ class Client:
         """|coro|
         A shorthand coroutine for :meth:`connect`.
 
-        .. note: If `token` is not provided, the bot will initiate a web server for manual authentication,
+        .. note: If `token` is not provided, It will initiate a web server for manual authentication,
                  The `refresh_token` parameter will be automatically added by the authentication process,
                  and :meth:`on_auth` will be called.
         Parameters
