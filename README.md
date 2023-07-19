@@ -70,6 +70,7 @@ async def on_follow(user: Follower):
     """
     print("%s just followed you!" % user.display_name)
 
+@client.event
 async def on_auth(access_token: str, refresh_token: str):
     """
     Event handler triggered when the user authorized to the app.
