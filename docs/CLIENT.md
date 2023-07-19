@@ -5,9 +5,6 @@ Represents the Twitch Client.
 
 ### Attributes
 - `user`: Retrieves the [Broadcaster](#Broadcaster).
-- `def auth() -> Auth`: [Authorizes](#Auth) your app without the need for third-party apps.
-- `async def get_channel() -> Channel`: Retrieves the [Channel](#Channel) associated with the broadcaster.
-- `async def get_stream() -> Optional[Stream]`: Retrieves the [Stream](#Stream) of the broadcaster if currently live.
 - `async def start()`: Starts the client by establishing a connection and initiating the event loop.
 - `def run()`: Runs the Client without establishing an event loop.
 ---
@@ -27,8 +24,8 @@ Represents a Twitch Broadcaster.
 - `description: Optional[str]`: The description of the broadcaster (optional).
 
 ### Methods
-- `async def get_channel() -> Channel`: Retrieve the channel associated with the broadcaster.
-- `async def get_stream() -> Optional[Stream]`: Retrieve the stream of the broadcaster if currently live.
+- `async def get_channel() -> Channel`: Retrieve the [Channel](#Channel) associated with the broadcaster.
+- `async def get_stream() -> Optional[Stream]`: Retrieve the [Stream](#Stream) of the broadcaster if currently live.
 
 ---
 

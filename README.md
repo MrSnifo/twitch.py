@@ -56,18 +56,13 @@ from twitch.user import Follower
 
 client = Client(client_id="YOUR_CLIENT_ID", client_secret="YOUR_CLIENT_SECRET")
 
-# Generate the authorization URL for the Twitch client.
-# The user should visit the provided URL to authorize the app.
-auth = client.auth()
-
 @client.event
 async def on_ready():
     """
     Event handler triggered when the client is ready to start processing events.
     """
     print("Ready as %s" % client.user.display_name)
-
-
+    
 @client.event
 async def on_follow(user: Follower):
     """
@@ -75,8 +70,17 @@ async def on_follow(user: Follower):
     """
     print("%s just followed you!" % user.display_name)
 
-# You can store the access token and refresh token for future use, so you don't have to authorize again.
-client.run(access_token=auth.access_token, refresh_token=auth.refresh_token)
+async def on_auth(access_token: str, refresh_token: str):
+    """
+    Event handler triggered when the user authorized to the app.
+    """
+    # Store those for future use.
+    print('Received access token:', access_token)
+    print('Received refresh token:', refresh_token)
+    
+# Generate the authorization URL for the Twitch client.
+# The user should visit the provided URL to authorize the app.
+client.run()
 ```
 
 Please refer to the [Documentation](https://github.com/MrSniFo/Twitchify/blob/main/docs) or [Examples](https://github.com/MrSniFo/Twitchify/tree/main/examples) for more details.

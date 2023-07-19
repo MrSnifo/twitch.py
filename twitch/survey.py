@@ -28,7 +28,6 @@ from .utils import parse_rfc3339_timestamp
 from .user import Predictor
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from typing import Optional, List, Union, Literal
     from .types.eventsub import prediction as pd

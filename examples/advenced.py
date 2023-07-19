@@ -32,6 +32,14 @@ class Twitch(Client):
         # Store this access_token for future use.
         print('Received a new access token:', access_token)
 
+    async def on_auth(self, access_token: str, refresh_token: str):
+        """
+        Event handler triggered when the user authorized to the app.
+        """
+        # Store those for future use.
+        print('Received access token:', access_token)
+        print('Received refresh token:', refresh_token)
+
     async def on_cheer(self, cheer: Cheer):
         """
         Event handler triggered when a user sends a cheer to the channel.
@@ -45,12 +53,7 @@ class Twitch(Client):
 
         # Generate the authorization URL for the Twitch client.
         # The user should visit the provided URL to authorize the app.
-        auth = self.auth()
-
-        self.run(
-            access_token=auth.access_token,
-            refresh_token=auth.refresh_token
-        )
+        self.run()
 
 
 client = Twitch()

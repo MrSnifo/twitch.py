@@ -24,36 +24,39 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from .errors import (TwitchServerError, BadRequest, Unauthorized, Forbidden, HTTPException, NotFound,
-                     SessionClosed)
-from aiohttp import ClientSession, helpers
+from .errors import (TwitchServerError, BadRequest, Unauthorized, Forbidden,
+                     HTTPException, NotFound, SessionClosed)
 from . import __version__, __github__
+from .utils import format_seconds, generate_random_state
+
+from aiohttp import ClientSession, helpers, web
 from asyncio import Lock, sleep, Task
-from .utils import format_seconds
-from time import time
 from json import JSONDecodeError
+from time import time
+import urllib.parse
+import asyncio
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
+    from typing import Optional, List, Callable, Any, Type, Tuple
     from .types.eventsub.subscriptions import SubscriptionInfo
-    from typing import Optional, List, Callable, Any
     from aiohttp import ClientWebSocketResponse
-    from .types.http import Validate, Token
+    from .types.http import Validate, Token, ScopesType
+    from .types.channel import Channel
     from .types.stream import Stream
     from .types.user import UserType
-    from .types.channel import Channel
+    from types import TracebackType
+    from typing import Type
 
 import logging
 _logger = logging.getLogger(__name__)
+
+__all__ = ('HTTPClient', 'Server')
 
 
 class Route:
     """
     Initialize a Route object.
-
-    :param method: The HTTP method of the route.
-    :param path: The path of the route.
-    :param url: The complete URL of the route (overrides BASE_ROUTE + path). Defaults to None.
     """
     BASE_ROUTE: str = 'https://api.twitch.tv/helix/'
 
@@ -76,12 +79,9 @@ class Route:
 class HTTPClient:
     """Serves as an HTTP client responsible for sending HTTP requests to the Twitch API."""
     __slots__ = ('_dispatch', '_client_id', '_client_secret', '__session', '_session_lock',
-                 '_user_agent', '_refresh_token')
+                 '_user_agent', '_refresh_token', 'cli')
 
     def __init__(self, dispatcher: Callable[..., Any], client_id: str, secret_secret: Optional[str]) -> None:
-        """
-        Initialize the HTTPClient object.
-        """
         self._dispatch: Callable[[str, Any, Any], Task] = dispatcher
         self._client_id: str = client_id
         self._client_secret: str = secret_secret
@@ -89,21 +89,19 @@ class HTTPClient:
         self._session_lock: Lock = Lock()
         self._user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
         self._refresh_token: Optional[str] = None
+        # Twitch CLI.
+        self.cli: Optional[str] = None
 
     @property
     def is_open(self) -> bool:
         """
         Checks if the HTTP session is open.
-
-        :return: True if the session is open, False otherwise.
         """
         return self.__session is not None and not self.__session.closed
 
     async def _open(self, *, access_token: Optional[str] = None) -> None:
         """
         Opens an HTTP session.
-
-        :param access_token: The access token to use for authentication.
         """
         async with self._session_lock:
             if not self.is_open:
@@ -119,9 +117,6 @@ class HTTPClient:
     async def close(self) -> bool:
         """
         Closes the HTTP session.
-
-        :return:
-         True if the session is closed, False otherwise.
         """
         async with self._session_lock:
             if self.is_open:
@@ -133,14 +128,6 @@ class HTTPClient:
     async def open_session(self, token: str, refresh_token: Optional[str] = None) -> Validate:
         """
         Verifies the access token and opens a new session with it.
-
-        :param token:
-         The access token for authentication.
-
-        :param refresh_token:
-         (Optional) The refresh token for refreshing the access token.
-
-        :return: A validation response.
         """
         # Opening a session.
         if self.is_open:
@@ -162,9 +149,6 @@ class HTTPClient:
     async def ws_connect(self, *, url: str) -> ClientWebSocketResponse:
         """
         Creates a websocket using the existing session.
-
-        :return:
-         The created websocket.
         """
 
         if self.is_open:
@@ -180,15 +164,6 @@ class HTTPClient:
     async def _request(self, *, route: Route, **kwargs) -> dict:
         """
         HTTP request base.
-
-        :param route:
-         The route to send the request to.
-
-        :param kwargs:
-         Additional parameters to pass to the request.
-
-        :return:
-         The response from the API.
         """
         method = route.method
         url = route.url
@@ -247,15 +222,9 @@ class HTTPClient:
                     return refresh
         return None
 
-    async def auth_code(self, code: str, redirect_uri: str) -> Token:
+    async def auth_code(self, code: str, redirect_uri: str) -> Tuple[str, str]:
         """
         Authorization using the code to get the access token and refresh token.
-
-        :param code: The authorization code.
-        :param redirect_uri: The redirect URI.
-
-        :return:
-         User Token.
         """
         await self._open()
         params = {'client_id': self._client_id,
@@ -264,18 +233,12 @@ class HTTPClient:
                   'grant_type': 'authorization_code',
                   'redirect_uri': redirect_uri}
         route = Route(method='POST', url='https://id.twitch.tv/oauth2/token')
-        generate: Token = await self.request(route=route, params=params)
-        return generate
+        token: Token = await self.request(route=route, params=params)
+        return token['access_token'], token['refresh_token']
 
     async def _validate_token(self, *, generate: bool = False) -> Validate:
         """
         Validate access token.
-
-        :param generate:
-         Generate a new token if it's unauthorized. Defaults to False.
-
-        :return:
-         The validation response.
         """
         while True:
             try:
@@ -297,9 +260,6 @@ class HTTPClient:
     async def refresher(self, *, expires_in: int) -> None:
         """
         Refresher task to refresh the current access token.
-
-        :param expires_in:
-         The expiration time of the current access token.
         """
         start_time = time()
         # If the refresh_token or client_secret is missing,
@@ -308,8 +268,9 @@ class HTTPClient:
         else:
             # Set expires_in to a default value of 3540 seconds (59 minutes).
             expires_in = 3540 + 300
-            _logger.debug('Access token generation disabled due to'
-                          ' missing refresh token or client secret.')
+            _logger.warning('Access token will expire in %s,'
+                            ' and won\'t be generated without the refresh token or client secret.',
+                            format_seconds(expires_in - 300))
         while True:
             # Create a new access token approximately 5 minutes before the
             # current token's expiration.
@@ -335,15 +296,6 @@ class HTTPClient:
     async def request(self, *, route: Route, **kwargs) -> _request:
         """
         Sends an HTTP request to the specified route.
-
-        :param route:
-         The route to send the request to.
-
-        :param kwargs:
-         Additional parameters to pass to the request.
-
-        :return:
-         The response from the API.
         """
         while True:
             try:
@@ -364,15 +316,6 @@ class HTTPClient:
                         subscriptions: List[SubscriptionInfo]) -> None:
         """
         Subscribes to multiple events with the specified subscriptions.
-
-        :param user_id:
-         The user ID.
-
-        :param session_id:
-         The session ID for the subscriptions.
-
-        :param subscriptions:
-         A list of subscription events.
         """
         for subscription in subscriptions:
             try:
@@ -392,12 +335,15 @@ class HTTPClient:
                 }
                 _logger.debug('Subscribing to `%s` event version %s.',
                               subscription['name'], subscription['version'])
-                route = Route(method='POST', path='eventsub/subscriptions')
+                if self.cli:
+                    route = Route(method='POST', url=self.cli)
+                else:
+                    route = Route(method='POST', path='eventsub/subscriptions')
                 await self.request(route=route, json=data)
             except (Forbidden, BadRequest) as error:
                 if isinstance(error, Forbidden):
-                    _logger.error('Subscription type `%s` version `%s` is missing proper authorization.',
-                                  subscription['name'], subscription['version'])
+                    _logger.error('Subscription type `%s` version `%s` is missing scope `%s`.',
+                                  subscription['name'], subscription['version'], subscription['scope'])
                 if isinstance(error, BadRequest):
                     _logger.warning('Subscription type `%s` version `%s` unsupported.',
                                     subscription['name'], subscription['version'])
@@ -430,3 +376,105 @@ class HTTPClient:
         except NotFound:
             pass
         return None
+
+
+class Server:
+    """Serves as an HTTP server responsible for user authorization."""
+    __slots__ = ('host', 'port', 'app', 'event', '__state', '__code')
+
+    def __init__(self, port: int):
+        self.host: str = 'localhost'
+        self.port: int = port
+        self.app: web.Application = web.Application()
+        self.event: asyncio.Event = asyncio.Event()
+        self.app['runner']: Optional[web.AppRunner] = None
+        self.app.router.add_get('/', self.handle_request)
+        self.__state: Optional[str] = None
+        self.__code: Optional[str] = None
+
+    async def __aenter__(self) -> 'Server':
+        """
+        Method to be called when entering the async with block.
+        """
+        self.__state = generate_random_state()
+        await self.start_server()
+        return self
+
+    async def start_server(self):
+        """
+        This method sets up the server.
+        """
+        runner = web.AppRunner(self.app)
+        self.app['runner'] = runner
+        await runner.setup()
+        site = web.TCPSite(runner, self.host, self.port)
+        _logger.debug('Starting the authorization server.')
+        await site.start()
+        _logger.debug('Server is now running on %s', self.uri)
+
+    def url(self, client_id: str, scopes: ScopesType, force_verify: bool = True) -> str:
+        """Get the authorization URL."""
+        if 'user:read:email' not in scopes:
+            scopes.append('user:read:email')
+        # Removing duplicates.
+        scopes = list(dict.fromkeys(scopes))
+        encoded_scope = '+'.join(urllib.parse.quote(s) for s in scopes)
+        url = f'https://id.twitch.tv/oauth2/authorize?response_type=code&client_id={client_id}' \
+              f'&force_verify={force_verify}&redirect_uri={self.uri}&scope={encoded_scope}' \
+              f'&state={self.__state}'
+        return url
+
+    @property
+    def uri(self) -> str:
+        """Get the URI of the server."""
+        return f'http://{self.host}:{self.port}'
+
+    async def wait_for_code(self) -> str:
+        """
+        This method waits for the 'event' to be set
+        indicating that the authorization code has been received.
+        """
+        await self.event.wait()
+        return self.__code
+
+    async def handle_request(self, request: web.Request) -> web.Response:
+        """
+        This method handles the incoming request from Twitch during the authorization process.
+        """
+        _logger.debug('Received request to URL: %s', request.rel_url)
+        query_params = request.query
+        if (query_params.get('code') or query_params.get('error')) \
+                and self.__state == query_params.get('state'):
+            if query_params.get('code'):
+                self.__code = query_params.get('code')
+                self.event.set()
+                html = f'''
+                    <html>
+                        <body>
+                            <h1>Redirect Completed</h1>
+                            <p><a href="{__github__}">Twitchify</a> Version: {__version__}</p>
+                            <p>You can now close this page.</p>
+                        </body>
+                    </html>
+                    '''
+                return web.Response(
+                    text=html,
+                    content_type='text/html'
+                )
+            if query_params.get('error'):
+                error_description = query_params.get('error_description')
+                return web.Response(status=403, text=error_description.replace('+', ' '))
+        return web.Response(status=403, text='')
+
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                        exc_value: Optional[BaseException],
+                        traceback: Optional[TracebackType]) -> None:
+        """
+        Method to be called when exiting the async with block.
+
+        This method performs the cleanup tasks when exiting the async with block,
+        ensuring that the server is closed gracefully.
+        """
+        if self.app['runner'] is not None:
+            _logger.debug('Shutting down the authorization server.')
+            await self.app['runner'].cleanup()

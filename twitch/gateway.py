@@ -32,7 +32,6 @@ from json import JSONDecodeError
 import asyncio
 import aiohttp
 
-
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionInfo
@@ -58,7 +57,7 @@ class EventSubWebSocket:
     """
 
     __slots__ = ('__http', '__connection', '__loop', 'subscriptions', '_ready', '_keep_alive',
-                 '_ws', '_ws_switch', 'session_id', '__reconnect')
+                 '_ws', '_ws_switch', 'session_id', '__reconnect', 'cli')
 
     def __init__(self, *, http: HTTPClient, connection: ConnectionState, loop: AbstractEventLoop,
                  events: List[str]) -> None:
@@ -67,20 +66,21 @@ class EventSubWebSocket:
         self.__loop: AbstractEventLoop = loop
         self.subscriptions: List[SubscriptionInfo] = get_subscriptions(events=events)
         # Default subscription
-        self.subscriptions.append({'name': 'user.update', 'version': '1'})
+        self.subscriptions.append(get_subscriptions(events=['channel_update'])[0])
         # Default Session KeepAlive.
         self._keep_alive: int = 10
         self._ws: Optional[ClientWebSocketResponse] = None
         self._ws_switch: Optional[ClientWebSocketResponse] = None
         self.session_id: Optional[str] = None
+        # Twitch CLI.
+        self.cli: Optional[str] = None
 
     async def connect(self, reconnect: bool, url: str = 'wss://eventsub.wss.twitch.tv/ws') -> None:
         """
         Connect to the WebSocket.
-
-        :param reconnect: reconnect to the websocket if an error occurred
-        :param url: The URL to connect to. Default is the DEFAULT_URL.
         """
+        if self.cli:
+            url = self.cli
         _retry: int = 0
         while True:
             # Reset retry timer
@@ -110,7 +110,7 @@ class EventSubWebSocket:
                     _logger.error('WebSocket connection failed: %s Retrying in %s seconds...',
                                   str(error), _retry * 5)
                 await asyncio.sleep(5 * _retry)
-            except (WebSocketError, aiohttp.ClientConnectorError, TimeoutError) as error:
+            except (WebSocketError, aiohttp.ClientConnectorError) as error:
                 if reconnect:
                     _logger.error('WebSocket connection error: %s Retrying in %s seconds...',
                                   str(error), _retry * 5)
@@ -143,6 +143,7 @@ class EventSubWebSocket:
                     raise WebsocketClosed(message='Network error.')
                 elif close_code == 4007:
                     raise WebsocketClosed(message='Invalid reconnect.')
+                raise WebSocketError(message=f'Connection has been closed, Close code: {close_code}.')
             elif msg.type == aiohttp.WSMsgType.ERROR:
                 exception = self._ws.exception()
                 error_message = str(exception) if exception else 'Unknown error occurred.'

@@ -33,11 +33,10 @@ import json
 import time
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from .types.eventsub.subscriptions import SubscriptionInfo
     from typing import Optional, List, Callable, Awaitable, Any, Dict
-    from .types.scoopes import ScopesType
+    from .types.http import ScopesType
 try:
     # noinspection PyPackageRequirements
     import orjson
@@ -46,99 +45,105 @@ except ImportError:
 
 # -------------------------------------------
 #     Documentation Changelog last check
-#     Date: 2023‑07‑10
+#     Date: 2023‑07‑17
 # -------------------------------------------
 Subscriptions: Dict[str, SubscriptionInfo] = {
     'channel_update':
-        {'name': 'channel.update', 'version': '2'},
+        {'name': 'channel.update', 'version': '2', 'scope': None},
     'follow':
-        {'name': 'channel.follow', 'version': '2'},
+        {'name': 'channel.follow', 'version': '2', 'scope': 'moderator:read:followers'},
     'subscribe':
-        {'name': 'channel.subscribe', 'version': '1'},
+        {'name': 'channel.subscribe', 'version': '1', 'scope': 'channel:read:subscriptions'},
     'subscription_end':
-        {'name': 'channel.subscription.end', 'version': '1'},
+        {'name': 'channel.subscription.end', 'version': '1', 'scope': 'channel:read:subscriptions'},
     'subscription_gift':
-        {'name': 'channel.subscription.gift', 'version': '1'},
+        {'name': 'channel.subscription.gift', 'version': '1', 'scope': 'channel:read:subscriptions'},
     'subscription_message':
-        {'name': 'channel.subscription.message', 'version': '1'},
+        {'name': 'channel.subscription.message', 'version': '1', 'scope': 'channel:read:subscriptions'},
     'cheer':
-        {'name': 'channel.cheer', 'version': '1'},
+        {'name': 'channel.cheer', 'version': '1', 'scope': 'bits:read'},
     'raid':
-        {'name': 'channel.raid', 'version': '1'},
+        {'name': 'channel.raid', 'version': '1', 'scope': None},
     'ban':
-        {'name': 'channel.ban', 'version': '1'},
+        {'name': 'channel.ban', 'version': '1', 'scope': 'channel:moderate'},
     'unban':
-        {'name': 'channel.unban', 'version': '1'},
+        {'name': 'channel.unban', 'version': '1', 'scope': 'channel:moderate'},
     'moderator_add':
-        {'name': 'channel.moderator.add', 'version': '1'},
+        {'name': 'channel.moderator.add', 'version': '1', 'scope': 'moderation:read'},
     'moderator_remove':
-        {'name': 'channel.moderator.remove', 'version': '1'},
+        {'name': 'channel.moderator.remove', 'version': '1', 'scope': 'moderation:read'},
     'points_reward_add':
-        {'name': 'channel.channel_points_custom_reward.add', 'version': '1'},
+        {'name': 'channel.channel_points_custom_reward.add', 'version': '1',
+         'scope': 'channel:read:redemptions'},
     'points_reward_update':
-        {'name': 'channel.channel_points_custom_reward.update', 'version': '1'},
+        {'name': 'channel.channel_points_custom_reward.update', 'version': '1',
+         'scope': 'channel:read:redemptions'},
     'points_reward_remove':
-        {'name': 'channel.channel_points_custom_reward.remove', 'version': '1'},
+        {'name': 'channel.channel_points_custom_reward.remove', 'version': '1',
+         'scope': 'channel:read:redemptions'},
     'points_reward_redemption':
-        {'name': 'channel.channel_points_custom_reward_redemption.add', 'version': '1'},
+        {'name': 'channel.channel_points_custom_reward_redemption.add', 'version': '1',
+         'scope': 'channel:read:redemptions'},
     'points_reward_redemption_update':
-        {'name': 'channel.channel_points_custom_reward_redemption.update', 'version': '1'},
+        {'name': 'channel.channel_points_custom_reward_redemption.update', 'version': '1',
+         'scope': 'channel:read:redemptions'},
     'poll_begin':
-        {'name': 'channel.poll.begin', 'version': '1'},
+        {'name': 'channel.poll.begin', 'version': '1', 'scope': 'channel:read:polls'},
     'poll_progress':
-        {'name': 'channel.poll.progress', 'version': '1'},
+        {'name': 'channel.poll.progress', 'version': '1', 'scope': 'channel:read:polls'},
     'poll_end':
-        {'name': 'channel.poll.end', 'version': '1'},
+        {'name': 'channel.poll.end', 'version': '1', 'scope': 'channel:read:polls'},
     'prediction_begin':
-        {'name': 'channel.prediction.begin', 'version': '1'},
+        {'name': 'channel.prediction.begin', 'version': '1', 'scope': 'channel:read:predictions'},
     'prediction_progress':
-        {'name': 'channel.prediction.progress', 'version': '1'},
+        {'name': 'channel.prediction.progress', 'version': '1', 'scope': 'channel:read:predictions'},
     'prediction_lock':
-        {'name': 'channel.prediction.lock', 'version': '1'},
+        {'name': 'channel.prediction.lock', 'version': '1', 'scope': 'channel:read:predictions'},
     'prediction_end':
-        {'name': 'channel.prediction.end', 'version': '1'},
+        {'name': 'channel.prediction.end', 'version': '1', 'scope': 'channel:read:predictions'},
     'charity_campaign_donate':
-        {'name': 'channel.charity_campaign.donate', 'version': '1'},
+        {'name': 'channel.charity_campaign.donate', 'version': '1', 'scope': 'channel:read:charity'},
     'charity_campaign_start':
-        {'name': 'channel.charity_campaign.start', 'version': '1'},
+        {'name': 'channel.charity_campaign.start', 'version': '1', 'scope': 'channel:read:charity'},
     'charity_campaign_progress':
-        {'name': 'channel.charity_campaign.progress', 'version': '1'},
+        {'name': 'channel.charity_campaign.progress', 'version': '1', 'scope': 'channel:read:charity'},
     'charity_campaign_stop':
-        {'name': 'channel.charity_campaign.stop', 'version': '1'},
+        {'name': 'channel.charity_campaign.stop', 'version': '1', 'scope': 'channel:read:charity'},
     'goal_begin':
-        {'name': 'channel.goal.begin', 'version': '1'},
+        {'name': 'channel.goal.begin', 'version': '1', 'scope': 'channel:read:goals'},
     'goal_progress':
-        {'name': 'channel.goal.progress', 'version': '1'},
+        {'name': 'channel.goal.progress', 'version': '1', 'scope': 'channel:read:goals'},
     'goal_end':
-        {'name': 'channel.goal.end', 'version': '1'},
+        {'name': 'channel.goal.end', 'version': '1', 'scope': 'channel:read:goals'},
     'hype_train_begin':
-        {'name': 'channel.hype_train.begin', 'version': '1'},
+        {'name': 'channel.hype_train.begin', 'version': '1', 'scope': 'channel:read:hype_train'},
     'hype_train_progress':
-        {'name': 'channel.hype_train.progress', 'version': '1'},
+        {'name': 'channel.hype_train.progress', 'version': '1', 'scope': 'channel:read:hype_train'},
     'hype_train_end':
-        {'name': 'channel.hype_train.end', 'version': '1'},
+        {'name': 'channel.hype_train.end', 'version': '1', 'scope': 'channel:read:hype_train'},
     'shield_mode_begin':
-        {'name': 'channel.shield_mode.begin', 'version': '1'},
+        {'name': 'channel.shield_mode.begin', 'version': '1', 'scope': 'moderator:read:shield_mode'},
     'shield_mode_end':
-        {'name': 'channel.shield_mode.end', 'version': '1'},
+        {'name': 'channel.shield_mode.end', 'version': '1', 'scope': 'moderator:read:shield_mode'},
     'shoutout_create':
-        {'name': 'channel.shoutout.create', 'version': '1'},
+        {'name': 'channel.shoutout.create', 'version': '1', 'scope': 'moderator:read:shoutouts'},
     'shoutout_receive':
-        {'name': 'channel.shoutout.receive', 'version': '1'},
+        {'name': 'channel.shoutout.receive', 'version': '1', 'scope': 'moderator:read:shoutouts'},
     'stream_online':
-        {'name': 'stream.online', 'version': '1'},
+        {'name': 'stream.online', 'version': '1', 'scope': None},
     'stream_offline':
-        {'name': 'stream.offline', 'version': '1'},
+        {'name': 'stream.offline', 'version': '1', 'scope': None},
     'guest_star_session_begin':
-        {'name': 'channel.guest_star_session.begin', 'version': 'beta'},
+        {'name': 'channel.guest_star_session.begin', 'version': 'beta', 'scope': 'channel:read:guest_star'},
     'guest_star_session_end':
-        {'name': 'channel.guest_star_session.end', 'version': 'beta'},
+        {'name': 'channel.guest_star_session.end', 'version': 'beta', 'scope': 'channel:read:guest_star'},
     'guest_star_guest_update':
-        {'name': 'channel.guest_star_guest.update', 'version': 'beta'},
+        {'name': 'channel.guest_star_guest.update', 'version': 'beta', 'scope': 'channel:read:guest_star'},
     'guest_star_slot_update':
-        {'name': 'channel.guest_star_slot.update', 'version': 'beta'},
+        {'name': 'channel.guest_star_slot.update', 'version': 'beta', 'scope': 'channel:read:guest_star'},
     'guest_star_settings_update':
-        {'name': 'channel.guest_star_settings.update', 'version': 'beta'}}
+        {'name': 'channel.guest_star_settings.update', 'version': 'beta', 'scope': 'channel:read:guest_star'}
+}
 
 Scopes: ScopesType = [
     'analytics:read:extensions',
@@ -354,16 +359,16 @@ class ColoredFormatter(logging.Formatter):
         return super().format(record)
 
 
-def setup_logging() -> logging.getLogger:
+def setup_logging(name: Optional[str] = None, level: int = logging.INFO) -> logging.getLogger:
     """
     Setup logger
     """
     formatter = ColoredFormatter('%(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
-    logger = logging.getLogger()
+    logger = logging.getLogger(name=name)
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(level=level)
     return logger
 
 

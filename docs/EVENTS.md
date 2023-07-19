@@ -5,6 +5,7 @@ All events must be **coroutine Function**.
 - [on_connect()](#async-def-on_connect)
 - [on_ready()](#async-def-on_ready)
 - [on_refresh_token(access_token: str)](#async-def-on_refresh_tokenaccess_token-str)
+- [on_auth(access_token: str, refresh_token: str)](#async-def-on_authaccess_token-str-refresh_token-str)
 - [on_channel_update(channel: ChannelUpdate)](#async-def-on_channel_updatechannel-channelupdate)
 - [on_follow(user: Follower)](#async-def-on_followuser-follower)
 - [on_subscribe(subscribe: Subscription)](#async-def-on_subscribesubscribe-subscription)
@@ -62,8 +63,12 @@ This event is triggered when the client is ready to start processing events.
 #
 ### `async def on_refresh_token(access_token: str)`
 This event is triggered when the client receives a new access token.
-- `access_token` (str): The new access token.
-
+- `access_token` (str): The new user access token.
+#
+### `async def on_auth(access_token: str, refresh_token: str)`
+This Event handler triggered when the user authorized to the app.
+- `access_token` (str): The user access token.
+- `refresh_token` (str): The user refresh token.
 ---
 
 # Channel

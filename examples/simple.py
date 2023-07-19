@@ -1,7 +1,6 @@
 from twitch import Client
 from twitch.user import Follower
 
-# Create a Twitch client
 client = Client(
     client_id='CLIENT ID HERE',
     client_secret='CLIENT SECRET HERE'
@@ -44,6 +43,4 @@ async def on_follow(user: Follower):
     print(f'{user.display_name} just followed you!')
 
 
-client.run(
-    access_token='USER ACCESS TOKEN HERE',
-    refresh_token='USER REFRESH TOKEN HERE')
+client.run()
