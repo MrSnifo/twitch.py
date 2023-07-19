@@ -65,8 +65,10 @@ class EventSubWebSocket:
         self.__connection: ConnectionState = connection
         self.__loop: AbstractEventLoop = loop
         self.subscriptions: List[SubscriptionInfo] = get_subscriptions(events=events)
-        # Default subscription
-        self.subscriptions.append(get_subscriptions(events=['channel_update'])[0])
+        # Default subscription for user update.
+        default = get_subscriptions(events=['channel_update'])[0]
+        if default not in self.subscriptions:
+            self.subscriptions.append(default)
         # Default Session KeepAlive.
         self._keep_alive: int = 10
         self._ws: Optional[ClientWebSocketResponse] = None
