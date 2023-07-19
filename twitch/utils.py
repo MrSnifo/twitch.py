@@ -50,7 +50,7 @@ except ImportError:
 # -------------------------------------------
 Subscriptions: Dict[str, SubscriptionInfo] = {
     'channel_update':
-        {'name': 'channel.update', 'version': 'beta'},
+        {'name': 'channel.update', 'version': '2'},
     'follow':
         {'name': 'channel.follow', 'version': '2'},
     'subscribe':
