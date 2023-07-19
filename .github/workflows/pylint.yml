@@ -21,4 +21,4 @@ jobs:
           pip install aiohttp>=3.8.0
       - name: Analysing the code with pylint
         run: |
-          pylint --disable=pylint --disable=C0114,C0115,C0116,R0801,R0903,R0902,C0413,C0411,W0107,W0718,C0325,R1720,R0912,W0706,R0904,R0401,C0103 --max-line-length=109 $(git ls-files '*.py')
+          pylint --disable=C0103,C0114,C0115,C0116,C0325,C0411,C0413,R0401,R0801,R0902,R0903,R0904,R0912,R1720,W0107,W0706,W0718 --max-line-length=109 $(git ls-files '*.py')
