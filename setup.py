@@ -23,8 +23,12 @@ setup(
     author='Snifo',
     author_email='Snifo@mail.com',
     description='Twitchify combines EventSub & Helix API for real-time alerts & streamlined Python use.',
+
     url='https://github.com/mrsnifo/twitchify',
-    project_urls={'Issue tracker': 'https://github.com/mrsnifo/twitchify/issues'},
+    project_urls={
+            'Documentation': 'https://twitchify.readthedocs.io/en/latest',
+            'Issue tracker': 'https://github.com/mrsnifo/twitchify/issues',
+        },
     long_description=readme(),
     long_description_content_type='text/markdown',
     include_package_data=True,
