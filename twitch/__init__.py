@@ -1,7 +1,7 @@
 """
 Twitchify
 
-Twitchify combines EventSub & Helix API for real-time alerts & streamlined Python use.
+Real-time Twitch Event Handling and Helix API Integration in Python
 
 :copyright: (c) 2023-present Snifo
 :license: MIT, see LICENSE for more details.
