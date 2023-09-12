@@ -21,63 +21,52 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
-
 from __future__ import annotations
 
-from .errors import (WebSocketError, WebsocketClosed, NotFound, SessionClosed, Forbidden, WebsocketUnused,
-                     WsReconnect)
-from .utils import to_json, get_subscriptions
-
+from .errors import (WebSocketError, WebsocketClosed, NotFound, SessionClosed,
+                     Forbidden, WebsocketUnused, WsReconnect)
+from .utils import get_subscriptions
 from json import JSONDecodeError
 import asyncio
 import aiohttp
+import json
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .types.eventsub.subscriptions import SubscriptionInfo
-    from asyncio import AbstractEventLoop
-    from typing import Optional, List, Dict, Any
-    from aiohttp import ClientWebSocketResponse
+    from typing import Optional, List, Dict, Any, ClassVar
+    from .types import http as HttpTypes
     from .state import ConnectionState
-    from .http import HTTPClient
-    from .types.gateway import Session, Subscription
 
 import logging
 _logger = logging.getLogger(__name__)
 
 
+__all__ = ('EventSubWebSocket',)
+
+
 class EventSubWebSocket:
     """
     Represents EventSub WebSocket.
-
-    :param http: The HTTP client for making API requests.
-    :param connection: The ConnectionState object.
-    :param loop: The event loop.
-    :param events: A list of events.
     """
+    BASE: ClassVar[str] = 'wss://eventsub.wss.twitch.tv/ws'
 
-    __slots__ = ('__http', '__connection', '__loop', 'subscriptions', '_ready', '_keep_alive',
-                 '_ws', '_ws_switch', 'session_id', '__reconnect', 'cli')
+    __slots__ = ('__connection', '__loop', 'subscriptions', '_keep_alive',
+                 '_ws', '_ws_switch', 'session_id', 'cli')
 
-    def __init__(self, *, http: HTTPClient, connection: ConnectionState, loop: AbstractEventLoop,
+    def __init__(self, *, connection: ConnectionState, loop: asyncio.AbstractEventLoop,
                  events: List[str]) -> None:
-        self.__http: HTTPClient = http
         self.__connection: ConnectionState = connection
-        self.__loop: AbstractEventLoop = loop
-        self.subscriptions: List[SubscriptionInfo] = get_subscriptions(events=events)
-        # Default subscription for user update.
-        default = get_subscriptions(events=['channel_update'])[0]
-        if default not in self.subscriptions:
-            self.subscriptions.append(default)
+        self.__loop: asyncio.AbstractEventLoop = loop
+        self.subscriptions: List[HttpTypes.SubscriptionInfo] = get_subscriptions(events=events)
         # Default Session KeepAlive.
         self._keep_alive: int = 10
-        self._ws: Optional[ClientWebSocketResponse] = None
-        self._ws_switch: Optional[ClientWebSocketResponse] = None
+        self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
+        self._ws_switch: Optional[aiohttp.ClientWebSocketResponse] = None
         self.session_id: Optional[str] = None
         # Twitch CLI.
         self.cli: Optional[str] = None
 
-    async def connect(self, reconnect: bool, url: str = 'wss://eventsub.wss.twitch.tv/ws') -> None:
+    async def connect(self, reconnect: bool, url: str = BASE) -> None:
         """
         Connect to the WebSocket.
         """
@@ -91,7 +80,7 @@ class EventSubWebSocket:
             else:
                 _retry += 1
             try:
-                _ws = await self.__http.ws_connect(url=url)
+                _ws = await self.__connection.http.ws_connect(url=url)
                 if self._ws is not None and not self._ws.closed:
                     self._ws_switch = self._ws
                     self._ws = _ws
@@ -113,10 +102,13 @@ class EventSubWebSocket:
                                   str(error), _retry * 5)
                 await asyncio.sleep(5 * _retry)
             except (WebSocketError, aiohttp.ClientConnectorError) as error:
-                if reconnect:
-                    _logger.error('WebSocket connection error: %s Retrying in %s seconds...',
-                                  str(error), _retry * 5)
-                    await asyncio.sleep(5 * _retry)
+                if not self.__connection.http.is_force_closed:
+                    if reconnect:
+                        _logger.error('WebSocket connection error: %s Retrying in %s seconds...',
+                                      str(error), _retry * 5)
+                        await asyncio.sleep(5 * _retry)
+                    else:
+                        raise
                 else:
                     raise
 
@@ -154,11 +146,10 @@ class EventSubWebSocket:
     async def received_response(self, response: str) -> None:
         """
         Process the received response.
-
-        :param response: The response received from the WebSocket.
         """
         try:
-            response: dict = to_json(text=response)
+            await self.__connection.socket_raw_receive(response)
+            response: dict = json.loads(response)
         except (UnicodeDecodeError, JSONDecodeError) as error:
             _logger.error('Failed to parse response as JSON: %s. Response: %s', error, response)
             raise  # Re-raise the original error
@@ -167,48 +158,50 @@ class EventSubWebSocket:
                 metadata = response['metadata']
                 # ====> Session Keepalive <====
                 if metadata['message_type'] == 'session_keepalive':
-                    _logger.debug(
-                        'Received a keepalive message. The WebSocket connection is healthy.')
+                    _logger.debug('Received a keepalive message. The WebSocket connection is healthy.')
                 # ====> Session Welcome <====
                 elif metadata['message_type'] == 'session_welcome':
-                    _session: Session = response['payload']['session']
+                    _session: HttpTypes.Session = response['payload']['session']
                     _logger.debug('Connected to WebSocket. Session ID: %s', _session['id'])
+                    if self._ws_switch is None:
+                        await self.__connection.connect()
+
                     # Close the old connection until the new reconnect websocket receive a
                     # Welcome message.
                     if self._ws_switch is not None and not self._ws_switch.closed:
+                        await self.__connection.reconnect()
                         # Closing the old connection.
                         await self._ws_switch.close()
                         self._ws_switch = None
                     else:
                         # Subscribing to events.
-                        subscribe = self.__http.subscribe(
-                            user_id=self.__connection.broadcaster.id,
+                        subscribe = self.__connection.http.subscribe(
+                            user_id=self.__connection.user.id,
                             session_id=_session['id'],
                             subscriptions=self.subscriptions)
 
                         self.__loop.create_task(subscribe, name='Twitchify:Subscriptions')
                     if _session['id'] != self.session_id:
                         if self.session_id is not None:
-                            _logger.debug('A new WebSocket Session has been detected ID: %s',
-                                          _session['id'])
+                            _logger.debug('A new WebSocket Session has been detected ID: %s', _session['id'])
                         self.session_id = _session['id']
                     # KeepAlive timeout.
                     self._keep_alive = _session['keepalive_timeout_seconds']
 
                 # ====> Session Reconnect <====
                 elif metadata['message_type'] == 'session_reconnect':
-                    _session: Session = response['payload']['session']
+                    _session: HttpTypes.Session = response['payload']['session']
                     raise WsReconnect(url=_session['reconnect_url'])
 
                 # ====> Subscription notification <====
                 elif metadata['message_type'] == 'notification':
-                    _subscription: Subscription = response['payload']['subscription']
+                    _subscription: HttpTypes.Subscription = response['payload']['subscription']
                     _event: Dict[Any] = response['payload']['event']
                     await self.__connection.parse(method=_subscription['type'], data=_event)
 
                 # ====> Subscription Revocation <====
                 elif metadata['message_type'] == 'revocation':
-                    _subscription: Subscription = response['payload']['subscription']
+                    _subscription: HttpTypes.Subscription = response['payload']['subscription']
                     _status = _subscription['status']
                     # Revoked the authorization token that the subscription relied on.
                     if _status == 'authorization_revoked':
@@ -216,9 +209,7 @@ class EventSubWebSocket:
                                         f' `{_subscription["type"]}` subscription.')
                     # The user mentioned in the subscription no longer exists.
                     elif _status == 'user_removed':
-                        raise NotFound(
-                            'The user mentioned in the subscription no longer exists.'
-                        )
+                        raise NotFound('The user mentioned in the subscription no longer exists.')
                     # Subscription type and version is no longer supported.
                     elif _status == 'version_removed':
                         _logger.warning('Subscription type `%s` version `%s` is no longer supported.',

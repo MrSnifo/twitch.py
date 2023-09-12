@@ -22,17 +22,30 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-
-class UnknownError(Exception):
-    """
-    Exception raised cause of an unknown error.
-    """
-    pass
+__all__ = (
+    'TwitchException',
+    'TwitchServerError',
+    'HTTPException',
+    'SessionClosed',
+    'BadRequest',
+    'InvalidToken',
+    'Unauthorized',
+    'Forbidden',
+    'RateLimit',
+    'WebSocketError',
+    'WebsocketClosed',
+    'WebsocketUnused',
+    'WsReconnect',
+    'ClientException',
+    'NotFound',
+    'UserRoleConflict',
+    'Conflict'
+)
 
 
 class TwitchException(Exception):
     """
-    Base exception class for Twitchify.
+    Base exception for Twitchify.
     """
     pass
 
@@ -45,10 +58,6 @@ class TwitchServerError(TwitchException):
     def __init__(self):
         super().__init__('Twitch API server error.')
 
-
-# ------------------------------------------
-#              HTTP Exception
-# ------------------------------------------
 
 class HTTPException(TwitchException):
     """
@@ -73,6 +82,15 @@ class BadRequest(HTTPException):
         super().__init__(message)
 
 
+class InvalidToken(HTTPException):
+    """
+    Exception raised when the token is invalid.
+    """
+
+    def __init__(self, message: str = ''):
+        super().__init__(message)
+
+
 class Unauthorized(HTTPException):
     """
     Exception raised when the request is unauthorized.
@@ -88,6 +106,15 @@ class Forbidden(HTTPException):
     """
 
     def __init__(self, message: str = ''):
+        super().__init__(message)
+
+
+class RateLimit(HTTPException):
+    """
+    Exception raised when too many requests are exceeded.
+    """
+
+    def __init__(self, message: str = 'Rate limit exceeded.'):
         super().__init__(message)
 
 
@@ -121,13 +148,10 @@ class WsReconnect(WebSocketError):
     """
     Exception raised to indicate that WebSocket should reconnect to a new URL.
     """
+
     def __init__(self, url: str):
         super().__init__(url)
 
-
-# -------------------------------------------
-#              Client Exception
-# -------------------------------------------
 
 class ClientException(TwitchException):
     """
@@ -145,13 +169,19 @@ class NotFound(ClientException):
         super().__init__(message)
 
 
-# ------------------------------------------
-#               Auth Exception
-# ------------------------------------------
-class AuthorizationError(ClientException):
+class UserRoleConflict(ClientException):
     """
-    Exception raised when access is denied.
+    Exception raised when there is a conflict with the user's role
     """
 
-    def __init__(self, message: str):
+    def __init__(self, message: str = ''):
+        super().__init__(message)
+
+
+class Conflict(ClientException):
+    """
+    Exception raised when the request could not be processed because of conflict in the request.
+    """
+
+    def __init__(self, message: str = ''):
         super().__init__(message)

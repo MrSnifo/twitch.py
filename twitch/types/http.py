@@ -22,25 +22,58 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-from typing import TypedDict, List, Literal
+from typing import TypedDict, Optional, List, Literal, Dict
+
+
+class SubscriptionInfo(TypedDict):
+    name: str
+    scope: Optional[str]
+    version: str
 
 
 class Validate(TypedDict):
-    client_id: str
     login: str
     scopes: List[str]
     user_id: str
+    client_id: str
     expires_in: int
 
 
+# ---------------------
+#      + Gateway +
+# ---------------------
 class Token(TypedDict):
-    access_token: str
-    refresh_token: str
     scope: List[str]
     token_type: str
+    access_token: str
+    refresh_token: str
 
 
-ScopesType = List[Literal[
+class Session(TypedDict):
+    id: str
+    status: str
+    connected_at: str
+    reconnect_url: Optional[str]
+    keepalive_timeout_seconds: Optional[int]
+
+
+class Transport(TypedDict):
+    method: str
+    session_id: str
+
+
+class Subscription(TypedDict):
+    id: str
+    cost: str
+    type: str
+    status: str
+    version: str
+    condition: Dict[str, str]
+    transport: Transport
+    created_at: str
+
+
+Scopes = List[Literal[
     'analytics:read:extensions',
     'analytics:read:games',
     'bits:read',

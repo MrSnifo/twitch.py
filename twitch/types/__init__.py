@@ -1,7 +1,7 @@
 """
-Twitch.types
+twitch.types
 
-Typings for the Twitch API
+Typings for Twitch.
 
 :copyright: (c) 2023-present Snifo
 :license: MIT, see LICENSE for more details.

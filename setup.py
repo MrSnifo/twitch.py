@@ -1,5 +1,5 @@
-import re
 from setuptools import setup
+import re
 
 
 def version() -> str:
@@ -19,10 +19,10 @@ setup(
     name='twitchify',
     version=version(),
     python_requires='>=3.8.0',
-    packages=['twitch', 'twitch.types', 'twitch.types.eventsub'],
+    packages=['twitch', 'twitch.types'],
     author='Snifo',
     author_email='Snifo@mail.com',
-    description='A Python library for Twitch\'s WebSocket EventSub integration.',
+    description='Twitchify combines EventSub & Helix API for real-time alerts & streamlined Python use.',
     url='https://github.com/mrsnifo/twitchify',
     project_urls={'Issue tracker': 'https://github.com/mrsnifo/twitchify/issues'},
     long_description=readme(),

@@ -21,33 +21,41 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
-
 from __future__ import annotations
 
-from datetime import datetime
-from functools import wraps
+from datetime import datetime, timezone, timedelta
+from collections import Counter
 import logging
 import string
 import random
-import json
-import time
+import re
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .types.eventsub.subscriptions import SubscriptionInfo
-    from typing import Optional, List, Callable, Awaitable, Any, Dict
-    from .types.http import ScopesType
-try:
-    # noinspection PyPackageRequirements
-    import orjson
-except ImportError:
-    orjson = None
+    from typing import Optional, Any, List, Dict, Union
+    from .types.chat import Images as ImagesType
+    from .types import http
+
+__all__ = (
+    'Subscriptions',
+    'Scopes',
+    'Value',
+    'Images',
+    'generate_random_text',
+    'get_subscriptions',
+    'MISSING', 'EXCLUSIVE',
+    'convert_rfc3339',
+    'convert_to_pst_rfc3339',
+    'setup_logging',
+)
 
 # -------------------------------------------
 #     Documentation Changelog last check
-#     Date: 2023‑07‑17
+#     Date: 2023‑09‑06
 # -------------------------------------------
-Subscriptions: Dict[str, SubscriptionInfo] = {
+Subscriptions: Dict[str, http.SubscriptionInfo] = {
+    'user_update':
+        {'name': 'user.update', 'version': '1', 'scope': None},
     'channel_update':
         {'name': 'channel.update', 'version': '2', 'scope': None},
     'follow':
@@ -58,7 +66,7 @@ Subscriptions: Dict[str, SubscriptionInfo] = {
         {'name': 'channel.subscription.end', 'version': '1', 'scope': 'channel:read:subscriptions'},
     'subscription_gift':
         {'name': 'channel.subscription.gift', 'version': '1', 'scope': 'channel:read:subscriptions'},
-    'subscription_message':
+    'resubscribe':
         {'name': 'channel.subscription.message', 'version': '1', 'scope': 'channel:read:subscriptions'},
     'cheer':
         {'name': 'channel.cheer', 'version': '1', 'scope': 'bits:read'},
@@ -133,19 +141,9 @@ Subscriptions: Dict[str, SubscriptionInfo] = {
         {'name': 'stream.online', 'version': '1', 'scope': None},
     'stream_offline':
         {'name': 'stream.offline', 'version': '1', 'scope': None},
-    'guest_star_session_begin':
-        {'name': 'channel.guest_star_session.begin', 'version': 'beta', 'scope': 'channel:read:guest_star'},
-    'guest_star_session_end':
-        {'name': 'channel.guest_star_session.end', 'version': 'beta', 'scope': 'channel:read:guest_star'},
-    'guest_star_guest_update':
-        {'name': 'channel.guest_star_guest.update', 'version': 'beta', 'scope': 'channel:read:guest_star'},
-    'guest_star_slot_update':
-        {'name': 'channel.guest_star_slot.update', 'version': 'beta', 'scope': 'channel:read:guest_star'},
-    'guest_star_settings_update':
-        {'name': 'channel.guest_star_settings.update', 'version': 'beta', 'scope': 'channel:read:guest_star'}
 }
 
-Scopes: ScopesType = [
+Scopes: http.Scopes = [
     'analytics:read:extensions',
     'analytics:read:games',
     'bits:read',
@@ -209,179 +207,168 @@ Scopes: ScopesType = [
     'whispers:read']
 
 
-def get_subscriptions(*, events: List[str]) -> List[SubscriptionInfo]:
+class Value:
+    """
+    Represents a value with an associated boolean flag.
+
+    Attributes
+    ----------
+    is_enabled: bool
+        A boolean flag indicating whether the value is enabled or disabled.
+    value: int
+        The integer value associated with the flag.
+
+    Methods
+    -------
+    __bool__() -> bool
+        Returns the boolean value of the is_enabled attribute.
+    __int__() -> int
+        Returns the integer value of the value attribute.
+    """
+    __slots__ = ('is_enabled', 'value')
+
+    def __init__(self, data: Dict[str, Union[str, bool]]) -> None:
+        value1 = list(data.items())[0][-1]
+        value2 = list(data.items())[1][-1]
+        self.is_enabled: bool = value1 if isinstance(value1, bool) else value2
+        self.value: int = value2 if isinstance(value1, bool) else value1
+
+    def __bool__(self) -> bool:
+        return self.is_enabled
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __repr__(self):
+        return f'<Value is_enabled={self.is_enabled} value={self.value}>'
+
+
+class Images:
+    """
+    Represents image URLs in different resolutions.
+
+    Attributes
+    ----------
+    url_1x: str
+        URL for the 1x resolution image.
+    url_2x: str
+        URL for the 2x resolution image.
+    url_4x: str
+        URL for the 4x resolution image.
+    """
+    __slots__ = ('url_1x', 'url_2x', 'url_4x')
+
+    def __init__(self, data: ImagesType) -> None:
+        self.url_1x: str = data['url_1x']
+        self.url_2x: str = data['url_2x']
+        self.url_4x: str = data['url_4x']
+
+    def __repr__(self):
+        return f'<Images url_1x={self.url_1x} url_2x={self.url_2x} url_4x={self.url_4x}>'
+
+
+def generate_random_text(length=28) -> str:
+    """
+    Generate a random text of the specified length.
+    """
+    characters = string.ascii_letters + string.digits
+
+    # Generate a random text of the specified length
+    random_text = ''.join(random.choice(characters) for _ in range(length))
+    return random_text
+
+
+def get_subscriptions(events: List[str]) -> List[http.SubscriptionInfo]:
     """
     Retrieve a list of subscriptions that needed for subscribing to event.
     """
-    return [Subscriptions[sub] for sub in events if Subscriptions.get(sub) is not None]
+    counter = Counter(events)
+    default_subscriptions: List[str] = ['channel_update', 'user_update', 'stream_online', 'stream_offline']
+    counter.update(default_subscriptions)
+    return [Subscriptions[sub] for sub in list(counter.keys()) if Subscriptions.get(sub) is not None]
 
 
-def cache_decorator(expiry_seconds: int) -> Callable:
+class _Missing:
     """
-    Cache decorator that caches the result of a function with a specified expiry time.
-
-    :param expiry_seconds: The number of seconds to cache the result.
-    :returns: The decorated function.
+    Placeholder class to represent missing values.
     """
-    cache = {}
-    cache_expiry = {}
+    __slots__ = ()
 
-    def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
-        """
-        Decorator function that wraps the original function with caching logic.
+    def __eq__(self, other) -> bool:
+        return False
 
-        :param func: The original function to be decorated.
-        :returns: The wrapped function.
-        """
-
-        @wraps(func)
-        async def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-            """
-            Wrapper function that performs the caching logic before calling the original function.
-
-            :param self: The instance object.
-            :param args: The positional arguments passed to the function.
-            :param kwargs: The keyword arguments passed to the function.
-            :returns: The result of the original function.
-            """
-            cache_key = (func.__name__, self, *args, frozenset(kwargs.items()))
-            if cache_key in cache and time.time() < cache_expiry[cache_key]:
-                return cache[cache_key]
-            result = await func(self, *args, **kwargs)
-            cache[cache_key] = result
-            cache_expiry[cache_key] = time.time() + expiry_seconds
-            return result
-
-        return wrapper
-
-    return decorator
+    def __bool__(self) -> bool:
+        return False
 
 
-def to_json(text: str, encoding='utf-8') -> dict:
+# Constant representing a missing value. This can be used to indicate that a value is missing or unavailable.
+MISSING: Any = _Missing()
+
+# Constant representing a exclusive value.
+EXCLUSIVE: Any = _Missing
+
+
+def convert_rfc3339(timestamp: Optional[str]) -> Optional[datetime]:
     """
-    Converts the given text to a JSON object (dict) using the specified encoding.
-
-    :param text:
-     The text to convert to JSON.
-
-    :param encoding:
-     The encoding to use when decoding the text. Defaults to 'utf-8'.
-
-    :returns:
-     The JSON object (dict) representing the converted text.
-
-    :raises UnicodeDecodeError: If the text cannot be decoded using the specified encoding.
-    :raises json.JSONDecodeError: If the text is not valid JSON.
+    Converts an RFC3339 timestamp string to a datetime object.
     """
-    if orjson is not None:
-        encoded_text = text.encode(encoding)
-        return orjson.loads(encoded_text)  # type: ignore
-    return json.loads(text)
-
-
-def format_seconds(seconds: int) -> str:
-    """
-    Formats the given number of seconds into a string representation of days, hours, minutes,
-    and seconds.
-
-    :param seconds:
-     The number of seconds.
-
-    :returns:
-     The formatted time string.
-    """
-    days, remainder = divmod(seconds, 86400)
-    hours, remainder = divmod(remainder, 3600)
-    minutes, seconds = divmod(remainder, 60)
-
-    time_components = []
-    if days > 0:
-        time_components.append(f"{days} day(s)")
-    if hours > 0:
-        time_components.append(f"{hours} hour(s)")
-    if minutes > 0:
-        time_components.append(f"{minutes} minute(s)")
-    if seconds > 0:
-        time_components.append(f"{seconds} second(s)")
-
-    return " ".join(time_components)
-
-
-def empty_to_none(text: Optional[str]) -> Optional[str]:
-    """
-    Converts an empty string to None.
-
-    If the input string is empty or consists only of whitespace characters,
-    this function returns None. Otherwise, it returns the input string as is.
-
-    :param text:
-     The string to be checked.
-
-    :returns:
-     The input text if it is not empty, or None if it is empty.
-    """
-
-    if text and text != '':
-        return text
-    return None
-
-
-def parse_rfc3339_timestamp(timestamp: str) -> datetime:
-    """
-    Parses a string representing a timestamp in RFC3339 format and returns a datetime object.
-
-    :param timestamp:
-     The timestamp in RFC3339 format to be parsed.
-
-    :returns:
-     The parsed timestamp as a datetime object.
-    """
+    if timestamp is None:
+        return None
     return datetime.fromisoformat(timestamp)
+
+
+def convert_to_pst_rfc3339(date_time: datetime) -> str:
+    """
+    Convert a provided datetime to PST in RFC3339 format.
+    """
+    # Convert user-provided datetime to UTC
+    utc_datetime = date_time.replace(tzinfo=timezone.utc)
+
+    # Convert to PST by subtracting 8 hours
+    pst_datetime = utc_datetime - timedelta(hours=8)
+
+    # Format PST datetime in RFC3339 format
+    formatted_pst_rfc3339 = pst_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+    return formatted_pst_rfc3339
 
 
 class ColoredFormatter(logging.Formatter):
     """
-    Setup chat formatter for logger
+    Chat formatter for logger.
     """
     COLORS = {
-        'DEBUG': '\033[36m',  # Cyan
-        'INFO': '\033[37m',  # White
-        'WARNING': '\033[33m',  # Yellow
-        'ERROR': '\033[31m',  # Red
-        'CRITICAL': '\033[91m'  # Light Red
+        'DEBUG': '\033[37m',
+        'INFO': '\033[97m',
+        'WARNING': '\033[33m',
+        'ERROR': '\033[31m',
+        'CRITICAL': '\033[91m'
     }
     RESET_COLOR = '\033[0m'  # Reset to default color
 
+    def __init__(self, colors: bool):
+        super().__init__()
+        self.colors = colors
+
+    @staticmethod
+    def hide_values_between_single_quotes(data: str):
+        return re.sub(r"'(\w+_?(token|secret)\w*?)': '.*?'", lambda m: f"'{m.group(1)}': '//HIDDEN//'", data)
+
     def format(self, record):
         level_name = record.levelname
-        if level_name in self.COLORS:
-            record.level_name = f"{self.COLORS[level_name]}{level_name}{self.RESET_COLOR}"
-        return super().format(record)
+        formatted_record = self.hide_values_between_single_quotes(super().format(record))
+        if self.colors and level_name in self.COLORS:
+            return f"{self.COLORS[level_name]}{formatted_record}{self.RESET_COLOR}"
+        return formatted_record
 
 
-def setup_logging(name: Optional[str] = None, level: int = logging.INFO) -> logging.getLogger:
+def setup_logging(level: int = logging.DEBUG, colors: bool = False) -> logging.getLogger:
     """
-    Setup logger
+    Setup logger.
     """
-    formatter = ColoredFormatter('%(message)s')
     handler = logging.StreamHandler()
+    formatter = ColoredFormatter(colors=colors)
     handler.setFormatter(formatter)
-    logger = logging.getLogger(name=name)
+    logger = logging.getLogger()
     logger.addHandler(handler)
     logger.setLevel(level=level)
     return logger
-
-
-def generate_random_state(length=28) -> str:
-    """
-    Generate a random state string.
-
-    :param length: Length of the state string.
-
-    :returns: Randomly generated state string.
-    """
-    characters = string.ascii_letters + string.digits
-
-    # Generate a random state string of the specified length
-    state = ''.join(random.choice(characters) for _ in range(length))
-    return state

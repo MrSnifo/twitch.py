@@ -1,24 +1,14 @@
-from twitch import Client
-from twitch.user import Follower
+from twitch import Client, Follow
 
 client = Client(
     client_id='CLIENT ID HERE',
     client_secret='CLIENT SECRET HERE'
 )
 
-
-@client.event
-async def on_connect():
-    """
-    Event handler triggered when the client successfully connected to the eventsub websocket.
-    """
-    print('Connected to the Websocket!')
-
-
 @client.event
 async def on_ready():
     """
-    Event handler triggered when the client is ready to start processing events.
+    This called when the Twitch client is ready to receive events.
     """
     print(f"Ready as {client.user.display_name}")
 
@@ -26,21 +16,26 @@ async def on_ready():
 @client.event
 async def on_refresh_token(access_token: str):
     """
-    Event handler triggered when the client receives a new access token.
-
-    Note:
-        The refresh_token and client_secret are required for the on_refresh_token event to trigger.
+    This called when a new access token has been generated.
     """
     # Store this access_token for future use.
     print("Received a new access token:", access_token)
 
 
 @client.event
-async def on_follow(user: Follower):
+async def on_follow(user: Follow):
     """
-    Event handler triggered when a user follows the channel.
+    This called when a user follows the channel.
     """
-    print(f'{user.display_name} just followed you!')
+    print("%s just followed you!" % user.display_name)
 
+# For authorization, you can choose one of the following methods:
 
-client.run()
+# Method 1: Using access_token and refresh_token
+# Replace with your actual access token and refresh token
+access_token = "YOUR_ACCESS_TOKEN"
+refresh_token = "YOUR_REFRESH_TOKEN"
+client.run(access_token=access_token, refresh_token=refresh_token)
+
+# Method 2: You can simply use this method for mainly authentication (scopes are optional)
+# client.run(scopes=['moderator:read:followers'])

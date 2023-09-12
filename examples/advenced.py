@@ -1,60 +1,51 @@
-from twitch import Client
-from twitch.channel import Cheer
+from twitch import Client, Cheerer
 
 
-class Twitch(Client):
-    """
-    Twitch client class for handling events.
-    """
-
+class User(Client):
     def __init__(self):
         super().__init__(client_id='CLIENT ID HERE',
                          client_secret='CLIENT SECRET HERE')
 
     async def on_connect(self):
         """
-        Event handler triggered when the client successfully connects to the eventsub websocket.
+        This called when the Twitch client is ready to receive events.
         """
         print(f'Connected as {self.user.name} ID: {self.user.id}')
 
     async def on_ready(self):
         """
-        Event handler triggered when the client is ready to start processing events.
+        This called when the Twitch client is ready to receive events.
         """
         print(f'Ready as {self.user.display_name}')
 
-    async def on_refresh_token(self, access_token: str):
+    async def on_auth_url(self, url: str, uri: str):
         """
-        Event handler triggered when the client receives a new access token.
-
-        Note: The refresh_token and client_secret are required.
+        This called when the authentication URL is generated.
         """
-        # Store this access_token for future use.
-        print('Received a new access token:', access_token)
+        print('Auth url:', url)
+        print('Redirect url:', uri)
 
     async def on_auth(self, access_token: str, refresh_token: str):
         """
-        Event handler triggered when the user authorized to the app.
+        This called when the client is successfully authenticated.
         """
         # Store those for future use.
         print('Received access token:', access_token)
         print('Received refresh token:', refresh_token)
 
-    async def on_cheer(self, cheer: Cheer):
+    async def on_cheer(self, cheerer: Cheerer):
         """
-        Event handler triggered when a user sends a cheer to the channel.
+        This called when a user sends a cheer to the channel.
         """
-        print(f'{cheer.user.display_name} just cheered {cheer.bits} bits!')
+        print(f'{cheerer.display_name} just cheered {cheerer.bits} bits!')
 
-    def run_client(self):
+    async def on_refresh_token(self, access_token: str):
         """
-        You can import the access token here and use it.
+        This called when a new access token has been generated.
         """
-
-        # Generate the authorization URL for the Twitch client.
-        # The user should visit the provided URL to authorize the app.
-        self.run()
+        # Store this access_token for future use.
+        print('Received a new access token:', access_token)
 
 
-client = Twitch()
-client.run_client()
+client = User()
+client.run()

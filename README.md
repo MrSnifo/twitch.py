@@ -1,15 +1,26 @@
-# Twitchify
+# Twitchify 
 
-[![Discord](https://img.shields.io/discord/938786168592547880)](https://discord.gg/hH4ZkNg6cA)
 [![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
 [![Python versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
 
-Python library for Twitch's WebSocket **EventSub** integration.
+Twitchify is a Python library that unites Twitch's WebSocket EventSub and Helix API, seamlessly providing real-time event notifications and facilitating Helix API utilization.
+
+
 
 ## Features
-- Comprehensive support for WebSocket EventSub, providing real-time Twitch event notifications.
-- User-friendly interfaces for seamless integration.
+
+- Real-time Twitch event notifications through WebSocket EventSub.
+- Helix API support with user access token for broader Twitch functionality.
 - Built-in support for type hinting, ensuring code clarity and maintainability.
+
+## Why Twitchify?
+
+Twitchify is user-centric, perfect for self-use and hassle-free Twitch event setup.
+Unlike other libraries with multiple tokens,
+Twitchify prioritizes simplicity by using a single user access token.
+
+Developers can create Twitch apps effortlessly, as Twitchify seamlessly integrates WebSocket EventSub
+and Helix API. With real-time event notifications and built-in authentication, event handling is a breeze.
 
 ## Installation
 You can install Twitchify using pip:
@@ -24,23 +35,22 @@ python3 -m pip install -U twitchify
 
 ## Quick Example
 ```python
-from twitch import Client
-from twitch.user import Follower
+from twitch import Client, Follow
 
 client = Client(client_id="YOUR_CLIENT_ID")
 
 @client.event
 async def on_ready():
     """
-    Event handler triggered when the client is ready to start processing events.
+    This called when the Twitch client is ready to receive events.
     """
     print("Ready as %s" % client.user.display_name)
 
 
 @client.event
-async def on_follow(user: Follower):
+async def on_follow(user: Follow):
     """
-    Event handler triggered when a user follows the channel.
+    This called when a user follows the channel.
     """
     print("%s just followed you!" % user.display_name)
 
@@ -48,32 +58,31 @@ async def on_follow(user: Follower):
 client.run(access_token="YOUR_ACCESS_TOKEN")
 ```
 
-### With built-in Authorization
+### With built-in Authentication
 
 ```python
-from twitch import Client
-from twitch.user import Follower
+from twitch import Client, Follow
 
 client = Client(client_id="YOUR_CLIENT_ID", client_secret="YOUR_CLIENT_SECRET")
 
 @client.event
 async def on_ready():
     """
-    Event handler triggered when the client is ready to start processing events.
+    This called when the Twitch client is ready to receive events.
     """
     print("Ready as %s" % client.user.display_name)
     
 @client.event
-async def on_follow(user: Follower):
+async def on_follow(user: Follow):
     """
-    Event handler triggered when a user follows the channel.
+    This called when a user follows the channel.
     """
     print("%s just followed you!" % user.display_name)
 
 @client.event
 async def on_auth(access_token: str, refresh_token: str):
     """
-    Event handler triggered when the user authorized to the app.
+    This called when the client is successfully authenticated.
     """
     # Store those for future use.
     print('Received access token:', access_token)
@@ -81,7 +90,7 @@ async def on_auth(access_token: str, refresh_token: str):
     
 # Generate the authorization URL for the Twitch client.
 # The user should visit the provided URL to authorize the app.
-client.run()
+client.run(scopes=['moderator:read:followers'])
 ```
 
-Please refer to the [Documentation](https://github.com/MrSniFo/Twitchify/blob/main/docs) or [Examples](https://github.com/MrSniFo/Twitchify/tree/main/examples) for more details.
+Please refer to the [Documentation](https://twitchify.readthedocs.io/en/latest/) fore more details.

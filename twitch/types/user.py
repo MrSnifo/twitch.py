@@ -24,81 +24,88 @@ DEALINGS IN THE SOFTWARE.
 
 from typing import TypedDict, Literal, Optional
 
-Types = Literal['admin', 'global_mod', 'staff', '']
-Tier = Literal['affiliate', 'partner', '']
 
-
-class UserImages(TypedDict):
-    profile_image_url: str
-    offline_image_url: str
-
-
-class UserType(UserImages):
-    id: str
-    login: str
-    display_name: str
-    email: str
-    type: Types
-    broadcaster_type: Tier
-    description: str
-    created_at: str
-
-
+# ----------------------------
+#       + Broadcaster +
+# ----------------------------
 class Broadcaster(TypedDict):
     broadcaster_id: str
-    broadcaster_login: str
     broadcaster_name: str
-
-
-class ToSpecificBroadcaster(TypedDict):
-    to_broadcaster_user_id: str
-    to_broadcaster_user_login: str
-    to_broadcaster_user_name: str
-
-
-class FromSpecificBroadcaster(TypedDict):
-    from_broadcaster_user_id: str
-    from_broadcaster_user_login: str
-    from_broadcaster_user_name: str
+    broadcaster_login: str
 
 
 class SpecificBroadcaster(TypedDict):
     broadcaster_user_id: str
-    broadcaster_user_login: str
     broadcaster_user_name: str
+    broadcaster_user_login: str
 
 
-class SpecificAnonymous(TypedDict):
-    user_id: Optional[str]
-    user_login: Optional[str]
-    user_name: Optional[str]
+class ToSpecificBroadcaster(TypedDict):
+    to_broadcaster_user_id: str
+    to_broadcaster_user_name: str
+    to_broadcaster_user_login: str
 
 
-class SpecificUser(TypedDict):
-    user_id: str
-    user_login: str
-    user_name: str
+class FromSpecificBroadcaster(TypedDict):
+    from_broadcaster_user_id: str
+    from_broadcaster_user_name: str
+    from_broadcaster_user_login: str
+
+
+# ----------------------------
+#        + Moderator +
+# ----------------------------
+class Moderator(TypedDict):
+    moderator_id: str
+    moderator_name: str
+    moderator_login: str
 
 
 class SpecificModerator(TypedDict):
     moderator_user_id: str
-    moderator_user_login: str
     moderator_user_name: str
+    moderator_user_login: str
 
 
-class SpecificOpModerator(TypedDict):
-    moderator_user_id: Optional[str]
-    moderator_user_login: Optional[str]
-    moderator_user_name: Optional[str]
+# ---------------------------
+#          + User +
+# ---------------------------
+class SpecificUser(TypedDict):
+    user_id: str
+    user_name: str
+    user_login: str
 
 
-class SpecificGuest(TypedDict):
-    guest_user_id: str
-    guest_user_name: str
-    guest_user_login: str
+class SpecificDisplayUser(TypedDict):
+    user_id: str
+    display_name: str
+    user_login: str
 
 
-class SpecificOpGuest(TypedDict):
-    guest_user_id: Optional[str]
-    guest_user_name: Optional[str]
-    guest_user_login: Optional[str]
+class SpecificAnonymousUser(TypedDict):
+    user_id: Optional[str]
+    user_name: Optional[str]
+    user_login: Optional[str]
+
+
+UserType = Literal['admin', 'global_mod', 'staff', '']
+BroadcasterType = Literal['affiliate', 'partner', '']
+UserImages = TypedDict('UserImages', {'profile_image_url': str, 'offline_image_url': str})
+
+
+class User(UserImages):
+    id: str
+    type: UserType
+    email: str
+    login: str
+    created_at: str
+    description: str
+    display_name: str
+    broadcaster_type: BroadcasterType
+
+
+# -------------+ EventSub +-------------
+class UserUpdateEvent(SpecificUser, total=False):
+    email: str  # May sometimes be unavailable.
+    description: str
+    email_verified: bool

@@ -1,26 +1,29 @@
 """
-Twitchy
+Twitchify
 
-A Python library for Twitch's WebSocket EventSub integration.
+Twitchify combines EventSub & Helix API for real-time alerts & streamlined Python use.
 
 :copyright: (c) 2023-present Snifo
 :license: MIT, see LICENSE for more details.
 """
 
 __title__ = 'Twitchify'
-__version__ = '1.3.1'
+__version__ = '2.0.0'
 __license__ = 'MIT License'
 __author__ = 'Snifo'
 __email__ = 'Snifo@mail.com'
 __github__ = 'https://github.com/mrsnifo/twitchify'
 
-from .client import *
+
 from .user import *
-from .broadcaster import *
-from .channel import *
+from .chat import *
+from .poll import *
+from .utils import *
+from .client import *
+from .errors import *
 from .stream import *
-from .moderation import *
 from .reward import *
-from .goals import *
-from .survey import *
-from .guest import *
+from .alerts import *
+from .channel import *
+from .prediction import *
+from .broadcaster import *

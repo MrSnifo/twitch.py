@@ -1,0 +1,99 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+
+site_name: Twitchify
+# GitHub repository
+repo_url: https://github.com/MrSniFo/Twitchify
+repo_name: Twitchify
+copyright: Copyright (c) 2023-present Snifo
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/MrSniFo
+
+theme:
+  name: 'material'
+  icon:
+    logo: material/twitch
+  palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/eye
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/eye-outline
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.prune
+    - navigation.tracking
+    - content.code.copy
+    - toc.integrate
+    - navigation.path
+
+nav:
+  - Getting started:
+      - 'index.md'
+      - Setup: 'setup.md'
+      - Quickstart: 'quickstart.md'
+  - Reference:
+      - Client: 'reference/client.md'
+      - Event Reference: 'reference/event-reference.md'
+      - Models: 'reference/models.md'
+      - Data Classes: 'reference/data-classes.md'
+      - Exceptions: 'reference/exceptions.md'
+  - Examples: 'examples.md'
+
+markdown_extensions:
+  - def_list
+  - admonition
+  - attr_list
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - md_in_html
+  - pymdownx.superfences
+  - pymdownx.details
+  - codehilite
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      enable_inventory: true
+      handlers:
+        python:
+          import:
+            - https://docs.python.org/3/objects.inv
+          paths: [..]
+          options:
+            show_root_toc_entry: true
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
+            annotations_path: source
+            docstring_style: numpy
+            docstring_section_style: spacy
+            separate_signature: true
+            show_signature_annotations: true
+            signature_crossrefs: true
+            show_bases: true
+            filters:
+              - "!^_"
+          rendering:
+            show_source: false
