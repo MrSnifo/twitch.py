@@ -78,6 +78,8 @@ plugins:
       enable_inventory: true
       handlers:
         python:
+          rendering:
+            show_source: false
           import:
             - https://docs.python.org/3/objects.inv
           paths: [..]
@@ -95,5 +97,4 @@ plugins:
             show_bases: true
             filters:
               - "!^_"
-          rendering:
-            show_source: false
+              
