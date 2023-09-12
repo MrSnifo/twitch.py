@@ -22,7 +22,7 @@ setup(
     packages=['twitch', 'twitch.types'],
     author='Snifo',
     author_email='Snifo@mail.com',
-    description='Twitchify combines EventSub & Helix API for real-time alerts & streamlined Python use.',
+    description='Real-time Twitch Event Handling and Helix API Integration in Python',
 
     url='https://github.com/mrsnifo/twitchify',
     project_urls={
