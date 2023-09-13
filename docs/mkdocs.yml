@@ -78,12 +78,11 @@ plugins:
       enable_inventory: true
       handlers:
         python:
-          rendering:
-            show_source: false
           import:
             - https://docs.python.org/3/objects.inv
           paths: [..]
           options:
+            show_source: false
             show_root_toc_entry: true
             show_root_heading: true
             show_root_full_path: false
@@ -97,4 +96,3 @@ plugins:
             show_bases: true
             filters:
               - "!^_"
-              
