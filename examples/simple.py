@@ -27,7 +27,7 @@ async def on_follow(user: Follow):
     """
     This called when a user follows the channel.
     """
-    print("%s just followed you!" % user.display_name)
+    print(f"{user.display_name} just followed you!")
 
 # For authorization, you can choose one of the following methods:
 
