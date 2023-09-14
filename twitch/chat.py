@@ -626,15 +626,15 @@ class BlockedTerm:
 
     Attributes
     ----------
-    id : str
+    id: str
         The unique ID of the blocked term.
-    text : str
+    text: str
         The text of the blocked term.
-    created_at : datetime
+    created_at: datetime
         The date and time when the blocked term was created.
-    expires_at : Optional[datetime]
+    expires_at: Optional[datetime]
         The date and time when the blocked term expires (optional).
-    updated_at : datetime
+    updated_at: datetime
         The date and time when the blocked term was last updated.
 
     Methods

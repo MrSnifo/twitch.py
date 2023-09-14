@@ -51,7 +51,7 @@ __all__ = (
 
 # -------------------------------------------
 #     Documentation Changelog last check
-#     Date: 2023‑09‑06
+#     Date: 2023‑09‑12
 # -------------------------------------------
 Subscriptions: Dict[str, http.SubscriptionInfo] = {
     'user_update':
@@ -140,7 +140,7 @@ Subscriptions: Dict[str, http.SubscriptionInfo] = {
     'stream_online':
         {'name': 'stream.online', 'version': '1', 'scope': None},
     'stream_offline':
-        {'name': 'stream.offline', 'version': '1', 'scope': None},
+        {'name': 'stream.offline', 'version': '1', 'scope': None}
 }
 
 Scopes: http.Scopes = [
@@ -323,12 +323,12 @@ def convert_to_pst_rfc3339(date_time: datetime) -> str:
     """
     # Convert user-provided datetime to UTC
     utc_datetime = date_time.replace(tzinfo=timezone.utc)
-
     # Convert to PST by subtracting 8 hours
     pst_datetime = utc_datetime - timedelta(hours=8)
-
     # Format PST datetime in RFC3339 format
     formatted_pst_rfc3339 = pst_datetime.strftime('%Y-%m-%dT%H:%M:%S.%f%z')
+    # Manually adjust the UTC offset format
+    formatted_pst_rfc3339 = formatted_pst_rfc3339.replace("+0000", "Z")
     return formatted_pst_rfc3339
 
 

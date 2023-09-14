@@ -1158,6 +1158,7 @@ class HTTPClient:
     #        + Channel Clips +
     # -------------------------------
     async def fetch_clips(self, *, limit: int,
+                          is_featured: bool = MISSING,
                           broadcaster_id: str = EXCLUSIVE,
                           clip_ids: List[str] = EXCLUSIVE,
                           category_id: str = EXCLUSIVE,
@@ -1176,6 +1177,8 @@ class HTTPClient:
                 raise TypeError('The maximum number of clips you may specify is 100.')
         if category_id is not EXCLUSIVE:
             params['game_id'] = category_id
+        if is_featured is not MISSING:
+            params['is_featured'] = is_featured
         if started_at is not MISSING:
             params['started_at'] = convert_to_pst_rfc3339(started_at)
         if ended_at is not MISSING:

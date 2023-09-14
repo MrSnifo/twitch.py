@@ -242,6 +242,7 @@ class ConnectionState:
                           category: Union[str, Category] = EXCLUSIVE,
                           started_at: datetime = MISSING,
                           ended_at: datetime = MISSING,
+                          featured: bool = MISSING,
                           limit: int = 4) -> AsyncGenerator[List[Clip]]:
         if clips is not EXCLUSIVE:
             clips = [(clip.id if isinstance(clip, Clip) else clip) for clip in clips]
@@ -249,7 +250,7 @@ class ConnectionState:
             category = await self.get_category(category=category)
         async for clips in self.http.fetch_clips(limit=limit, category_id=category.id,
                                                  clip_ids=clips, started_at=started_at,
-                                                 ended_at=ended_at):
+                                                 ended_at=ended_at, is_featured=featured):
             yield [Clip(data=clip) for clip in clips]
 
     async def connect(self):

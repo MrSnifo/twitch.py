@@ -55,14 +55,14 @@ class Client:
     ----------
     client_id: str
         Your app's client ID.
-    client_secret: Optional[:class:`str`]
+    client_secret: Optional[str]
         Your app's client secret. Required when generating
         a new access token if the user access token is not provided.
         It ensures manual authorization or token generating.
-    cli: :class:`bool`
+    cli: bool
         Whether to run the client in development mode using the Twitch CLI.
         For testing purposes during development.
-    port: :class:`int`
+    port: int
         The port for the Twitch **CLI websocket** and **Eventsub subscription API**.
     """
 
@@ -583,6 +583,7 @@ class Client:
     def fetch_clips(self, clips: List[Clip],
                     started_at: datetime = MISSING,
                     ended_at: datetime = MISSING,
+                    featured: bool = False,
                     limit: int = 4) -> AsyncGenerator[List[Clip]]:
         ...
 
@@ -590,12 +591,14 @@ class Client:
     def fetch_clips(self, category: Union[str, Category],
                     started_at: datetime = MISSING,
                     ended_at: datetime = MISSING,
+                    featured: bool = False,
                     limit: int = 4) -> AsyncGenerator[List[Clip]]:
         ...
 
     async def fetch_clips(self, clips: List[Union[str, Clip]] = EXCLUSIVE,
                           category: Union[str, Category] = EXCLUSIVE,
                           started_at: datetime = MISSING, ended_at: datetime = MISSING,
+                          featured: bool = MISSING,
                           limit: int = 4) -> AsyncGenerator[List[Clip]]:
 
         """
@@ -615,6 +618,9 @@ class Client:
             The starting date and time for filtering clips.
         ended_at: datetime
             The ending date and time for filtering clips.
+        featured: bool
+            Include only featured clips if True, or non-featured clips if False.
+            If not specified, all clips are returned.
         limit: int
             The maximum number of clips to fetch per batch.
 
@@ -628,5 +634,6 @@ class Client:
                 category=category,
                 started_at=started_at,
                 ended_at=ended_at,
+                featured=featured,
                 limit=limit):
             yield clips

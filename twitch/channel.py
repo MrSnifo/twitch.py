@@ -322,7 +322,7 @@ class Channel:
         The language of the channel.
     broadcaster: BaseUser
         The broadcaster of the channel.
-    is_branded_content : bool
+    is_branded_content: bool
         Indicates whether the channel features branded content.
 
     Methods
@@ -836,7 +836,7 @@ class Charity:
         The URL of the charity's website.
     description: str
         A description of the charity.
-    target_amount : Optional[CharityAmount]
+    target_amount: Optional[CharityAmount]
         The target donation amount for the charity, if defined.
     current_amount: Optional[CharityAmount]
         The current donation amount received by the charity, if available.
@@ -1061,7 +1061,7 @@ class ActiveExtension(BaseExtension):
     ----------
     is_active: bool
         Indicates whether the extension is active.
-    slot_number : int
+    slot_number: int
         The slot number of the extension.
     x: Optional[str]
         The X-coordinate of the extension.
@@ -1284,16 +1284,6 @@ class UserChannel:
     __slots__ = ('_b_id', '_state', '__weakref__')
 
     def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
-        """
-        Initialize a UserChannel instance.
-
-        Parameters
-        ----------
-        state : ConnectionState
-            The state representing the connection to a service or platform.
-        broadcaster_id : str
-            The ID of the broadcaster (channel) being accessed.
-        """
         self._b_id: str = broadcaster_id
         self._state: ConnectionState = state
 
@@ -1482,6 +1472,7 @@ class UserChannel:
             yield [Video(data=video) for video in videos]
 
     async def fetch_clips(self, started_at: datetime = MISSING, ended_at: datetime = MISSING,
+                          featured: bool = MISSING,
                           limit: int = 4) -> AsyncGenerator[List[Clip]]:
         """
         Fetch a list of clips from the channel.
@@ -1493,11 +1484,14 @@ class UserChannel:
 
         Parameters
         ----------
-        started_at : datetime
+        started_at: datetime
             The start time for filtering clips.
-        ended_at : datetime
+        ended_at: datetime
             The end time for filtering clips.
-        limit : int
+        featured: bool
+            Include only featured clips if True, or non-featured clips if False.
+            If not specified, all clips are returned.
+        limit: int
             The maximum number of clips to fetch.
 
         Yields
@@ -1506,5 +1500,6 @@ class UserChannel:
             lists of Clip objects.
         """
         async for clips in self._state.http.fetch_clips(limit=limit, broadcaster_id=self._b_id,
-                                                        started_at=started_at, ended_at=ended_at):
+                                                        started_at=started_at, ended_at=ended_at,
+                                                        is_featured=featured):
             yield [Clip(data=clip) for clip in clips]
