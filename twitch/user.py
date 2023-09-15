@@ -188,7 +188,8 @@ class User(BaseUser):
     broadcaster_type: str
         The broadcaster type (e.g., 'normal', 'affiliate').
     """
-    __slots__ = ('type', 'email', 'images', 'created_at', 'description', 'broadcaster_type')
+    __slots__ = ('type', 'email', 'images', 'created_at', 'description', 'broadcaster_type',
+                 '__weakref__')
 
     if TYPE_CHECKING:
         type: str
