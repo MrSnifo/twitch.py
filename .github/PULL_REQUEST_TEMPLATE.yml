@@ -1,0 +1,24 @@
+name: "Pull Request"
+description: Create a new pull request.
+title: "[PR] - <title>"
+labels: []
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description"
+      description: Please provide a brief description of the changes in this pull request.
+      placeholder: Short and explicit description of your changes...
+    validations:
+      required: true
+  - type: textarea
+    id: python-code
+    attributes:
+      label: "Python Code Example"
+      description: Include a Python code example to illustrate your changes (optional).
+      placeholder: |
+        ```python
+        # Your Python code example here
+        ```
+    validations:
+      required: false
