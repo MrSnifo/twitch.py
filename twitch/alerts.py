@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from .utils import convert_rfc3339
 from .user import BaseUser
-from .chat import Message
+from .chat import SubscriptionMessage
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -127,7 +127,7 @@ class Subscriber(BaseUser):
         The duration of the subscription in months.
     is_resubscribe: bool
         Indicates whether this is a resubscription.
-    message: Optional[Message]
+    message: Optional[SubscriptionMessage]
         The subscriber's message (if available).
     streak_months: Optional[int]
         The number of consecutive months subscribed (if available).
@@ -140,7 +140,7 @@ class Subscriber(BaseUser):
     if TYPE_CHECKING:
         tier: str
         is_gift: bool
-        message: Optional[Message]
+        message: Optional[SubscriptionMessage]
         streak_months: Optional[int]
         is_resubscribe: bool
         duration_months: int
@@ -163,7 +163,7 @@ class Subscriber(BaseUser):
         tiers = {'1000': 1, '2000': 3, '3000': 6}
         _message = data.get('message')
         self.is_resubscribe: bool = _message is not None
-        self.message: Message = Message(data=_message) if _message else None
+        self.message: SubscriptionMessage = SubscriptionMessage(data=_message) if _message else None
         self.duration_months: int = data.get('duration_months', tiers[self.tier])
         self.cumulative_months: int = data.get('cumulative_months', 0)
         self.streak_months: Optional[int] = data.get('streak_months') if _message else 0

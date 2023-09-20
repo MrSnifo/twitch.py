@@ -23,7 +23,7 @@ DEALINGS IN THE SOFTWARE.
 """
 
 from .user import (SpecificBroadcaster, Moderator, SpecificModerator, SpecificDisplayUser)
-from typing import TypedDict, List, Literal, Optional
+from typing import TypedDict, List, Literal, Optional, Dict
 
 # Announcement colors.
 AnnouncementColors = Literal['blue', 'green', 'orange', 'purple', 'primary']
@@ -50,9 +50,27 @@ class MessageEmote(TypedDict):
     id: str
 
 
-class Message(TypedDict):
+class SubscriptionMessage(TypedDict):
     text: str
     emotes: List[MessageEmote]
+
+
+class Command(TypedDict):
+    command: str
+    channel: str
+    content: str
+
+
+class Source(TypedDict):
+    nick: str
+    host: str
+
+
+class ChatMessage(TypedDict):
+    command: Command
+    source: Source
+    tags: Optional[Dict[str, str]]
+    parameters: str
 
 
 # ------------------------------------

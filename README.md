@@ -3,24 +3,17 @@
 [![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
 [![Python versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
 
-Twitchify is a Python library that unites Twitch's WebSocket EventSub and Helix API, seamlessly providing real-time event notifications and facilitating Helix API utilization.
-
-
+Twitchify simplifies Twitch integration by combining WebSocket EventSub, Helix API, and IRC Chat for real-time event notifications and comprehensive Twitch functionality.
 
 ## Features
+- **Real-time Event Notifications:** Stay up-to-date with Twitch events through WebSocket EventSub, ensuring your application responds instantly.
+- **Helix API Support:** Access the full power of the Twitch Helix API with a single user access token.
+- **Bot Support:** Easily listen to channel messages.
+- **Type Hinting:** Twitchify includes built-in support for type hinting, promoting code clarity and maintainability.
 
-- Real-time Twitch event notifications through WebSocket EventSub.
-- Helix API support with user access token for broader Twitch functionality.
-- Built-in support for type hinting, ensuring code clarity and maintainability.
-
-## Why Twitchify?
-
-Twitchify is user-centric, perfect for self-use and hassle-free Twitch event setup.
-Unlike other libraries with multiple tokens,
-Twitchify prioritizes simplicity by using a single user access token.
-
-Developers can create Twitch apps effortlessly, as Twitchify seamlessly integrates WebSocket EventSub
-and Helix API. With real-time event notifications and built-in authentication, event handling is a breeze.
+## Why Choose Twitchify?
+Twitchify puts the user first, making it ideal for personal use and hassle-free Twitch event setup. Unlike other libraries that require multiple tokens, Twitchify simplifies the process with just one user access token.
+Developers can create Twitch applications effortlessly, thanks to Twitchify's seamless integration of WebSocket EventSub and Helix API. Real-time event notifications and built-in authentication make handling Twitch events a breeze.
 
 ## Installation
 You can install Twitchify using pip:

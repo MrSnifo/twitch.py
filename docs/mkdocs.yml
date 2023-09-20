@@ -47,6 +47,7 @@ nav:
       - Quickstart: 'quickstart.md'
   - Reference:
       - Client: 'reference/client.md'
+      - Bot: 'reference/bot.md'
       - Event Reference: 'reference/event-reference.md'
       - Models: 'reference/models.md'
       - Data Classes: 'reference/data-classes.md'

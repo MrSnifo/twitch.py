@@ -53,6 +53,8 @@ ___
 ## Chat
 ___
 ### ::: twitch.chat.Message
+___
+### ::: twitch.chat.SubscriptionMessage
 ---
 ### ::: twitch.chat.MessageEmote
 ---

@@ -1,5 +1,5 @@
 ---
-icon: material/twitch
+icon: material/account
 ---
 
 ::: twitch.client.Client

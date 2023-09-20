@@ -2,26 +2,20 @@
 hide:
   - toc
 ---
-# Twitchify 
-
-
-Twitchify is a Python library that unites Twitch's WebSocket EventSub and Helix API, seamlessly providing real-time event notifications and facilitating Helix API utilization.
-
-
+# Twitchify
+Twitchify is a Python library that simplifies Twitch integration by combining WebSocket EventSub,
+Helix API, and IRC Chat. It offers real-time event notifications and makes it easy to utilize the Helix
+API for a wide range of Twitch-related functionality.
 
 ## Features
+- **Real-time Event Notifications:** Stay up-to-date with Twitch events through WebSocket EventSub, ensuring your application responds instantly.
+- **Helix API Support:** Access the full power of the Twitch Helix API with a single user access token.
+- **Bot Support:** Easily listen to channel messages.
+- **Type Hinting:** Twitchify includes built-in support for type hinting, promoting code clarity and maintainability.
 
-- Real-time Twitch event notifications through WebSocket EventSub.
-- Helix API support with user access token for broader Twitch functionality.
-- Built-in support for type hinting, ensuring code clarity and maintainability.
+## Why Choose Twitchify?
+Twitchify puts the user first, making it ideal for personal use and hassle-free Twitch event setup. Unlike other libraries that require multiple tokens, Twitchify simplifies the process with just one user access token.
+Developers can create Twitch applications effortlessly, thanks to Twitchify's seamless integration of WebSocket EventSub and Helix API. Real-time event notifications and built-in authentication make handling Twitch events a breeze.
 
-## Why Twitchify?
-
-Twitchify is user-centric, perfect for self-use and hassle-free Twitch event setup. Unlike other libraries with multiple tokens, Twitchify prioritizes simplicity by using a single user access token.
-
-Developers can create Twitch apps effortlessly, as Twitchify seamlessly integrates WebSocket EventSub and Helix API. With real-time event notifications and built-in authentication, event handling is a breeze.
-
-
-## Need help?
-
-Just mention me, @Snifo, in the #general-python channel on Discord [Twitch API](https://discord.gg/8NXaEyV).
+## Need Help or Have Questions?
+If you need assistance or have questions, don't hesitate to reach out to @Snifo on the #general-python channel on the [Twitch API Discord server](https://discord.gg/8NXaEyV).

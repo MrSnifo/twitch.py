@@ -153,6 +153,9 @@ class WsReconnect(WebSocketError):
         super().__init__(url)
 
 
+# ---------------------------------------
+#             Client Exception
+# ---------------------------------------
 class ClientException(TwitchException):
     """
     Exception raised when a Client operation fails.

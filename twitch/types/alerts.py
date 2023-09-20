@@ -26,7 +26,7 @@ from .user import (Broadcaster, SpecificBroadcaster, FromSpecificBroadcaster, To
                    SpecificUser, SpecificAnonymousUser,
                    SpecificModerator)
 from typing import Literal, Optional, TypedDict, List
-from .chat import Message
+from .chat import SubscriptionMessage
 
 
 # ------------------------------
@@ -42,7 +42,7 @@ class SubscribeEvent(SpecificBroadcaster, SpecificUser):
 
 class ReSubscribeEvent(SpecificBroadcaster, SpecificUser):
     tier: SubscriptionTier
-    message: Message
+    message: SubscriptionMessage
     streak_months: Optional[int]
     duration_months: int
     cumulative_months: int

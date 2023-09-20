@@ -76,14 +76,12 @@ class ClientColor:
         self._id: str = user_id
         self.__state: state = state
 
-    async def get(self) -> str:
+    async def get(self) -> Optional[str]:
         """
-        Retrieves the chat color of the client.
+        Retrieve the chat color of the client.
 
-        Returns
-        -------
-        str
-            The chat color of the user.
+        Returns:
+            Optional[str]: The chat color of the user or None if it has not been set.
         """
         data = await self.__state.http.get_users_chat_color(user_ids=[self._id])
         return data[0]
@@ -192,10 +190,9 @@ class ClientUser(BaseUser):
         """
         Updates the user's description and returns the updated user information.
 
-
-        | Scopes                   | Description                                       |
-        | ------------------------ | ------------------------------------------------- |
-        | `user:edit`              | Update the client's description.                  |
+        | Scopes                   | Description                       |
+        | ------------------------ | --------------------------------- |
+        | `user:edit`              | Update the client's description.  |
 
         Parameters
         ----------
@@ -227,9 +224,9 @@ class ClientUser(BaseUser):
             Adding the parameters `location` or `reason` will not have any effect, as those details
             will not be displayed when retrieving the list of blocked users.
 
-        | Scopes                      | Description                 |
-        | --------------------------- | ----------------------------|
-        | `user:manage:blocked_users` | Block a user.               |
+        | Scopes                      | Description     |
+        | --------------------------- | ----------------|
+        | `user:manage:blocked_users` | Block a user.   |
 
         Parameters
         ----------
@@ -256,7 +253,6 @@ class ClientUser(BaseUser):
     async def unblock(self, user: Union[str, BaseUser]) -> None:
         """
         Unblocks a previously blocked user.
-
 
         | Scopes                      | Description       |
         | --------------------------- | ----------------- |
@@ -286,9 +282,9 @@ class ClientUser(BaseUser):
             Set the limit to -1 to retrieve all data, but be cautious of potential performance
             and rate limit impacts.
 
-        | Scopes                    | Description                                            |
-        | ------------------------- | -------------------------------------------------------|
-        | `user:read:blocked_users` | Retrieve all users blocked by the client.              |
+        | Scopes                    | Description                                |
+        | ------------------------- | -------------------------------------------|
+        | `user:read:blocked_users` | Retrieve all users blocked by the client.  |
 
         Parameters
         ----------
@@ -351,7 +347,6 @@ class ClientUser(BaseUser):
             * The account that's sending the message doesn't allow sending whispers.
         RateLimit
             * The sending user exceeded the number of whisper requests that they may make.
-
         """
         user = await self._state.get_user(user)
         await self._state.http.send_whisper(from_user_id=self.id, to_user_id=user.id, message=message)

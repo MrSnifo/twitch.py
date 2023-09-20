@@ -31,9 +31,10 @@ import random
 import re
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from typing import Optional, Any, List, Dict, Union
-    from .types.chat import Images as ImagesType
+    from .types.chat import (Images as ImagesType, ChatMessage as ChatMessageType)
     from .types import http
 
 __all__ = (
@@ -46,6 +47,7 @@ __all__ = (
     'MISSING', 'EXCLUSIVE',
     'convert_rfc3339',
     'convert_to_pst_rfc3339',
+    'ircv3_to_json',
     'setup_logging',
 )
 
@@ -359,6 +361,36 @@ class ColoredFormatter(logging.Formatter):
         if self.colors and level_name in self.COLORS:
             return f"{self.COLORS[level_name]}{formatted_record}{self.RESET_COLOR}"
         return formatted_record
+
+
+def ircv3_to_json(message: str) -> ChatMessageType:
+    """
+    Convert ircv3 to json.
+    """
+    parsed = {'command': {'command': '', 'channel': '', 'content': ''},
+              'source': {'nick': '', 'host': ''},
+              'tags': None,
+              'parameters': ''}
+    # Indicate that the message includes tags.
+    if message.startswith('@'):
+        _slice = message.split(' ', 1)
+        parsed['tags'] = {
+            k: v for k, v in (pair.split('=') for pair in _slice[0][12::].split(';') if '=' in pair)
+        }
+        message = _slice[-1]
+    _slice = message.split(' ', 2)
+    if '!' in _slice[0]:
+        _source = _slice[0][1::].split('!')
+        parsed['source'].update({'nick': _source[0], 'host': _source[1]})
+    else:
+        parsed['source'].update({'nick': '', 'host': _slice[0][1::]})
+    parsed['command'].update({'command': _slice[1]})
+    if _slice[-1].startswith('#'):
+        _command = _slice[-1].split(' ', 1)
+        parsed['command'].update({'channel': _command[0][1::],
+                                  'content': None if len(_command) == 1 else _command[-1][1::]})
+    parsed['parameters'] = _slice[-1]
+    return parsed
 
 
 def setup_logging(level: int = logging.DEBUG, colors: bool = False) -> logging.getLogger:

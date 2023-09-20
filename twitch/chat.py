@@ -27,13 +27,14 @@ from .utils import MISSING, Value, Images, convert_rfc3339
 from .user import BaseUser
 
 from typing import TYPE_CHECKING, overload
+
 if TYPE_CHECKING:
     from typing import AsyncGenerator, Optional, Literal, Union, List
     from .types import chat as ChatTypes
     from .state import ConnectionState
     from datetime import datetime
 
-__all__ = ('Message', 'MessageEmote',
+__all__ = ('Message', 'SubscriptionMessage', 'MessageEmote',
            'Emote',
            'Cheermote', 'CheermoteTier', 'CheermoteImagesType',
            'Badge', 'BadgeVersion',
@@ -93,9 +94,9 @@ class MessageEmote:
         self.begin: int = data['begin']
 
 
-class Message:
+class SubscriptionMessage:
     """
-    Represents a chat message with emotes.
+    Represents a subscription message with emotes.
 
     Attributes
     ----------
@@ -115,7 +116,7 @@ class Message:
         text: str
         emotes: List[MessageEmote]
 
-    def __init__(self, data: ChatTypes.Message) -> None:
+    def __init__(self, data: ChatTypes.SubscriptionMessage) -> None:
         self._form_data(data=data)
 
     def __repr__(self) -> str:
@@ -124,9 +125,111 @@ class Message:
     def __str__(self) -> str:
         return self.text
 
-    def _form_data(self, data: ChatTypes.Message) -> None:
+    def _form_data(self, data: ChatTypes.SubscriptionMessage) -> None:
         self.text: str = data['text']
         self.emotes: List[MessageEmote] = [MessageEmote(data=emote) for emote in data['emotes']]
+
+
+class Message:
+    """
+    Represents a chat message.
+
+    Attributes
+    ----------
+    id: str
+        The unique ID of the message.
+    is_vip:
+        Indicates if the author is a vip in the chat.
+    emotes: List[MessageEmote]
+        A list of emotes in the message.
+    badges: List[str]
+        A list of badges associated with the message.
+    author: BaseUser
+        The user who sent the message.
+    channel_id: BaseUser
+        The channel ID to which the message was sent.
+    channel_name: BaseUser
+        The channel name to which the message was sent.
+    content: str
+        The content of the message.
+    is_turbo: bool
+        Indicates if the message sender has a Turbo subscription.
+    author_color: str
+        The color associated with the author's username.
+    is_moderator: bool
+        Indicates if the author is a moderator in the chat.
+    is_emote_only: bool
+        Indicates if the message contains only emotes.
+    is_subscriber: bool
+        Indicates if the author is a subscriber of the channel.
+    is_broadcaster: bool
+        Indicates if the author is the broadcaster of the channel.
+
+    Methods
+    -------
+    __str__() -> str
+        Return the content of the message as a string.
+    __eq__(other: object) -> bool
+        Compare this message to another message for equality.
+    """
+    __slots__ = ('id', 'is_vip', 'author', 'badges', 'emotes', 'content', 'is_turbo', 'channel_id',
+                 'author_color', 'channel_name', 'is_moderator', 'is_emote_only', 'is_subscriber',
+                 'is_broadcaster', '_bot_name')
+
+    if TYPE_CHECKING:
+        id: str
+        is_vip: bool
+        author: BaseUser
+        badges: List[str]
+        emotes: List[MessageEmote]
+        content: str
+        is_turbo: bool
+        channel_id: str
+        author_color: str
+        channel_name: str
+        is_moderator: bool
+        is_emote_only: bool
+        is_subscriber: bool
+        is_broadcaster: bool
+
+    def __init__(self, data: ChatTypes.ChatMessage):
+        self._form_data(data=data)
+
+    def __repr__(self) -> str:
+        return f'<Message id={self.id} author={self.author!r} content={self.content}>'
+
+    def __str__(self) -> str:
+        return self.content.strip()
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Message):
+            return self.id == other.id
+        return False
+
+    def _form_data(self, data: ChatTypes.ChatMessage) -> None:
+        self.id = data['tags'].get('id')
+        self.content = data['command']['content']
+        self.author_color = data['tags']['color'] or None
+        self.is_turbo = bool(int(data['tags']['turbo']))
+        self.is_emote_only = bool(data['tags'].get('emote-only', False))
+        self.is_vip = bool(data['tags'].get('vip', False))
+        self.is_subscriber = bool(int(data['tags']['subscriber']))
+        self.is_broadcaster = data['tags']['user-id'] == data['tags']['room-id']
+        self.is_moderator = bool(int(data['tags']['mod'])) or self.is_broadcaster
+        self.badges = data['tags']['badges'].split(',')
+        self.channel_id = data['tags']['room-id']
+        self.channel_name = data['command']['channel']
+        self.author = BaseUser(data={'id': data['tags']['user-id'],
+                                     'login': data['source']['nick'],
+                                     'name': data['tags']['display-name']})
+        self.emotes = []
+        if data['tags']['emotes']:
+            self.emotes.extend([
+                MessageEmote({'id': emote_id, 'begin': int(begin), 'end': int(end)})
+                for emote_entry in data['tags']['emotes'].split('/')
+                for emote_id, positions in [emote_entry.split(':')]
+                for begin, end in [map(int, pos.split('-')) for pos in positions.split(',')]
+            ])
 
 
 # ------------------------------------
@@ -1335,7 +1438,7 @@ class ChannelChat:
         await self._state.http.delete_chat_messages(broadcaster_id=self._b_id,
                                                     moderator_id=self._m_id)
 
-    async def delete_message(self, message_id: str):
+    async def delete_message(self, message: Union[str, Message]):
         """
         Removes a single chat message from the broadcaster’s chat room.
 
@@ -1345,8 +1448,9 @@ class ChannelChat:
 
         Parameters
         ----------
-        message_id: str
-            The ID of the message to remove. The id tag in the PRIVMSG tag contains the message’s ID.
+        message: Union[str, Message]
+            Message object or The ID of the message to remove.
+
             Restrictions:
             * The message must have been created within the last 6 hours.
             * The message must not belong to the broadcaster.
@@ -1365,10 +1469,12 @@ class ChannelChat:
             * The ID in message_id was not found.
             * The specified message was created more than 6 hours ago.
         """
+        if isinstance(message, Message):
+            message = message.id
         await self._state.http.delete_chat_messages(broadcaster_id=self._b_id, moderator_id=self._m_id,
-                                                    message_id=message_id)
+                                                    message_id=message)
 
-    async def get_chat_colors(self, users: List[Union[str, BaseUser]]):
+    async def get_chat_colors(self, users: List[Union[str, BaseUser]]) -> List[Optional[str]]:
         """
         Get the chat colors of more than one user at once.
 
@@ -1379,8 +1485,8 @@ class ChannelChat:
 
         Returns
         -------
-        List[str]
-            A list of chat colors corresponding to the specified users.
+        List[Optional[str]]
+            A List of chat colors; None if not set.
         """
         users = [user.id for user in (await self._state.get_users(users))]
         data = await self._state.http.get_users_chat_color(user_ids=users)

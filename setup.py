@@ -19,7 +19,7 @@ setup(
     name='twitchify',
     version=version(),
     python_requires='>=3.8.0',
-    packages=['twitch', 'twitch.types'],
+    packages=['twitch', 'twitch.bot', 'twitch.types'],
     author='Snifo',
     author_email='Snifo@mail.com',
     description='Real-time Twitch Event Handling and Helix API Integration in Python',

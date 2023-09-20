@@ -47,8 +47,9 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 import logging
-
 _logger = logging.getLogger(__name__)
+# Disabling aiohttp warnings.
+logging.getLogger('aiohttp.access').disabled = True
 
 __all__ = ('HTTPClient', 'Server')
 
@@ -70,6 +71,9 @@ class Route:
         if endpoint is None and url is None:
             raise ValueError("Either 'endpoint' or 'url' must be provided.")
 
+    def __repr__(self) -> str:
+        return f'<Route method={self.method} url={self.url}>'
+
     @property
     def url(self) -> str:
         """
@@ -86,9 +90,6 @@ class Route:
             return url_with_query
 
         return base_url
-
-    def __repr__(self) -> str:
-        return f'<Route method={self.method} url={self.url}>'
 
 
 class HTTPClient:
@@ -120,6 +121,14 @@ class HTTPClient:
     @property
     def is_force_closed(self) -> bool:
         return self._force_close
+
+    def get_token(self) -> Optional[str]:
+        """
+        Get the current access token.
+        """
+        if self.__session.headers.get('Authorization'):
+            return self.__session.headers['Authorization'][7:]
+        return None
 
     async def _open(self, access_token: Optional[str] = None) -> None:
         """
@@ -232,9 +241,10 @@ class HTTPClient:
             except (TwitchServerError, OSError):
                 if 3 >= retry_count:
                     _logger.info('Request failed: %s. Retrying in %s seconds...',
-                                 Route, (5 * retry_count))
+                                 route, (5 * retry_count))
                     await asyncio.sleep(5 * retry_count)
-                raise
+                else:
+                    raise
 
     async def _generate_token(self) -> Optional[HttpTypes.Token]:
         """
@@ -1226,10 +1236,10 @@ class HTTPClient:
     # -----------------------------
     #      + User Chat Color +
     # -----------------------------
-    async def get_users_chat_color(self, *, user_ids: List[str]) -> List[str]:
+    async def get_users_chat_color(self, *, user_ids: List[str]) -> List[Optional[str]]:
         # Gets the color used for the user’s name in chat.
         colors = {
-            '': 'random',  # If the user hasn’t specified a color in their settings, the string is empty.
+            '': None,  # If the user hasn’t specified a color in their settings, the string is empty.
             '#0000FF': 'blue',
             '#8A2BE2': 'blue_violet',
             '#5F9EA0': 'cadet_blue',
@@ -1664,11 +1674,8 @@ class Server:
         await site.start()
         _logger.debug('Server is now running on %s', self.uri)
 
-    def url(self, client_id: str, scopes: HttpTypes.Scopes, force_verify: bool) -> str:
+    def url(self, client_id: str, scopes: List[str], force_verify: bool) -> str:
         """Get the authorization URL."""
-        # Default scope
-        if 'user:read:email' not in scopes:
-            scopes.append('user:read:email')
         # Removing duplicates.
         scopes = list(dict.fromkeys(scopes))
         encoded_scope = '+'.join(urllib.parse.quote(s) for s in scopes)

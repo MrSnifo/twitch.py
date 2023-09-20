@@ -36,10 +36,10 @@ import asyncio
 
 from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
-    from datetime import datetime
     from typing import Any, List, Optional, Callable, Type, Union, AsyncGenerator, Literal
     from .types import http as HttpTypes
     from types import TracebackType
+    from datetime import datetime
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -50,6 +50,14 @@ __all__ = ('Client',)
 class Client:
     """
     Represents a Twitch client.
+
+    ???+ info
+       This client is designed to listen to EventSub events by default,
+        but it can also use the Helix API if you need more functionality.
+
+        If you require additional features, consider using the `twitch.bot.Bot` class.
+
+        Default scopes: `user:read:email`
 
     Parameters
     ----------
@@ -72,6 +80,8 @@ class Client:
         self._client_secret: Optional[str] = client_secret
         self._port: int = port
         self._cli: Optional[bool] = cli
+        # Default scopes
+        self.scopes: List[str] = ['user:read:email']
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.http = HTTPClient(dispatcher=self.dispatch, client_id=client_id, secret_secret=client_secret)
         self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch, http=self.http)
@@ -173,6 +183,7 @@ class Client:
                 wrapped = self._run_event(coro, method, *args, **kwargs)
                 # Schedule the task
                 self.loop.create_task(wrapped, name=f'Twitchify:{method}')
+
         except AttributeError:
             pass
         except Exception as error:
@@ -314,13 +325,15 @@ class Client:
         if access_token is MISSING:
             if self._client_secret:
                 if scopes is MISSING:
-                    scopes = Scopes
+                    # Global scopes.
+                    self.scopes = Scopes
                 else:
                     if not all(scope in Scopes for scope in scopes):
                         raise TypeError('One or more scopes do not exist.')
+                    self.scopes.extend(scopes)
                 # Authenticates with the Twitch API using OAuth 2.0 authorization code grant flow.
                 async with Server(port=port) as server:
-                    auth_url = server.url(client_id=self._client_id, scopes=scopes,
+                    auth_url = server.url(client_id=self._client_id, scopes=self.scopes,
                                           force_verify=force_verify)
                     _logger.info('1. Create an app on the Twitch Developer Console:\n'
                                  '   - Go to https://dev.twitch.tv/console\n'
@@ -333,6 +346,9 @@ class Client:
                                  '   - Save your changes\n', server.uri)
                     _logger.info('2. Navigate to the following URL in your web browser:\n'
                                  '   -> Authorization URL: %s\n', auth_url)
+                    # Setup loop for dispatch.
+                    if self.loop is None:
+                        await self._setup_loop()
                     self.dispatch('auth_url', auth_url, server.uri)
                     code = await server.wait_for_code()
                     access_token, refresh_token = await self.http.auth_code(code=code,

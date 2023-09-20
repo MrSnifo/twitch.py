@@ -58,8 +58,8 @@ class ConnectionState:
     """
     Represents the state of the connection.
     """
-    __slots__ = ('http', '__dispatch', 'user', 'chat', 'channel', 'stream', 'is_streaming',
-                 '_users', '_channels', '_user_ids', '_category_ids')
+    __slots__ = ('http', '__dispatch', 'user', 'chat', 'channel', 'stream', 'is_streaming', '_users',
+                 '_channels', '_user_ids', '_category_ids', 'chat_rooms')
 
     def __init__(self, dispatcher: Callable[..., Any], http: HTTPClient) -> None:
         self.http: HTTPClient = http
@@ -75,6 +75,7 @@ class ConnectionState:
         self._channels: weakref.WeakValueDictionary[str, UserChannel] = weakref.WeakValueDictionary()
         self._user_ids: Dict[str, BaseUser] = {}
         self._category_ids: Dict[str, Category] = {}
+        self.chat_rooms: Dict[str, BaseUser] = {}
 
     async def setup_client(self):
         data = await self.http.get_users()
@@ -146,35 +147,6 @@ class ConnectionState:
                 return user
             raise NotFound('Unable to find the requested user.')
 
-    # ------------------------------------
-    #             + Category +
-    # ------------------------------------
-    async def get_categories(self, names: List[str], cache: bool = True) -> List[Category]:
-        names: List[str] = [name.lower() for name in names]
-        categories: List[Category] = []
-        try:
-            for name in names:
-                category = self._category_ids[name]
-                categories.append(category)
-        except KeyError:
-            categories.clear()
-            data = await self.http.get_categories(category_names=names)
-            for payload in data:
-                category = Category(data=payload)
-                categories.append(category)
-                if cache:
-                    self._category_ids[category.name.lower()] = category
-        return categories
-
-    async def get_category(self, category: Union[str, Category]) -> Category:
-        if isinstance(category, Category):
-            return category
-        data = await self.get_categories(names=[category])
-        if len(data) == 1:
-            self._category_ids[data[0].name] = data[0]
-            return data[0]
-        raise NotFound('Unable to find the requested category.')
-
     # -----------------------------------
     #             + Channel +
     # -----------------------------------
@@ -211,6 +183,35 @@ class ConnectionState:
         async for streams in self.http.fetch_streams(limit=limit, user_names=users, game_ids=categories,
                                                      stream_type=stream_type, languages=languages):
             yield [Stream(data=stream) for stream in streams]
+
+    # ------------------------------------
+    #             + Category +
+    # ------------------------------------
+    async def get_categories(self, names: List[str], cache: bool = True) -> List[Category]:
+        names: List[str] = [name.lower() for name in names]
+        categories: List[Category] = []
+        try:
+            for name in names:
+                category = self._category_ids[name]
+                categories.append(category)
+        except KeyError:
+            categories.clear()
+            data = await self.http.get_categories(category_names=names)
+            for payload in data:
+                category = Category(data=payload)
+                categories.append(category)
+                if cache:
+                    self._category_ids[category.name.lower()] = category
+        return categories
+
+    async def get_category(self, category: Union[str, Category]) -> Category:
+        if isinstance(category, Category):
+            return category
+        data = await self.get_categories(names=[category])
+        if len(data) == 1:
+            self._category_ids[data[0].name] = data[0]
+            return data[0]
+        raise NotFound('Unable to find the requested category.')
 
     # -----------------------------------
     #          + Video & Clips +

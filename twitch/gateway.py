@@ -72,13 +72,9 @@ class EventSubWebSocket:
         """
         if self.cli:
             url = self.cli
-        _retry: int = 0
+        _retry = 0
         while True:
-            # Reset retry timer
-            if _retry == 12:
-                _retry = 1
-            else:
-                _retry += 1
+            _retry = (_retry % 6) + 1  # Cycle from 1 to 6 and back to 1
             try:
                 _ws = await self.__connection.http.ws_connect(url=url)
                 if self._ws is not None and not self._ws.closed:

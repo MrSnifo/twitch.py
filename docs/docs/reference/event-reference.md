@@ -75,6 +75,14 @@ For more information on reconnecting
 [read this](https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message).
 
 
+### Bot
+___
+```py
+async def on_irc_connect():
+```
+This called when the Bot has successfully connected to the chat.
+
+
 ## Debug
 ___
 ```py
@@ -93,8 +101,17 @@ async def on_socket_raw_receive(msg):
 This called when the Twitch client receives a raw message from the WebSocket.
 Typically, before parsing events from the message.
 ##### Parameters:
-:   * `msg` ([str][str]) - Websocket receive message.
+:   * `msg` ([str][str]) - Websocket received message.
 
+### Bot
+___
+```py
+async def on_irc_socket_raw_receive(msg):
+```
+This called when the Twitch Bot receives a raw message from the IRC WebSocket.
+Typically, before parsing events from the message.
+##### Parameters:
+:   * `msg` ([str][str]) - IRC Websocket received message.
 
 
 ## User
@@ -193,6 +210,45 @@ async def on_raid(raider):
 This called when the channel receives a raid from another channel.
 ##### Parameters:
 :   * `raider` ([Raider][twitch.alerts.Raider]) - The user who raided the channel.
+
+### Bot
+___
+```py
+async def on_message(message):
+```
+This called when the bot receives a message from a channel chat room.
+##### Parameters:
+:   * `message` ([Message][twitch.chat.Message]) - The chat message.
+
+---
+
+```py
+async def on_whisper(author, message):
+```
+This called when the bot receives a whisper from another user.
+##### Parameters:
+:   * `author` ([BaseUser][twitch.user.BaseUser]) - The author of the  message.
+* `message` ([str][str]) - The message.
+##### Scopes:
+:   * `whispers:read`
+
+---
+
+```py
+async def join_chatroom(username):
+```
+This called when the bot joins a chat room.
+##### Parameters:
+:   * `username` ([str][str]) - The channel name.
+
+---
+
+```py
+async def leave_chatroom(username):
+```
+This called when the bot leaves a chat room.
+##### Parameters:
+:   * `username` ([str][str]) - The channel name.
 
 
 
