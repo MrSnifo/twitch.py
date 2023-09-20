@@ -52,8 +52,8 @@ class Client:
     Represents a Twitch client.
 
     ???+ info
-       This client is designed to listen to EventSub events by default,
-        but it can also use the Helix API if you need more functionality.
+        This client is designed to listen to EventSub events by default,
+        abut it can also use the Helix API if you need more functionality.
 
         If you require additional features, consider using the `twitch.bot.Bot` class.
 
