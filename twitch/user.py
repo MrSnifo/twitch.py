@@ -72,6 +72,7 @@ class BaseUser:
 
     def __str__(self) -> str:
         return self.name
+
     def __eq__(self, other: object) -> bool:
         if isinstance(other, BaseUser):
             return self.id == other.id
