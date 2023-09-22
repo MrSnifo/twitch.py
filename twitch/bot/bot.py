@@ -77,7 +77,7 @@ class Bot(twitch.Client):
         """
         Establishes a connection.
 
-        ???+ Warring
+        ???+ Warning
             You can either use access_token alone or use refresh_token along with the client_secret
             to ensure token generation. Using only access_token may result in it expiring at any time.
 
