@@ -64,19 +64,37 @@ class Bot(twitch.Client):
         The port for the Twitch **CLI websocket** and **Eventsub subscription API**.
     """
 
-    def __init__(self, client_id: str, client_secret: Optional[str] = None, cli: bool = False,
+    def __init__(self, client_id: str, client_secret: str = twitch.MISSING, cli: bool = False,
                  port: int = 8080) -> None:
         super().__init__(client_id, client_secret, cli, port)
-        # Default scopes
+        # Default scopes.
         self.scopes: List[str] = ['user:read:email', 'chat:read']
+        # Client.
         self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch, http=self.http)
 
-    async def connect(self, access_token: str, *, refresh_token: Optional[str], reconnect: bool) -> None:
+    async def connect(self, access_token: str = twitch.MISSING, *, refresh_token: str = twitch.MISSING,
+                      reconnect: bool = True) -> None:
+        """
+        Establishes a connection.
+
+        ???+ Warring
+            You can either use access_token alone or use refresh_token along with the client_secret
+            to ensure token generation. Using only access_token may result in it expiring at any time.
+
+        Parameters
+        ----------
+        access_token: str
+            The User access token. If not provided, a web server will be opened for manual authentication.
+        refresh_token: str
+            A token used for obtaining a new access tokens, but it requires the app's client secret.
+        reconnect: bool
+            Whether to attempt reconnecting on internet or Twitch failures.
+        """
         if self.loop is None:
             await self._setup_loop()
 
         # Validating the access key and opening a new session.
-        validation = await self.http.open_session(token=access_token, refresh_token=refresh_token)
+        validation = await self.http.open_session(access_token=access_token, refresh_token=refresh_token)
         # Retrieving the client.
         await self._connection.setup_client()
 

@@ -74,16 +74,21 @@ class Client:
         The port for the Twitch **CLI websocket** and **Eventsub subscription API**.
     """
 
-    def __init__(self, client_id: str, client_secret: Optional[str] = None,
-                 cli: bool = False, port: int = 8080) -> None:
+    def __init__(self, client_id: str, client_secret: str = MISSING, cli: bool = False,
+                 port: int = 8080) -> None:
+        # Tokens.
         self._client_id: str = client_id
-        self._client_secret: Optional[str] = client_secret
-        self._port: int = port
-        self._cli: Optional[bool] = cli
-        # Default scopes
+        self._client_secret: str = client_secret
+        # Default scopes.
         self.scopes: List[str] = ['user:read:email']
+        # CLI.
+        self._port: int = port
+        self._cli: bool = cli
+        # Client.
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self.http = HTTPClient(dispatcher=self.dispatch, client_id=client_id, secret_secret=client_secret)
+        self.http: HTTPClient = HTTPClient(
+            dispatcher=self.dispatch, client_id=client_id, secret_secret=client_secret
+        )
         self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch, http=self.http)
 
     async def __aenter__(self) -> Client:
@@ -235,15 +240,20 @@ class Client:
         _logger.exception('Ignoring error: %s from %s, args: %s kwargs: %s', error, event_name,
                           args, kwargs)
 
-    async def connect(self, access_token: str, *, refresh_token: Optional[str], reconnect: bool) -> None:
+    async def connect(self, access_token: str = MISSING, *, refresh_token: str = MISSING,
+                      reconnect: bool = True) -> None:
         """
-        Establishes a WebSocket connection.
+        Establishes a connection.
+
+        ???+ Warring
+            You can either use access_token alone or use refresh_token along with the client_secret
+            to ensure token generation. Using only access_token may result in it expiring at any time.
 
         Parameters
         ----------
-        access_token: Optional[str]
+        access_token: str
             The User access token. If not provided, a web server will be opened for manual authentication.
-        refresh_token: Optional[str]
+        refresh_token: str
             A token used for obtaining a new access tokens, but it requires the app's client secret.
         reconnect: bool
             Whether to attempt reconnecting on internet or Twitch failures.
@@ -253,7 +263,7 @@ class Client:
             await self._setup_loop()
 
         # Validating the access key and opening a new session.
-        validation = await self.http.open_session(token=access_token, refresh_token=refresh_token)
+        validation = await self.http.open_session(access_token=access_token, refresh_token=refresh_token)
         # Retrieving the client.
         await self._connection.setup_client()
 
@@ -286,16 +296,16 @@ class Client:
 
         Parameters
         ----------
-        access_token: Optional[str]
+        access_token: str
             The user's access token. If not provided, a web server will be opened for manual authorization.
-        refresh_token: Optional[str]
+        refresh_token: str
             A token used for obtaining new access tokens without requiring user re-authorization.
             Requires the app's client secret.
         port: int
             The port for the Twitch CLI websocket and the authorization web server.
         force_verify: bool
             Force the user to re-authorize if True.
-        scopes: Optional[List]
+        scopes: List
             A list of scopes required by the Twitch API to support your app's functionality.
 
             If `token` is `MISSING`, the user will manually authenticate using these scopes,
@@ -320,9 +330,8 @@ class Client:
         """
         # Setup logger.
         setup_logging(level=log_level)
-        if refresh_token is MISSING:
-            refresh_token = None
-        if access_token is MISSING:
+        refresh_token = None if refresh_token is MISSING else refresh_token
+        if access_token is MISSING and not (refresh_token and self._client_secret):
             if self._client_secret:
                 if scopes is MISSING:
                     # Global scopes.
@@ -370,16 +379,16 @@ class Client:
 
         Parameters
         ----------
-        access_token: Optional[str]
+        access_token: str
             The user's access token. If not provided, a web server will be opened for manual authorization.
-        refresh_token: Optional[str]
+        refresh_token: str
             A token used for obtaining new access tokens without requiring user re-authorization.
             Requires the app's client secret.
         port: int
             The port for the Twitch CLI websocket and the authorization web server.
         force_verify: bool
             Force the user to re-authorize if True.
-        scopes: Optional[List]
+        scopes: List
             A list of scopes required by the Twitch API to support your app's functionality.
 
             If `token` is `MISSING`, the user will manually authenticate using these scopes,

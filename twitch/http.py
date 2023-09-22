@@ -94,16 +94,16 @@ class Route:
 
 class HTTPClient:
     """Serves as an HTTP client responsible for sending HTTP requests to the Twitch API."""
-    __slots__ = ('_dispatch', '_client_id', '_client_secret', '__session', '_lock',
-                 '_user_agent', '_refresh_token', 'cli', '_videos', '_force_close')
+    __slots__ = ('_dispatch', '_client_id', '__client_secret', '__session', '_lock',
+                 '_user_agent', '__refresh_token', 'cli', '_videos', '_force_close')
 
-    def __init__(self, dispatcher: Callable[..., Any], client_id: str, secret_secret: Optional[str]) -> None:
+    def __init__(self, dispatcher: Callable[..., Any], client_id: str, secret_secret: str) -> None:
         self._dispatch: Callable[[str, Any, Any], asyncio.Task] = dispatcher
         self._client_id: str = client_id
-        self._client_secret: str = secret_secret
+        self.__client_secret: Optional[str] = None if secret_secret is MISSING else secret_secret
+        self.__refresh_token: Optional[str] = None
         self.__session: Optional[aiohttp.ClientSession] = None
         self._user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
-        self._refresh_token: Optional[str] = None
         # Twitch CLI.
         self.cli: Optional[str] = None
         self._lock: asyncio.Lock = asyncio.Lock()
@@ -157,25 +157,27 @@ class HTTPClient:
         self._force_close = True
         return not self.is_open
 
-    async def open_session(self, token: str, refresh_token: Optional[str] = None) -> HttpTypes.Validate:
+    async def open_session(self, access_token: str = MISSING,
+                           refresh_token: str = MISSING) -> HttpTypes.Validate:
         """
         Verifies the access token and opens a new session with it.
         """
-        # Opening a session.
+        self.__refresh_token = None if refresh_token is MISSING else refresh_token
+        if access_token is MISSING:
+            access_token = 'REGENERATE_ACCESS_TOKEN'
         if self.is_open:
-            self.__session.headers.update({'Authorization': f'Bearer {token}'})
+            self.__session.headers.update({'Authorization': f'Bearer {access_token}'})
         else:
-            await self._open(access_token=token)
-        self._refresh_token = refresh_token
+            await self._open(access_token=access_token)
         validation = await self._validate_token(generate=True)
         if validation['expires_in'] == 0:
             _logger.debug('An old has been application detected, exempt from expiration rules.'
                           ' Investigation needed.')
-            if self._refresh_token is not None:
+            if self.__refresh_token is not None:
                 _logger.warning(
                     'The refresh token has been removed due to the access token returning an'
                     ' expire time of 0.')
-                self._refresh_token = None
+                self.__refresh_token = None
         return validation
 
     async def ws_connect(self, *, url: str) -> ClientWebSocketResponse:
@@ -209,7 +211,7 @@ class HTTPClient:
                         return data
                     # Handle client-side error.
                     if 400 <= response.status < 500:
-                        message = data.get('message', 'Unknown reason.')
+                        message = data.get('message', 'Unknown reason.').rstrip('.') + '.'
                         if response.status == 400:
                             raise BadRequest(message=data.get('message', 'Unknown error.'))
                         if response.status == 401:
@@ -250,17 +252,17 @@ class HTTPClient:
         """
         Generate a new access token using client_secret and refresh_token.
         """
-        if self._refresh_token and self._client_secret:
+        if self.__refresh_token and self.__client_secret:
             # There is a chance that both the task and the normal
             # request can refresh the token at the same time.
             if not self._lock.locked():
                 async with self._lock:
                     # Encoding the client secret.
-                    encoded_secret = aiohttp.helpers.quote(self._refresh_token)
+                    encoded_secret = aiohttp.helpers.quote(self.__refresh_token)
                     params = {'grant_type': 'refresh_token',
                               'refresh_token': encoded_secret,
                               'client_id': self._client_id,
-                              'client_secret': self._client_secret}
+                              'client_secret': self.__client_secret}
                     _logger.debug('Generating a new access token to refresh the existing one.')
                     route = Route(method='POST', url='https://id.twitch.tv/oauth2/token')
                     refresh = await self.request(route=route, params=params)
@@ -278,7 +280,7 @@ class HTTPClient:
         """
         await self._open()
         params = {'client_id': self._client_id,
-                  'client_secret': self._client_secret,
+                  'client_secret': self.__client_secret,
                   'code': code,
                   'grant_type': 'authorization_code',
                   'redirect_uri': redirect_uri}
@@ -297,7 +299,7 @@ class HTTPClient:
                 _logger.debug('Access token successfully validated.')
                 return validation
             except InvalidToken as exc:
-                if generate and (self._client_secret and self._refresh_token):
+                if generate and (self.__client_secret and self.__refresh_token):
                     try:
                         # Generating a new access token.
                         await self._generate_token()
@@ -313,7 +315,7 @@ class HTTPClient:
         """
         start_time = time.time()
         # If the refresh_token or client_secret is missing,
-        if self._refresh_token and self._client_secret:
+        if self.__refresh_token and self.__client_secret:
             _logger.debug('A new token will be generated in %s seconds.', expires_in - 300)
         else:
             # Set expires_in to a default value of 3540 seconds (59 minutes).
@@ -339,7 +341,7 @@ class HTTPClient:
             except BadRequest:
                 _logger.warning('Invalid Refresh Token.'
                                 ' The automatic generation feature has been disabled.')
-                self._refresh_token = None
+                self.__refresh_token = None
 
     async def request(self, *, route: Route, **kwargs) -> _request:
         """
