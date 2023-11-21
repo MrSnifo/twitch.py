@@ -79,7 +79,7 @@ async def on_message(message: Message):
             await bot.replay(message, 'Pong!')
     print(f'{message.author}: {message}')
     
-@client.event
+@bot.event
 async def on_auth(access_token: str, refresh_token: str):
     """
     This called when the client is successfully authenticated.
