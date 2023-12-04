@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from typing import Optional, List, ClassVar
     from .state import ConnectionState
 
+
 import logging
 _logger = logging.getLogger(__name__)
 
@@ -44,13 +45,17 @@ class IRCWebSocket:
     """
     BASE: ClassVar[str] = 'wss://irc-ws.chat.twitch.tv:443'
 
-    __slots__ = ('__connection', 'username', '_connect', '_ws')
+    __slots__ = ('_ws', '__connection', 'message_queue', '_connect', 'semaphore',
+                 'username', 'lock')
 
     def __init__(self, connection: ConnectionState, username: str):
-        self.__connection: ConnectionState = connection
-        self.username: str = username
-        self._connect: asyncio.Event = asyncio.Event()
         self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
+        self.__connection: ConnectionState = connection
+        self.message_queue = asyncio.Queue(maxsize=10)
+        self._connect: asyncio.Event = asyncio.Event()
+        self.semaphore = asyncio.Semaphore(10)
+        self.username: str = username
+        self.lock = asyncio.Lock()
 
     async def wait_for_connect(self) -> None:
         """
@@ -117,7 +122,6 @@ class IRCWebSocket:
         """
         Join a specific user's chat room.
         """
-        # Joins a user chat room.
         _logger.debug('Bot is joining %s chat room.', username)
         await self._ws.send_str(f'JOIN #{username}')
 
@@ -132,13 +136,28 @@ class IRCWebSocket:
         """
         Send a message to a specific chat room.
         """
-        await self._ws.send_str(f'PRIVMSG #{username} :{text}')
+        async with self.semaphore:
+            await self.message_queue.put(f'PRIVMSG #{username} :{text}')
+            await self._send_next()
+
+    async def _send_next(self):
+        """
+        A safe way to send message.
+        """
+        async with self.lock:
+            while not self.message_queue.empty():
+                message = await self.message_queue.get()
+                await self._ws.send_str(message)
+                # Ratelimit lock, temporary solution.
+                await asyncio.sleep(1.45)
 
     async def replay(self, message_id: str, username: str, text: str) -> None:
         """
-        Reply to a specific message.
+        Reply to a sp specific message.
         """
-        await self._ws.send_str(f'@reply-parent-msg-id={message_id} PRIVMSG #{username} :{text}')
+        async with self.semaphore:
+            await self.message_queue.put(f'@reply-parent-msg-id={message_id} PRIVMSG #{username} :{text}')
+            await self._send_next()
 
     async def handle_messages(self) -> None:
         """
@@ -193,6 +212,9 @@ class IRCWebSocket:
                             raise twitch.Unauthorized(
                                 'The user access token must include the chat:edit scope.'
                             )
+                        if 'sending messages too quickly.' in error_message.lower():
+                            _logger.error('bot is sending messages too quickly.')
+                            return
                         raise twitch.Forbidden(error_message)
                 except (twitch.Unauthorized, twitch.Forbidden) as error:
                     if isinstance(error, twitch.Unauthorized) and 'chat:edit' in str(error):
