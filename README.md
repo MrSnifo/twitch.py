@@ -1,8 +1,3 @@
-# Twitchify 
-
-[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
-[![Python versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
-
 ## Project Notice
 
 🚧 **Notice: This Project is in Transition**
@@ -14,6 +9,11 @@ This project is currently undergoing improvements, and the current code may not 
 I am actively working on a better version that will address these issues and provide enhanced features. Check back for updates!
 
 Thank you for your understanding.
+
+# Twitchify 
+
+[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
+[![Python versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
 
 Twitchify simplifies Twitch integration by combining WebSocket EventSub, Helix API, and IRC Chat for real-time event notifications and comprehensive Twitch functionality.
 
