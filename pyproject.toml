@@ -54,16 +54,3 @@ dependencies = { file = "requirements.txt" }
 "Homepage" = "https://github.com/mrsnifo/twitchify"
 "Documentation" = "https://twitchify.readthedocs.io/en/latest"
 "Issue tracker" = "https://github.com/mrsnifo/twitchify/issues"
-
-exclude = [
-    "**/__pycache__",
-    "build",
-    "dist",
-    "docs",
-]
-
-reportUnnecessaryTypeIgnoreComment = "warning"
-reportUnusedImport = "error"
-pythonVersion = "3.8"
-typeCheckingMode = "basic"
-
