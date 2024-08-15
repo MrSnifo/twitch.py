@@ -105,23 +105,13 @@ class DeviceAuthFlow:
         """
         await self.close()
 
-    @staticmethod
-    def _set_event_loops(func):
-        """
-        Decorator function to ensure event loops are set for HTTP and Twitch clients.
-        """
+    async def ensure_event_loops(self, *args, **kwargs):
+        if self._http.loop is None:
+            loop = asyncio.get_running_loop()
+            self._http.loop = loop
+            self._client.loop = loop  # Client side.
+            self._client.http.loop = loop
 
-        async def ensure_event_loops(self, *args, **kwargs):
-            if self._http.loop is None:
-                loop = asyncio.get_running_loop()
-                self._http.loop = loop
-                self._client.loop = loop  # Client side.
-                self._client.http.loop = loop
-            return await func(self, *args, **kwargs)
-
-        return ensure_event_loops
-
-    @_set_event_loops
     async def get_device_code(self) -> tuple[str, str, int, int]:
         """
         Initiates the device authorization flow and retrieves the device code.
@@ -131,11 +121,11 @@ class DeviceAuthFlow:
         tuple
             A tuple containing the user code, device code, expiration time, and polling interval.
         """
+        await self.ensure_event_loops()
         data = await self._http.start_device_auth_flow(scopes=self.scopes)
         self._client.dispatch('code', data['user_code'])
         return data['user_code'], data['device_code'], data['expires_in'], data['interval']
 
-    @_set_event_loops
     async def revoke_token(self, token: str) -> None:
         """
         Revoke a token.
@@ -145,9 +135,9 @@ class DeviceAuthFlow:
         token: str
             The token to revoke (access token or refresh token).
         """
+        await self.ensure_event_loops()
         await self._http.revoke_token(token=token)
 
-    @_set_event_loops
     async def poll_for_authorization(self, device_code: str, expires_in: int, interval: int) -> tuple[str, str]:
         """
         Polls the Twitch API to check if the user has authorized the application.
@@ -166,6 +156,7 @@ class DeviceAuthFlow:
         tuple
             A tuple containing the access token and refresh token.
         """
+        await self.ensure_event_loops()
         data = await self._http.poll_for_token(device_code, expires_in=expires_in, interval=interval)
         self._client.dispatch('auth', data['access_token'], data['refresh_token'])
         return data['access_token'], data['refresh_token']
