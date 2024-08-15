@@ -190,7 +190,7 @@ ___
 
 - `on_suspicious_user_update`
     - **Description**: Triggered when a suspicious user's status is updated.
-    - **Scope**: `moderator:read:warnings`
+    - **Scope**: `moderator:read:suspicious_users`
     - **Data Type**: [`SuspiciousUserUpdateEvent`][twitch.types.eventsub.moderation.SuspiciousUserUpdateEvent]
     - **Usage**:
     ```python
