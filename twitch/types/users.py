@@ -22,7 +22,12 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-from typing import TypedDict, List, Literal, Dict
+from __future__ import annotations
+
+from typing import TypedDict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import List, Literal, Dict
 
 
 class Broadcaster(TypedDict):

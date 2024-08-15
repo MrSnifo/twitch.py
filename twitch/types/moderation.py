@@ -22,8 +22,13 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
+from __future__ import annotations
+
 from .users import SpecificUser, Broadcaster, Moderator
-from typing import TypedDict, Optional, Literal
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from typing import Optional, Literal
 
 
 # Automod

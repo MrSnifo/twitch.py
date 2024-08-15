@@ -161,3 +161,4 @@ cython_debug/
 
 # Testing
 test.py
+pyrightconfig.json

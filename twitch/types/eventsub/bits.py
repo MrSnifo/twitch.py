@@ -22,7 +22,13 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-from .users import SpecificBroadcaster, Optional
+from __future__ import annotations
+
+from .users import SpecificBroadcaster
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Optional
 
 
 class CheerEvent(SpecificBroadcaster):

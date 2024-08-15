@@ -595,15 +595,7 @@ class Client:
         data: List[chat.UserChatColor] = await self._connection.get_users_chat_color(__users)
         return data
 
-    @overload
     async def get_team(self, name: str) -> channels.Team:
-        ...
-
-    @overload
-    async def get_team(self, name: str) -> None:
-        ...
-
-    async def get_team(self, name: str) -> Optional[channels.Team]:
         """
         Retrieve a team by its name.
 
@@ -614,21 +606,13 @@ class Client:
 
         Returns
         -------
-        Optional[channels.Team]
-            A dictionary representing the team's information, or None if not found.
+        channels.Team
+            A dictionary representing the team's information.
         """
         data: Optional[channels.Team] = await self._connection.get_team_info(team_name=name)
         return data
 
-    @overload
     async def get_team_by_id(self, __id: str, /) -> channels.Team:
-        ...
-
-    @overload
-    async def get_team_by_id(self, __id: str, /) -> None:
-        ...
-
-    async def get_team_by_id(self, __id: str, /) -> Optional[channels.Team]:
         """
         Retrieve a team by its ID.
 
@@ -640,7 +624,7 @@ class Client:
         Returns
         -------
         Optional[channels.Team]
-            A dictionary representing the team's information, or None if not found.
+            A dictionary representing the team's information.
         """
         data: Optional[channels.Team] = await self._connection.get_team_info(team_id=__id)
         return data

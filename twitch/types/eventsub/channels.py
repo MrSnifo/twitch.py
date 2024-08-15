@@ -22,9 +22,14 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
+from __future__ import annotations
+
 from .users import SpecificBroadcaster, SpecificUser
 from .chat import TextEmoteMessage
-from typing import List, Optional
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import List, Optional
 
 
 # Update

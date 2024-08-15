@@ -7,11 +7,14 @@ Typing for Twitch.
 :license: MIT, see LICENSE for more details.
 """
 
-from typing import TypedDict, TypeVar, Dict
+from __future__ import annotations
+
 from . import activity, bits, channels, chat, interaction, moderation, streams, users
+from typing import TYPE_CHECKING, TypedDict
 
-
-T = TypeVar('T')
+if TYPE_CHECKING:
+    from typing import TypeVar, Dict, Any
+    T = TypeVar('T')
 
 
 class Subscription(TypedDict):
@@ -20,7 +23,7 @@ class Subscription(TypedDict):
     version: str
     status: str
     cost: int
-    condition: Dict[str, str]  # This will be specific to each type of subscription
+    condition: Dict[str, Any]
     created_at: str
 
 
