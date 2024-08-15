@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present Snifo
+Copyright (c) 2024-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,31 +21,20 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
-from .channel import Charity, CharityDonation, Follow, BannedUser, UserChannel
-from .broadcaster import ClientUser, ClientChannel, ClientChat, ClientStream
-from .alerts import Raider, Gifter, Subscriber, Cheerer, Goal, HypeTrain
-from .utils import convert_rfc3339, MISSING, EXCLUSIVE
-from .chat import ShieldModeSettings, Emote, Badge
-from .reward import Reward, Redemption
-from .stream import Category, Stream
-from .prediction import Prediction
-from .channel import Video, Clip
-from .user import BaseUser, User
-from .errors import NotFound
-from .user import UserEmail
-from .poll import Poll
+from .utils import datetime_to_str
+from .user import User, ClientUser
+from .errors import Forbidden
+import datetime
 import asyncio
-import weakref
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
-    from .types import (user as UserTypes, channel as ChannelTypes, chat as ChatTypes,
-                        stream as StreamTypes, poll as PollTypes, reward as RewardTypes,
-                        prediction as PredictionTypes, alerts as AlertsTypes)
-    from typing import Optional, Dict, Callable, Any, List, Union, AsyncGenerator
-    from datetime import datetime
+    from .types import Data, TTMData, users, Edata, chat, channels, search, PData, streams, bits, analytics, eventsub
+    from typing import List, Tuple, Literal, Callable, Any, Optional, Dict, AsyncGenerator
+    from .types.eventsub import Data as EvData
     from .http import HTTPClient
 
 import logging
@@ -58,529 +47,555 @@ class ConnectionState:
     """
     Represents the state of the connection.
     """
-    __slots__ = ('http', '__dispatch', 'user', 'chat', 'channel', 'stream', 'is_streaming', '_users',
-                 '_channels', '_user_ids', '_category_ids', 'chat_rooms')
 
-    def __init__(self, dispatcher: Callable[..., Any], http: HTTPClient) -> None:
+    __slots__ = ('http', 'user', 'is_live', '__dispatch', '__custom_dispatch', '_events', 'ready', 'total_cost',
+                 'max_total_cost')
+
+    def __init__(self, dispatcher: Callable[..., Any], custom_dispatch: Callable[..., Any], http: HTTPClient) -> None:
         self.http: HTTPClient = http
-        self.__dispatch: Callable[[str, Any, Any], asyncio.Task] = dispatcher
-        # Client
         self.user: Optional[ClientUser] = None
-        self.chat: Optional[ClientChat] = None
-        self.channel: Optional[ClientChannel] = None
-        self.stream: Optional[ClientStream] = None
-        self.is_streaming: bool = False
-        # Caching.
-        self._users: weakref.WeakValueDictionary[str, User] = weakref.WeakValueDictionary()
-        self._channels: weakref.WeakValueDictionary[str, UserChannel] = weakref.WeakValueDictionary()
-        self._user_ids: Dict[str, BaseUser] = {}
-        self._category_ids: Dict[str, Category] = {}
-        self.chat_rooms: Dict[str, BaseUser] = {}
+        self.is_live: Optional[bool] = None
+        self.__dispatch: Callable[..., Any] = dispatcher
+        self.__custom_dispatch: Callable[..., Any] = custom_dispatch
+        self._events: Dict[str, Any] = {}
+        self.ready: Optional[asyncio.Event] = None
+        # Subscription cost
+        self.total_cost: Optional[int] = None
+        self.max_total_cost: Optional[int] = None
 
-    async def setup_client(self):
-        data = await self.http.get_users()
-        self.user = ClientUser(state=self, data=data[0])
-        # Client Channel.
-        data = await self.http.get_channels(broadcaster_ids=[self.user.id])
-        self.channel = ClientChannel(state=self, data=data[0])
-        # Client Chat.
-        self.chat = ClientChat(state=self)
-        # Client stream.
-        self.stream = ClientStream(state=self)
-        # Checks if the client is streaming.
-        async for streams in self.fetch_streams(limit=1, users=[self.user.name], stream_type='all'):
-            if streams:
-                self.is_streaming = True
+    def clear(self) -> None:
+        if self.ready is not None:
+            self.ready.clear()
+        self.user = None
+        self.is_live = None
+        self._events.clear()
 
-    def clear(self):
-        self._users: weakref.WeakValueDictionary[str, User] = weakref.WeakValueDictionary()
-        self._channels: weakref.WeakValueDictionary[str, UserChannel] = weakref.WeakValueDictionary()
-        self._user_ids: Dict[str, BaseUser] = {}
-        self._category_ids: Dict[str, Category] = {}
+    def state_ready(self) -> None:
+        self.ready.set()
+        self.__dispatch('ready')
 
-    # ------------------------------------
-    #              + User +
-    # ------------------------------------
-    async def get_users(self, names: List[str], cache: bool = True) -> List[BaseUser]:
-        names: List[str] = [name.lower() for name in names]
-        users: List[BaseUser] = []
-        try:
-            for name in names:
-                user = self._user_ids[name]
-                users.append(user)
-        except KeyError:
-            users.clear()
-            data = await self.http.get_users(user_names=names)
-            for payload in data:
-                user = BaseUser(data=payload)
-                users.append(user)
-                if cache:
-                    self._user_ids[user.name.lower()] = user
-        return users
+    def ws_disconnect(self) -> None:
+        self.ready.clear()
+        self.__dispatch('disconnect')
 
-    async def get_user(self, user: Union[str, BaseUser]) -> BaseUser:
-        if isinstance(user, BaseUser):
-            return user
-        data = await self.get_users(names=[user])
-        if len(data) == 1:
-            return data[0]
-        raise NotFound('Unable to find the requested user.')
+    async def create_subscription(self,
+                                  user_id: str,
+                                  event: str,
+                                  session_id: str,
+                                  *,
+                                  callback: Optional[Callable[..., Any]] = None,
+                                  condition_options: Optional[Dict[str, Any]] = None) -> None:
+        subscription: Optional[Dict[str, Any]] = self.http.get_subscription_info(event)
+        if callback is not None and subscription is None:
+            raise TypeError(f'Unknown event: `on_{event}` is not a recognized event.')
 
-    async def get_user_info(self, name: str = EXCLUSIVE, user_id: str = EXCLUSIVE,
-                            cache: bool = True) -> User:
-        data = []
-        if name is EXCLUSIVE and user_id is EXCLUSIVE:
-            raise TypeError('Mutually exclusive options: name, id.')
-        else:
-            if user_id is not EXCLUSIVE:
-                data = await self.http.get_users(user_ids=[user_id])
-            if name is not EXCLUSIVE:
-                try:
-                    return self._users[name.lower()]
-                except KeyError:
-                    pass
-                data = await self.http.get_users(user_names=[name])
-            if len(data) == 1:
-                user = User(data=data[0])
-                if cache:
-                    self._users[user.name.lower()] = user
-                return user
-            raise NotFound('Unable to find the requested user.')
+        if subscription is not None:
+            if self._events.setdefault(user_id, {}).get(subscription['name']) is None:
+                data: TTMData[List[users.EventSubSubscription]] = await self.http.create_subscription(
+                    self.user.id,
+                    user_id,
+                    session_id,
+                    subscription_type=subscription['name'],
+                    subscription_version=subscription['version'],
+                    subscription_condition=subscription['condition'],
+                    subscription_condition_options=condition_options
+                )
+                self._events[user_id][data['data'][0]['type']] = {
+                    'id': data['data'][0]['id'],
+                    'name': event,
+                    'callbacks': [callback] if callback is not None else []
+                }
+                self.total_cost = data['total_cost']
+                self.max_total_cost = data['max_total_cost']
 
-    # -----------------------------------
-    #             + Channel +
-    # -----------------------------------
-    async def get_channel(self, user: Union[str, BaseUser], cache: bool = True) -> UserChannel:
-        user = await self.get_user(user=user)
-        try:
-            return self._channels[user.id]
-        except KeyError:
-            pass
-        channel = UserChannel(state=self, broadcaster_id=user.id)
-        if cache:
-            self._channels[user.id] = channel
-        return UserChannel(state=self, broadcaster_id=user.id)
+                if data['total_cost'] >= 0.85 * data['max_total_cost']:
+                    _logger.warning('Total cost is getting high (%s). Consider unsubscribing from some events.',
+                                    data['total_cost'])
+            else:
+                self._events[user_id][subscription['name']]['callbacks'].append(callback)
 
-    async def get_global_emotes(self) -> List[Emote]:
-        data = await self.http.get_global_emotes()
-        return [Emote(data=emote, template_url=data[0]) for emote in data[1]]
+    async def remove_subscription(self, user_id: str, event: str) -> None:
+        subscription: Optional[Dict[str, str]] = self.http.get_subscription_info(event)
+        if subscription is not None:
+            if self._events.setdefault(user_id, {}).get(subscription['name']) is not None:
+                await self.http.delete_subscription(self._events[user_id][subscription['name']]['id'])
+                self._events[user_id].pop(subscription['name'])
+                if self.user.id == user_id and event in ['channel_update',
+                                                         'user_update',
+                                                         'stream_online',
+                                                         'stream_offline']:
+                    _logger.warning('Default client event `%s` removed. Unexpected behavior may occur.',
+                                    event)
 
-    async def get_global_badges(self) -> List[Badge]:
-        data = await self.http.get_global_chat_badge()
-        return [Badge(data=badge) for badge in data]
+    async def initialize_client(self, user_id: str) -> None:
+        user_data: Data[List[users.User]] = await self.http.get_users([user_id])
+        channel_data: Data[List[channels.ChannelInfo]] = await self.http.get_channel_information([user_id])
+        self.user = ClientUser(state=self, user_data=user_data['data'][0], channel_data=channel_data['data'][0])
+        # Checks if User is Streaming.
+        data: Optional[streams.StreamInfo] = await self.user.channel.stream.get_live()
+        self.is_live = True if data is not None else False
 
-    # -----------------------------------
-    #             + Stream +
-    # -----------------------------------
-    async def fetch_streams(self, limit: int, stream_type: str,
-                            users: List[Union[str, BaseUser]] = MISSING,
-                            categories: List[Union[str, Category]] = MISSING,
-                            languages: List[str] = MISSING) -> AsyncGenerator[List[Stream]]:
-        if users is not MISSING:
-            users = [user.name for user in (await self.get_users(users))]
-        if categories is not MISSING:
-            categories = [category.id for category in (await self.get_categories(categories))]
-        async for streams in self.http.fetch_streams(limit=limit, user_names=users, game_ids=categories,
-                                                     stream_type=stream_type, languages=languages):
-            yield [Stream(data=stream) for stream in streams]
+    async def get_users(self,
+                        user_ids: Optional[List[str]] = None,
+                        user_logins: Optional[List[str]] = None) -> List[User]:
+        ids = []
+        if user_ids is not None:
+            ids = [User(state=self, user_id=i) for i in user_ids]
 
-    # ------------------------------------
-    #             + Category +
-    # ------------------------------------
-    async def get_categories(self, names: List[str], cache: bool = True) -> List[Category]:
-        names: List[str] = [name.lower() for name in names]
-        categories: List[Category] = []
-        try:
-            for name in names:
-                category = self._category_ids[name]
-                categories.append(category)
-        except KeyError:
-            categories.clear()
-            data = await self.http.get_categories(category_names=names)
-            for payload in data:
-                category = Category(data=payload)
-                categories.append(category)
-                if cache:
-                    self._category_ids[category.name.lower()] = category
-        return categories
+        if user_logins is not None and len(user_logins) >= 1:
+            data: Data[List[users.User]] = await self.http.get_users(user_logins=user_logins)
+            return [User(state=self, user_id=u['id']) for u in data['data']] + ids
 
-    async def get_category(self, category: Union[str, Category]) -> Category:
-        if isinstance(category, Category):
-            return category
-        data = await self.get_categories(names=[category])
-        if len(data) == 1:
-            self._category_ids[data[0].name] = data[0]
-            return data[0]
-        raise NotFound('Unable to find the requested category.')
+        return ids
 
-    # -----------------------------------
-    #          + Video & Clips +
-    # -----------------------------------
+    async def get_users_chat_color(self, __users: List[User], /) -> List[chat.UserChatColor]:
+        data: Data[List[chat.UserChatColor]] = await self.http.get_user_chat_color([u.id for u in __users])
+        return data['data']
+
+    @overload
+    async def get_team_info(self,
+                            team_name: Optional[str] = None,
+                            team_id: Optional[str] = None) -> channels.Team:
+        ...
+
+    @overload
+    async def get_team_info(self,
+                            team_name: Optional[str] = None,
+                            team_id: Optional[str] = None) -> None:
+        ...
+
+    async def get_team_info(self,
+                            team_name: Optional[str] = None,
+                            team_id: Optional[str] = None) -> Optional[channels.Team]:
+        data: Data[List[channels.Team]] = await self.http.get_team_info(team_name, team_id)
+        return data['data'][0] if len(data['data']) != 0 else None
+
+    async def get_global_emotes(self) -> Tuple[List[chat.Emote], str]:
+        data: Edata[List[chat.Emote]] = await self.http.get_global_emotes()
+        return data['data'], data['template']
+
+    async def get_emote_sets(self, emote_set_ids: List[str]) -> Tuple[List[chat.Emote], str]:
+        data: Edata[List[chat.Emote]] = await self.http.get_emote_sets(emote_set_ids)
+        return data['data'], data['template']
+
+    async def get_global_chat_badges(self) -> List[chat.Badge]:
+        data: Data[List[chat.Badge]] = await self.http.get_global_chat_badges()
+        return data['data']
+
+    async def get_global_cheermotes(self) -> List[bits.Cheermote]:
+        data: Data[List[bits.Cheermote]] = await self.http.get_cheermotes()
+        return data['data']
+
+    async def fetch_channels_search(self,
+                                    query: str,
+                                    live_only: bool = False,
+                                    first: int = 20) -> AsyncGenerator[List[search.ChannelSearch], None]:
+        kwargs: Dict[str, Any] = {
+            'query': query,
+            'live_only': live_only,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[search.ChannelSearch]] = await self.http.search_channels(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def fetch_streams(self,
+                            user_logins: Optional[List[str]] = None,
+                            user_ids: Optional[List[str]] = None,
+                            game_ids: Optional[List[str]] = None,
+                            stream_type: Literal['all', 'live'] = 'all',
+                            language: Optional[str] = None,
+                            first: int = 20) -> AsyncGenerator[List[streams.StreamInfo], None]:
+        kwargs: Dict[str, Any] = {
+            'user_ids': user_ids,
+            'user_logins': user_logins,
+            'game_ids': game_ids,
+            'stream_type': stream_type,
+            'language': language,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[streams.StreamInfo]] = await self.http.get_streams(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
     async def fetch_videos(self,
-                           videos: List[Union[str, Video, Clip]] = EXCLUSIVE,
-                           category: Union[str, Category] = EXCLUSIVE,
-                           language: str = MISSING,
-                           period: str = MISSING,
-                           sort: str = MISSING,
-                           videos_type: str = MISSING,
-                           limit: int = 4) -> AsyncGenerator[List[Video]]:
-        if videos is not EXCLUSIVE:
-            videos = [
-                (i.id if isinstance(i, Video)
-                 else (i if isinstance(i, str)
-                       else (i.video_id if isinstance(i, Clip) and i.video_id is not None
-                             else i))) for i in videos
-            ]
-        if category is not EXCLUSIVE:
-            category = await self.get_category(category=category)
-        async for videos in self.http.fetch_videos(limit=limit, video_ids=videos,
-                                                   category_id=category.id, language=language,
-                                                   period=period, sort=sort, videos_type=videos_type):
-            yield [Video(data=video) for video in videos]
+                           game_id: Optional[str] = None,
+                           video_ids: Optional[List[str]] = None,
+                           language: Optional[str] = None,
+                           period: Optional[Literal['all', 'day', 'month', 'week']] = None,
+                           sort: Optional[Literal['time', 'trending', 'views']] = None,
+                           video_type: Optional[Literal['all', 'archive', 'highlight', 'upload']] = None,
+                           first: Optional[int] = 20) -> AsyncGenerator[List[channels.Video], None]:
+        kwargs: Dict[str, Any] = {
+            'video_ids': video_ids,
+            'game_id': game_id,
+            'language': language,
+            'period': period,
+            'sort': sort,
+            'type': video_type,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[channels.Video]] = await self.http.get_videos(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
 
     async def fetch_clips(self,
-                          clips: List[Union[str, Clip]] = EXCLUSIVE,
-                          category: Union[str, Category] = EXCLUSIVE,
-                          started_at: datetime = MISSING,
-                          ended_at: datetime = MISSING,
-                          featured: bool = MISSING,
-                          limit: int = 4) -> AsyncGenerator[List[Clip]]:
-        if clips is not EXCLUSIVE:
-            clips = [(clip.id if isinstance(clip, Clip) else clip) for clip in clips]
-        if category is not EXCLUSIVE:
-            category = await self.get_category(category=category)
-        async for clips in self.http.fetch_clips(limit=limit, category_id=category.id,
-                                                 clip_ids=clips, started_at=started_at,
-                                                 ended_at=ended_at, is_featured=featured):
-            yield [Clip(data=clip) for clip in clips]
+                          game_id: Optional[str] = None,
+                          clip_ids: Optional[List[str]] = None,
+                          started_at: Optional[str] = None,
+                          ended_at: Optional[str] = None,
+                          is_featured: Optional[bool] = None,
+                          first: int = 20) -> AsyncGenerator[List[channels.Clip], None]:
+        kwargs: Dict[str, Any] = {
+            'game_id': game_id,
+            'clip_ids': clip_ids,
+            'started_at': datetime_to_str(started_at),
+            'ended_at': datetime_to_str(ended_at),
+            'first': first,
+            'is_featured': is_featured,
+            'after': None
+        }
+        while True:
+            data: PData[List[channels.Clip]] = await self.http.get_clips(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
 
-    async def connect(self):
-        self.clear()
-        self.__dispatch('connect')
+    async def get_content_classification_labels(self, locale: streams.Locale = 'en-US') -> List[streams.CCLInfo]:
+        data: Data[List[streams.CCLInfo]] = await self.http.get_content_classification_labels(locale)
+        return data['data']
 
-    async def reconnect(self):
-        self.__dispatch('reconnect')
+    async def fetch_top_games(self, first: int = 20) -> AsyncGenerator[List[search.Game], None]:
+        kwargs: Dict[str, Any] = {
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[search.Game]] = await self.http.get_top_games(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
 
-    async def socket_raw_receive(self, data: str):
-        self.__dispatch('socket_raw_receive', data)
+    async def fetch_categories_search(self,
+                                      query: str,
+                                      first: int = 20) -> AsyncGenerator[List[search.CategorySearch], None]:
+        kwargs: Dict[str, Any] = {
+            'query': query,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[search.CategorySearch]] = await self.http.search_categories(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
 
-    # ----------------------------------
-    #            + EventSub +
-    # ----------------------------------
-    async def parse(self, method: str, data: Optional[Dict[str, Any]] = None) -> None:
-        """
-        Parse an event and dispatch it to the appropriate handler.
-        """
+    async def get_games(self,
+                        game_ids: Optional[List[str]] = None,
+                        game_names: Optional[List[str]] = None,
+                        igdb_ids: Optional[List[str]] = None) -> List[search.Game]:
+        data: Data[List[search.Game]] = await self.http.get_games(game_ids, game_names, igdb_ids)
+        return data['data']
+
+    async def fetch_extension_analytics(self,
+                                        extension_id: Optional[str] = None,
+                                        analytics_type: Literal['overview_v2'] = 'overview_v2',
+                                        started_at: Optional[datetime.datetime] = None,
+                                        ended_at: Optional[datetime.datetime] = None,
+                                        first: int = 20) -> AsyncGenerator[List[analytics.Extension], None]:
+        kwargs: Dict[str, Any] = {
+            'extension_id': extension_id,
+            'analytics_type': analytics_type,
+            'started_at': datetime_to_str(started_at),
+            'ended_at': datetime_to_str(ended_at),
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[analytics.Extension]] = await self.http.get_extension_analytics(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def fetch_game_analytics(self,
+                                   game_id: Optional[str] = None,
+                                   analytics_type: Literal['overview_v2'] = 'overview_v2',
+                                   started_at: Optional[datetime.datetime] = None,
+                                   ended_at: Optional[datetime.datetime] = None,
+                                   first: int = 20) -> AsyncGenerator[List[analytics.Game], None]:
+        kwargs: Dict[str, Any] = {
+            'game_id': game_id,
+            'analytics_type': analytics_type,
+            'started_at': datetime_to_str(started_at),
+            'ended_at': datetime_to_str(ended_at),
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[analytics.Game]] = await self.http.get_game_analytics(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    def parse(self, data: EvData[Any]) -> None:
         try:
-            parse = getattr(self, 'parse_' + method.replace('.', '_'))
-            if data is None:
-                await parse()
-            else:
-                await parse(data)
+            # Custom Event
+            condition = data['subscription']['condition']
+            user_id = condition.get('broadcaster_user_id') or condition.get('to_broadcaster_user_id')
+            event = self._events[user_id].get(data['subscription']['type'])
+            for callback in event['callbacks']:
+                self.__custom_dispatch(event['name'], callback, data['event'])
+
+            if user_id != self.user.id:
+                return
+
+            # Client events
+            parse = getattr(self, 'parse_' + data['subscription']['type'].replace('.', '_'))
+            parse(data['event'])
         except Exception as error:
             _logger.exception('Failed to parse event: %s', error)
 
-    async def parse_user_update(self, data: UserTypes.UserUpdateEvent) -> None:
-        """
-        Parse a user update event.
-        """
-        if self.user is not None:
-            self.user.name = data['user_login']
-            self.user.display_name = data['user_name']
-            self.user.description = data['description']
-            self.user.email = UserEmail(data=data) or None
-            self.__dispatch('user_update', self.user)
+    # Chat
+    def parse_channel_chat_clear(self, data: eventsub.chat.ChatClearEvent) -> None:
+        self.__dispatch('chat_clear', data)
 
-    async def parse_channel_update(self, data: ChannelTypes.ChannelUpdateEvent) -> None:
-        """
-        Parse a channel update event.
-        """
-        if self.channel is not None:
-            self.channel.title = data['title']
-            self.channel.language = data['language']
-            self.channel.category = Category(data=data) or None
-            self.channel.ccls = data['content_classification_labels']
-            self.__dispatch('channel_update', self.channel)
+    def parse_channel_chat_clear_user_messages(self, data: eventsub.chat.ClearUserMessagesEvent) -> None:
+        self.__dispatch('chat_clear_user_messages', data)
 
-    async def parse_stream_online(self, data: StreamTypes.Online) -> None:
-        """
-        Parse a stream online event.
-        """
-        _logger.debug('%s is now streaming.', data['broadcaster_user_login'])
-        self.__dispatch('stream_online', data['type'], convert_rfc3339(data['started_at']))
+    def parse_channel_chat_message(self, data: eventsub.chat.MessageEvent) -> None:
+        self.__dispatch('chat_message', data)
 
-    async def parse_stream_offline(self, data: UserTypes.SpecificBroadcaster) -> None:
-        """
-        Parse a stream offline event.
-        """
-        _logger.debug('%s is no longer streaming.', data['broadcaster_user_login'])
-        self.__dispatch('stream_offline')
+    def parse_channel_chat_message_delete(self, data: eventsub.chat.MessageDeleteEvent) -> None:
+        self.__dispatch('chat_message_delete', data)
 
-    async def parse_channel_charity_campaign_donate(self, data: ChannelTypes.CharityDonationEvent) -> None:
-        """
-        Parse a channel charity campaign donate event.
-        """
-        charity = Charity(data=data)
-        donor = CharityDonation(data=data)
-        self.__dispatch('charity_campaign_donate', charity, donor)
+    def parse_channel_chat_notification(self, data: eventsub.chat.NotificationEvent) -> None:
+        self.__dispatch('chat_notification', data)
 
-    async def parse_channel_charity_campaign_start(self, data: ChannelTypes.CharityStartEvent) -> None:
-        """
-        Parse a channel charity campaign start event.
-        """
-        charity = Charity(data=data)
-        started_at = convert_rfc3339(data['started_at'])
-        self.__dispatch('charity_campaign_start', charity, started_at)
+    def parse_channel_chat_settings_update(self, data: eventsub.chat.SettingsUpdateEvent) -> None:
+        self.__dispatch('chat_settings_update', data)
 
-    async def parse_channel_charity_campaign_progress(self, data: ChannelTypes.Charity) -> None:
-        """
-        Parse a channel charity campaign progress event.
-        """
-        charity = Charity(data=data)
-        self.__dispatch('charity_campaign_progress', charity)
+    # Bits
+    def parse_channel_cheer(self, data: eventsub.bits.CheerEvent) -> None:
+        self.__dispatch('cheer', data)
 
-    async def parse_channel_charity_campaign_stop(self, data: ChannelTypes.CharityStopEvent) -> None:
-        """
-        Parse a channel charity campaign stop event.
-        """
-        charity = Charity(data=data)
-        stopped_at = convert_rfc3339(data['stopped_at'])
-        self.__dispatch('charity_campaign_stop', charity, stopped_at)
+    # Moderation
+    def parse_channel_shield_mode_begin(self, data: eventsub.moderation.ShieldModeBeginEvent) -> None:
+        self.__dispatch('shield_mode_begin', data)
 
-    async def parse_channel_follow(self, data: ChannelTypes.Follower) -> None:
-        """
-        Parse a channel follow event.
-        """
-        follower = Follow(data=data)
-        self.__dispatch('follow', follower)
+    def parse_channel_shield_mode_end(self, data: eventsub.moderation.ShieldModeEndEvent) -> None:
+        self.__dispatch('shield_mode_end', data)
 
-    async def parse_channel_subscribe(self, data: AlertsTypes.SubscribeEvent) -> None:
-        """
-        Parse a channel subscribe event.
-        """
-        subscriber = Subscriber(data=data)
-        self.__dispatch('subscribe', subscriber)
+    def parse_channel_suspicious_user_message(self, data: eventsub.moderation.SuspiciousUserMessageEvent) -> None:
+        self.__dispatch('suspicious_user_message', data)
 
-    async def parse_channel_subscription_end(self, data: AlertsTypes.SubscribeEvent) -> None:
-        """
-        Parse a channel subscription end event.
-        """
-        subscriber = Subscriber(data=data)
-        self.__dispatch('subscription_end', subscriber)
+    def parse_channel_suspicious_user_update(self, data: eventsub.moderation.SuspiciousUserUpdateEvent) -> None:
+        self.__dispatch('suspicious_user_update', data)
 
-    async def parse_channel_subscription_message(self, data: AlertsTypes.SubscribeEvent) -> None:
-        """
-        Parse a channel re-subscription event.
-        """
-        re_subscribe = Subscriber(data=data)
-        self.__dispatch('subscription_message', re_subscribe)
+    def parse_channel_warning_acknowledge(self, data: eventsub.moderation.WarningAcknowledgeEvent) -> None:
+        self.__dispatch('warning_acknowledge', data)
 
-    async def parse_channel_subscription_gift(self, data: AlertsTypes.GiftSubsEvent) -> None:
-        """
-        Parse a channel subscription gift event.
-        """
-        gifts = Gifter(data=data)
-        self.__dispatch('subscription_gift', gifts)
+    def parse_channel_warning_send(self, data: eventsub.moderation.WarningSendEvent) -> None:
+        self.__dispatch('warning_send', data)
 
-    async def parse_channel_cheer(self, data: AlertsTypes.CheerEvent) -> None:
-        """
-        Parse a channel cheer event.
-        """
-        cheer = Cheerer(data=data)
-        self.__dispatch('cheer', cheer)
+    def parse_automod_message_hold(self, data: eventsub.moderation.AutomodMessageHoldEvent) -> None:
+        self.__dispatch('automod_message_hold', data)
 
-    async def parse_channel_raid(self, data: AlertsTypes.RaidEvent) -> None:
-        """
-        Parse a channel raid event.
-        """
-        raid = Raider(data=data)
-        self.__dispatch('raid', raid)
+    def parse_automod_message_update(self, data: eventsub.moderation.AutomodMessageUpdateEvent) -> None:
+        self.__dispatch('automod_message_update', data)
 
-    async def parse_channel_ban(self, data: ChannelTypes.BannedUserEvent) -> None:
-        """
-        Parse a channel ban event.
-        """
-        banned_user = BannedUser(data=data)
-        self.__dispatch('ban', banned_user)
+    def parse_automod_settings_update(self, data: eventsub.moderation.AutomodSettingsUpdateEvent) -> None:
+        self.__dispatch('automod_settings_update', data)
 
-    async def parse_channel_unban(self, data: ChannelTypes.UnBannedUserEvent) -> None:
-        """
-        Parse a channel unban event.
-        """
-        user = BaseUser(data=data, prefix='user_')
-        moderator = BaseUser(data=data, prefix='moderator_user_')
-        self.__dispatch('unban', user, moderator)
+    def parse_automod_terms_update(self, data: eventsub.moderation.AutomodTermsUpdateEvent) -> None:
+        self.__dispatch('automod_terms_update', data)
 
-    async def parse_channel_moderator_add(self, data: AlertsTypes.ModeratorPrivilegesEvent) -> None:
-        """
-        Parse a channel moderator add event.
-        """
-        user = BaseUser(data=data, prefix='user_')
-        self.__dispatch('moderator_add', user)
+    def parse_channel_ban(self, data: eventsub.moderation.BanEvent) -> None:
+        self.__dispatch('ban', data)
 
-    async def parse_channel_moderator_remove(self, data: AlertsTypes.ModeratorPrivilegesEvent) -> None:
-        """
-        Parse a channel moderator remove event.
-        """
-        user = BaseUser(data=data, prefix='user_')
-        self.__dispatch('moderator_remove', user)
+    def parse_channel_unban(self, data: eventsub.moderation.UnbanEvent) -> None:
+        self.__dispatch('unban', data)
 
-    async def parse_channel_channel_points_custom_reward_add(self, data: RewardTypes.RewardEvent) -> None:
-        """
-        Parse a channel custom reward add event for channel points.
-        """
-        reward = Reward(data=data)
-        self.__dispatch('points_reward_add', reward)
+    def parse_channel_unban_request_create(self, data: eventsub.moderation.UnbanRequestCreateEvent) -> None:
+        self.__dispatch('unban_request_create', data)
 
-    async def parse_channel_channel_points_custom_reward_update(self,
-                                                                data: RewardTypes.RewardEvent) -> None:
-        """
-        Parse a channel custom reward update event for channel points.
-        """
-        reward = Reward(data=data)
-        self.__dispatch('points_reward_update', reward)
+    def parse_channel_moderate(self, data: eventsub.moderation.UnbanRequestResolveEvent) -> None:
+        self.__dispatch('channel_moderate', data)
 
-    async def parse_channel_channel_points_custom_reward_remove(self, data: RewardTypes.RewardEvent):
-        """
-        Parse a channel custom reward remove event for channel points.
-        """
-        reward = Reward(data=data)
-        self.__dispatch('points_reward_remove', reward)
+    def parse_channel_unban_request_resolve(self, data: eventsub.moderation.ModerateEvent) -> None:
+        self.__dispatch('unban_request_resolve', data)
 
-    async def parse_channel_channel_points_custom_reward_redemption_add(
-            self, data: RewardTypes.RedemptionEvent) -> None:
-        """
-        Parse a channel custom reward redemption add event for channel points.
-        """
-        redemption = Redemption(data=data)
-        self.__dispatch('points_reward_redemption', redemption)
+    def parse_channel_moderator_add(self, data: eventsub.moderation.ModeratorAddEvent) -> None:
+        self.__dispatch('moderator_add', data)
 
-    async def parse_channel_channel_points_custom_reward_redemption_update(
-            self, data: RewardTypes.RedemptionEvent) -> None:
-        """
-        Parse a channel custom reward redemption update event for channel points.
-        """
-        redemption = Redemption(data=data)
-        self.__dispatch('points_reward_redemption_update', redemption)
+    def parse_channel_moderator_remove(self, data: eventsub.moderation.ModeratorRemoveEvent) -> None:
+        self.__dispatch('moderator_remove', data)
 
-    async def parse_channel_poll_begin(self, data: PollTypes.PollBeginAndProgressEvent) -> None:
-        """
-        Parse a channel poll begin event.
-        """
-        poll = Poll(data=data)
-        self.__dispatch('poll_begin', poll)
+    # Channels
+    def parse_channel_update(self, data: eventsub.channels.ChannelUpdateEvent) -> None:
+        self.user.channel.title = data['title']
+        self.user.channel.language = data['language']
+        self.user.channel.category_id = data['category_id']
+        self.user.channel.category_name = data['category_name']
+        self.user.channel.ccl = data['content_classification_labels']
+        self.__dispatch('channel_update', data)
 
-    async def parse_channel_poll_progress(self, data: PollTypes.PollBeginAndProgressEvent) -> None:
-        """
-        Parse a channel poll progress event.
-        """
-        poll = Poll(data=data)
-        self.__dispatch('poll_progress', poll)
+    def parse_channel_follow(self, data: eventsub.channels.FollowEvent) -> None:
+        self.__dispatch('follow', data)
 
-    async def parse_channel_poll_end(self, data: PollTypes.PollEndEvent) -> None:
-        """
-        Parse a channel poll end event.
-        """
-        poll = Poll(data=data)
-        self.__dispatch('poll_end', poll)
+    def parse_channel_subscribe(self, data: eventsub.channels.SubscribeEvent) -> None:
+        self.__dispatch('subscribe', data)
 
-    async def parse_channel_prediction_begin(self, data: PredictionTypes.PredictionBeginProgressEvent) \
-            -> None:
-        """
-        Parse a channel prediction begin event.
-        """
-        prediction = Prediction(data=data)
-        self.__dispatch('prediction_begin', prediction)
+    def parse_channel_subscription_end(self, data: eventsub.channels.SubscriptionEndEvent) -> None:
+        self.__dispatch('subscription_end', data)
 
-    async def parse_channel_prediction_progress(self, data: PredictionTypes.PredictionBeginProgressEvent) \
-            -> None:
-        """
-        Parse a channel prediction progress event.
-        """
-        prediction = Prediction(data=data)
-        self.__dispatch('prediction_progress', prediction)
+    def parse_channel_subscription_gift(self, data: eventsub.channels.SubscriptionGiftEvent) -> None:
+        self.__dispatch('subscription_gift', data)
 
-    async def parse_channel_prediction_lock(self, data: PredictionTypes.PredictionLockEvent) -> None:
-        """
-        Parse a channel prediction lock event.
-        """
-        prediction = Prediction(data=data)
-        self.__dispatch('prediction_lock', prediction)
+    def parse_channel_subscription_message(self, data: eventsub.channels.SubscriptionMessageEvent) -> None:
+        self.__dispatch('subscription_message', data)
 
-    async def parse_channel_prediction_end(self, data: PredictionTypes.PredictionEndEvent) -> None:
-        """
-        Parse a channel prediction end event.
-        """
-        prediction = Prediction(data=data)
-        self.__dispatch('prediction_end', prediction)
+    def parse_channel_vip_add(self, data: eventsub.channels.VIPAddEvent) -> None:
+        self.__dispatch('vip_add', data)
 
-    async def parse_channel_goal_begin(self, data: AlertsTypes.GoalBeginProgressEvent) -> None:
-        """
-        Parse a channel goal begin event.
-        """
-        goal = Goal(data=data)
-        self.__dispatch('goal_begin', goal)
+    def parse_channel_vip_remove(self, data: eventsub.channels.VIPRemoveEvent) -> None:
+        self.__dispatch('vip_remove', data)
 
-    async def parse_channel_goal_progress(self, data: AlertsTypes.GoalBeginProgressEvent) -> None:
-        """
-        Parse a channel goal progress event.
-        """
-        goal = Goal(data=data)
-        self.__dispatch('goal_progress', goal)
+    # Interaction
+    def parse_channel_channel_points_automatic_reward_redemption_add(
+            self, data: eventsub.interaction.AutomaticRewardRedemptionAddEvent) -> None:
+        self.__dispatch('points_automatic_reward_redemption_add', data)
 
-    async def parse_channel_goal_end(self, data: AlertsTypes.GoalEndEvent) -> None:
-        """
-        Parse a channel goal end event.
-        """
-        goal = Goal(data=data)
-        self.__dispatch('goal_end', goal)
+    def parse_channel_channel_points_custom_reward_add(self, data: eventsub.interaction.PointRewardEvent) -> None:
+        self.__dispatch('points_reward_add', data)
 
-    async def parse_channel_hype_train_begin(self, data: AlertsTypes.HypeTrainBeginProgressEvent) -> None:
-        """
-        Parse a channel hype train begin event.
-        """
-        hypertrain = HypeTrain(data=data)
-        self.__dispatch('hype_train_begin', hypertrain)
+    def parse_channel_channel_points_custom_reward_update(self,
+                                                          data: eventsub.interaction.PointRewardEvent) -> None:
+        self.__dispatch('points_reward_update', data)
 
-    async def parse_channel_hype_train_progress(self, data: AlertsTypes.HypeTrainBeginProgressEvent) -> None:
-        """
-        Parse a channel hype train progress event.
-        """
-        hypertrain = HypeTrain(data=data)
-        self.__dispatch('hype_train_progress', hypertrain)
+    def parse_channel_channel_points_custom_reward_remove(self,
+                                                          data: eventsub.interaction.PointRewardEvent) -> None:
+        self.__dispatch('points_reward_remove', data)
 
-    async def parse_channel_hype_train_end(self, data: AlertsTypes.HypeTrainEndEvent) -> None:
-        """
-        Parse a channel hype train end event.
-        """
-        hypertrain = HypeTrain(data=data)
-        self.__dispatch('hype_train_end', hypertrain)
+    def parse_channel_channel_points_custom_reward_redemption_add(
+            self, data: eventsub.interaction.RewardRedemptionEvent) -> None:
+        self.__dispatch('points_reward_redemption_add', data)
 
-    async def parse_channel_shield_mode_begin(self, data: ChatTypes.ShieldModeBeginEvent) -> None:
-        """
-        Parse a channel shield mode begin event.
-        """
-        _mode = ShieldModeSettings(data=data)
-        self.__dispatch('shield_mode_begin', _mode)
+    def parse_channel_channel_points_custom_reward_redemption_update(
+            self, data: eventsub.interaction.RewardRedemptionEvent) -> None:
+        self.__dispatch('points_reward_redemption_update', data)
 
-    async def parse_channel_shield_mode_end(self, data: ChatTypes.ShieldModeEndEvent) -> None:
-        """
-        Parse a channel shield mode end event.
-        """
-        _mode = ShieldModeSettings(data=data)
-        self.__dispatch('shield_mode_end', _mode)
+    def parse_channel_poll_begin(self, data: eventsub.interaction.PollBeginEvent) -> None:
+        self.__dispatch('poll_begin', data)
 
-    async def parse_channel_shoutout_create(self, data: AlertsTypes.ShoutoutCreateEvent) -> None:
-        """
-        Parse a channel shoutout create event.
-        """
-        to_broadcaster = BaseUser(data, prefix='to_broadcaster_user_')
-        by_user = BaseUser(data, prefix='moderator_user_')
-        self.__dispatch('shoutout_create', to_broadcaster, by_user, data['viewer_count'])
+    def parse_channel_poll_progress(self, data: eventsub.interaction.PollProgressEvent) -> None:
+        self.__dispatch('poll_progress', data)
 
-    async def parse_channel_shoutout_receive(self, data: AlertsTypes.ShoutoutReceiveEvent) -> None:
-        """
-        Parse a channel shoutout receive event.
-        """
-        from_broadcaster = BaseUser(data, prefix='from_broadcaster_user_')
-        self.__dispatch('shoutout_receive', from_broadcaster, data['viewer_count'])
+    def parse_channel_poll_end(self, data: eventsub.interaction.PollEndEvent) -> None:
+        self.__dispatch('poll_end', data)
+
+    def parse_channel_prediction_begin(self, data: eventsub.interaction.PredictionBeginEvent) -> None:
+        self.__dispatch('prediction_begin', data)
+
+    def parse_channel_prediction_progress(self, data: eventsub.interaction.PredictionProgressEvent) -> None:
+        self.__dispatch('prediction_progress', data)
+
+    def parse_channel_prediction_lock(self, data: eventsub.interaction.PredictionLockEvent) -> None:
+        self.__dispatch('prediction_lock', data)
+
+    def parse_channel_prediction_end(self, data: eventsub.interaction.PredictionEndEvent) -> None:
+        self.__dispatch('prediction_end', data)
+
+    def parse_channel_hype_train_begin(self, data: eventsub.interaction.HypeTrainEvent) -> None:
+        self.__dispatch('hype_train_begin', data)
+
+    def parse_channel_hype_train_progress(self, data: eventsub.interaction.HypeTrainEvent) -> None:
+        self.__dispatch('hype_train_progress', data)
+
+    def parse_channel_hype_train_end(self, data: eventsub.interaction.HypeTrainEndEvent) -> None:
+        self.__dispatch('hype_train_end', data)
+
+    # Activity
+    def parse_channel_charity_campaign_donate(self, data: eventsub.activity.CharityDonationEvent) -> None:
+        self.__dispatch('charity_campaign_donate', data)
+
+    def parse_channel_charity_campaign_start(self, data: eventsub.activity.CharityCampaignStartEvent) -> None:
+        self.__dispatch('charity_campaign_start', data)
+
+    def parse_channel_charity_campaign_progress(self, data: eventsub.activity.CharityCampaignProgressEvent) -> None:
+        self.__dispatch('charity_campaign_progress', data)
+
+    def parse_channel_charity_campaign_stop(self, data: eventsub.activity.CharityCampaignStopEvent) -> None:
+        self.__dispatch('charity_campaign_stop', data)
+
+    def parse_drop_entitlement_grant(self, data: eventsub.activity.DropEntitlementGrantEvent) -> None:
+        self.__dispatch('drop_entitlement_grant', data)
+
+    def parse_channel_goal_begin(self, data: eventsub.activity.GoalsEvent) -> None:
+        self.__dispatch('goal_begin', data)
+
+    def parse_channel_goal_progress(self, data: eventsub.activity.GoalsEvent) -> None:
+        self.__dispatch('goal_progress', data)
+
+    def parse_channel_goal_end(self, data: eventsub.activity.GoalsEvent) -> None:
+        self.__dispatch('goal_end', data)
+
+    # Streams
+    def parse_channel_ad_break_begin(self, data: eventsub.streams.AdBreakBeginEvent) -> None:
+        self.__dispatch('ad_break_begin', data)
+
+    def parse_channel_raid(self, data: eventsub.streams.RaidEvent) -> None:
+        self.__dispatch('raid', data)
+
+    def parse_channel_shoutout_create(self, data: eventsub.streams.ShoutoutCreateEvent) -> None:
+        self.__dispatch('shoutout_create', data)
+
+    def parse_channel_shoutout_receive(self, data: eventsub.streams.ShoutoutReceivedEvent) -> None:
+        self.__dispatch('shoutout_received', data)
+
+    def parse_stream_online(self, data: eventsub.streams.StreamOnlineEvent) -> None:
+        self.is_live = True
+        self.__dispatch('stream_online', data)
+
+    def parse_stream_offline(self, data: eventsub.streams.StreamOfflineEvent) -> None:
+        self.is_live = False
+        self.__dispatch('stream_offline', data)
+
+    # Users
+    def parse_user_authorization_grant(self, data: eventsub.users.AuthorizationGrantEvent) -> None:
+        self.__dispatch('user_authorization_grant', data)
+
+    def parse_user_authorization_revoke(self, data: eventsub.users.AuthorizationRevokeEvent) -> None:
+        self.__dispatch('user_authorization_revoke', data)
+
+    def parse_user_update(self, data: eventsub.users.UserUpdateEvent) -> None:
+        self.user.name = data['user_login']
+        self.user.display_name = data['user_name']
+        self.user.description = data['description']
+        self.user.email = data.get('email') or None
+        self.__dispatch('user_update', data)
+
+    def parse_user_whisper_message(self, data: eventsub.users.WhisperReceivedEvent) -> None:
+        self.__dispatch('whisper_received', data)
+
+    def parse_channel_chat_user_message_hold(self, data: eventsub.users.MessageHoldEvent) -> None:
+        self.__dispatch('chat_user_message_hold', data)
+
+    def parse_channel_chat_user_message_update(self, data: eventsub.users.MessageUpdateEvent) -> None:
+        self.__dispatch('chat_user_message_update', data)

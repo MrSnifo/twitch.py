@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present Snifo
+Copyright (c) 2024-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,1473 +21,565 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
-from .utils import MISSING, Value, Images, convert_rfc3339
-from .user import BaseUser
-
-from typing import TYPE_CHECKING, overload
-
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import AsyncGenerator, Optional, Literal, Union, List
-    from .types import chat as ChatTypes
+    from typing import Optional, Literal, List, Dict, Any, AsyncGenerator, Tuple
+    from .types import Data, TData, Edata, chat, users, bits, moderation, PData
     from .state import ConnectionState
-    from datetime import datetime
+    from .user import User
 
-__all__ = ('Message', 'SubscriptionMessage', 'MessageEmote',
-           'Emote',
-           'Cheermote', 'CheermoteTier', 'CheermoteImagesType',
-           'Badge', 'BadgeVersion',
-           'ChatSettings',
-           'ChannelAutoMod', 'BlockedTerm', 'AutoModSettings',
-           'ChannelShieldMode', 'ShieldModeSettings',
-           'ChannelChat')
+__all__ = ('Chat', 'ClientChat')
 
 
-# --------------------------------------
-#              + Message +
-# --------------------------------------
-class MessageEmote:
+class Chat:
     """
-    Represents an emote in a chat message.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the emote.
-    end: int
-        The ending position of the emote in the message text.
-    begin: int
-        The starting position of the emote in the message text.
-
-    Methods
-    -------
-    __eq__(other: object) -> bool
-        Checks if two MessageEmote instances are equal based on their IDs.
-    __ne__(other: object) -> bool
-        Checks if two MessageEmote instances are not equal.
+    Represents a Twitch channel chat.
     """
-    __slots__ = ('id', 'end', 'begin')
+    __slots__ = ('_state', '_b_id')
 
-    if TYPE_CHECKING:
-        id: str
-        end: str
-        begin: str
-
-    def __init__(self, data: ChatTypes.MessageEmote) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<MessageEmote id={self.id} begin={self.begin} end={self.end}>'
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, (MessageEmote, Emote)):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChatTypes.MessageEmote) -> None:
-        self.id: str = data['id']
-        self.end: int = data['end']
-        self.begin: int = data['begin']
-
-
-class SubscriptionMessage:
-    """
-    Represents a subscription message with emotes.
-
-    Attributes
-    ----------
-    text: str
-        The text content of the chat message.
-    emotes: List[MessageEmote]
-        List of emotes present in the message.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the text content of the chat message.
-    """
-    __slots__ = ('text', 'emotes')
-
-    if TYPE_CHECKING:
-        text: str
-        emotes: List[MessageEmote]
-
-    def __init__(self, data: ChatTypes.SubscriptionMessage) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Message text={self.text} emotes={self.emotes}>'
-
-    def __str__(self) -> str:
-        return self.text
-
-    def _form_data(self, data: ChatTypes.SubscriptionMessage) -> None:
-        self.text: str = data['text']
-        self.emotes: List[MessageEmote] = [MessageEmote(data=emote) for emote in data['emotes']]
-
-
-class Message:
-    """
-    Represents a chat message.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the message.
-    is_vip:
-        Indicates if the author is a vip in the chat.
-    emotes: List[MessageEmote]
-        A list of emotes in the message.
-    badges: List[str]
-        A list of badges associated with the message.
-    author: BaseUser
-        The user who sent the message.
-    channel_id: BaseUser
-        The channel ID to which the message was sent.
-    channel_name: BaseUser
-        The channel name to which the message was sent.
-    content: str
-        The content of the message.
-    is_turbo: bool
-        Indicates if the message sender has a Turbo subscription.
-    author_color: str
-        The color associated with the author's username.
-    is_moderator: bool
-        Indicates if the author is a moderator in the chat.
-    is_emote_only: bool
-        Indicates if the message contains only emotes.
-    is_subscriber: bool
-        Indicates if the author is a subscriber of the channel.
-    is_broadcaster: bool
-        Indicates if the author is the broadcaster of the channel.
-
-    Methods
-    -------
-    __str__() -> str
-        Return the content of the message as a string.
-    __eq__(other: object) -> bool
-        Compare this message to another message for equality.
-    """
-    __slots__ = ('id', 'is_vip', 'author', 'badges', 'emotes', 'content', 'is_turbo', 'channel_id',
-                 'author_color', 'channel_name', 'is_moderator', 'is_emote_only', 'is_subscriber',
-                 'is_broadcaster', '_bot_name')
-
-    if TYPE_CHECKING:
-        id: str
-        is_vip: bool
-        author: BaseUser
-        badges: List[str]
-        emotes: List[MessageEmote]
-        content: str
-        is_turbo: bool
-        channel_id: str
-        author_color: str
-        channel_name: str
-        is_moderator: bool
-        is_emote_only: bool
-        is_subscriber: bool
-        is_broadcaster: bool
-
-    def __init__(self, data: ChatTypes.ChatMessage):
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Message id={self.id} author={self.author!r} content={self.content}>'
-
-    def __str__(self) -> str:
-        return self.content.strip()
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Message):
-            return self.id == other.id
-        return False
-
-    def _form_data(self, data: ChatTypes.ChatMessage) -> None:
-        self.id = data['tags'].get('id')
-        self.content = data['command']['content']
-        self.author_color = data['tags']['color'] or None
-        self.is_turbo = bool(int(data['tags']['turbo']))
-        self.is_emote_only = bool(data['tags'].get('emote-only', False))
-        self.is_vip = bool(data['tags'].get('vip', False))
-        self.is_subscriber = bool(int(data['tags']['subscriber']))
-        self.is_broadcaster = data['tags']['user-id'] == data['tags']['room-id']
-        self.is_moderator = bool(int(data['tags']['mod'])) or self.is_broadcaster
-        self.badges = data['tags']['badges'].split(',')
-        self.channel_id = data['tags']['room-id']
-        self.channel_name = data['command']['channel']
-        self.author = BaseUser(data={'id': data['tags']['user-id'],
-                                     'login': data['source']['nick'],
-                                     'name': data['tags']['display-name']})
-        self.emotes = []
-        if data['tags']['emotes']:
-            self.emotes.extend([
-                MessageEmote({'id': emote_id, 'begin': int(begin), 'end': int(end)})
-                for emote_entry in data['tags']['emotes'].split('/')
-                for emote_id, positions in [emote_entry.split(':')]
-                for begin, end in [map(int, pos.split('-')) for pos in positions.split(',')]
-            ])
-
-
-# ------------------------------------
-#              + Emote +
-# ------------------------------------
-class Emote:
-    """
-    Represents an emote in a chat message.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the emote.
-    name: str
-        The name of the emote.
-    tier: Optional[str]
-        The tier of the emote, if applicable.
-    scale: List[str]
-        A list of available scales for the emote.
-    format: List[str]
-        A list of available formats for the emote.
-    images: Images
-        An instance of the Images class representing emote images.
-    theme_mode: List[str]
-        A list of available theme modes for the emote.
-    emote_type: str
-        The type of emote (e.g., 'global').
-    emote_set_id: Optional[str]
-        The ID of the emote set, if applicable.
-
-    Methods
-    -------
-    __eq__(other: object) -> bool
-        Checks if two Emote instances are equal based on their IDs.
-    __ne__(other: object) -> bool
-        Checks if two Emote instances are not equal.
-    """
-    __slots__ = ('id', 'name', 'tier', 'scale', 'format', 'images', 'theme_mode', 'emote_type',
-                 'emote_set_id', '_template_url')
-
-    if TYPE_CHECKING:
-        id: str
-        name: str
-        tier: Optional[str]
-        scale: List[str]
-        format: List[str]
-        images: Images
-        theme_mode: List[str]
-        emote_type: str
-        emote_set_id: Optional[str]
-
-    def __init__(self, data: Union[ChatTypes.BaseEmote, ChatTypes.Emote], template_url: str) -> None:
-        self._form_data(data=data, template_url=template_url)
-
-    def __repr__(self) -> str:
-        return f'<Emote id={self.id} name={self.name} emote_type={self.emote_type}>'
-
-    def __str__(self) -> str:
-        return self.name
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Emote):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    @property
-    def template_url(self) -> str:
-        """
-        Gets the template URL for fetching emote images.
-
-        Returns
-        -------
-        str
-            The URL template for fetching emote images.
-        """
-        return self._template_url
-
-    def _form_data(self, data: Union[ChatTypes.BaseEmote, ChatTypes.Emote], template_url: str) -> None:
-        self.id = data['id']
-        self.name = data['name']
-        # Tier is set to ``0`` only if `emote_type` is not subscriptions.
-        self.tier = data.get('tier') or None
-        self.scale = data['scale']
-        self.format = data['format']
-        self.images = Images(data=data['images'])
-        self.theme_mode = data['theme_mode']
-        self.emote_type = data.get('emote_type', 'global')
-        self.emote_set_id = data.get('emote_set_id')
-        self._template_url = template_url
-
-
-# --------------------------------------
-#             + Cheermote +
-# --------------------------------------
-class CheermoteImagesType:
-    """
-    Represents images for cheermote tiers in both dark and light themes.
-
-    Attributes
-    ----------
-    dark: ChatTypes.ImagesType
-        Images for the dark theme.
-    light: ChatTypes.ImagesType
-        Images for the light theme.
-    """
-    __slots__ = ('dark', 'light')
-
-    if TYPE_CHECKING:
-        dark: ChatTypes.ImagesType
-        light: ChatTypes.ImagesType
-
-    def __init__(self, data: ChatTypes.TierImages) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return '<CheermoteImagesType>'
-
-    def _form_data(self, data: ChatTypes.TierImages) -> None:
-        self.dark = data['dark']
-        self.light = data['light']
-
-
-class CheermoteTier:
-    """
-    Represents a tier of a cheermote.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the cheermote tier.
-    color: str
-        The color associated with the tier.
-    images: CheermoteImagesType
-        An instance of CheermoteImagesType representing tier images.
-    min_bits: int
-        The minimum number of bits required to unlock this tier.
-    can_cheer: bool
-        Indicates whether users can cheer for this tier.
-    show_in_bits_card: bool
-        Indicates whether this tier is shown in the bits card.
-
-    Methods
-    -------
-    __eq__(other: object) -> bool
-        Checks if two CheermoteTier instances are equal based on their IDs.
-    __ne__(other: object) -> bool
-        Checks if two CheermoteTier instances are not equal.
-    """
-    __slots__ = ('id', 'color', 'images', 'min_bits', 'can_cheer', 'show_in_bits_card')
-
-    if TYPE_CHECKING:
-        id: str
-        color: str
-        images: CheermoteImagesType
-        min_bits: int
-        can_cheer: bool
-        show_in_bits_card: bool
-
-    def __init__(self, data: ChatTypes.Tier) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return (
-            f'<CheermoteTier id={self.id} min_bits={self.min_bits} color={self.color}'
-            f' can_cheer={self.can_cheer}>'
-        )
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, CheermoteTier):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChatTypes.Tier) -> None:
-        self.id: str = data['id']
-        self.color: str = data['color']
-        self.images: CheermoteImagesType = CheermoteImagesType(data=data['images'])
-        self.min_bits: int = data['min_bits']
-        self.can_cheer: bool = data['can_cheer']
-        self.show_in_bits_card: bool = data['show_in_bits_card']
-
-
-class Cheermote:
-    """
-    Represents a cheermote.
-
-    Attributes
-    ----------
-    type: str
-        The type of cheermote.
-    prefix: str
-        The prefix associated with the cheermote.
-    tiers: List[CheermoteTier]
-        A list of CheermoteTier instances representing the tiers of the cheermote.
-    order: int
-        The order of the cheermote.
-    last_updated: datetime
-        The datetime when the cheermote was last updated.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns a string representation of the Cheermote prefix.
-    """
-    __slots__ = ('type', 'prefix', 'tiers', 'order', 'last_updated')
-
-    if TYPE_CHECKING:
-        type: str
-        order: int
-        tiers: List[CheermoteTier]
-        prefix: str
-        last_updated: datetime
-
-    def __init__(self, data: ChatTypes.Cheermote) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Cheermote prefix={self.prefix} type={self.type} order={self.order}>'
-
-    def __str__(self) -> str:
-        return self.prefix
-
-    def _form_data(self, data: ChatTypes.Cheermote):
-        self.type = data['type']
-        self.order = data['order']
-        self.tiers = [CheermoteTier(data=tier) for tier in data['tiers']]
-        self.prefix = data['prefix']
-        self.last_updated = convert_rfc3339(data['last_updated'])
-
-
-# ------------------------------------
-#              + Badge +
-# ------------------------------------
-class BadgeVersion:
-    """
-    Represents a version of a badge.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the badge version.
-    title: str
-        The title of the badge version.
-    images: Images
-        An instance of Images representing badge images.
-    click_url: Optional[str]
-        The optional URL that the badge version can link to.
-    description: str
-        The description of the badge version.
-    click_action: Optional[str]
-        The optional click action associated with the badge version.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the title of the BadgeVersion.
-    __eq__(other: object) -> bool
-        Checks if two BadgeVersion instances are equal based on their IDs.
-    __ne__(other: object) -> bool
-        Checks if two BadgeVersion instances are not equal.
-    """
-    __slots__ = ('id', 'title', 'images', 'click_url', 'description', 'click_action')
-
-    if TYPE_CHECKING:
-        id: str
-        title: str
-        images: Images
-        click_url: Optional[str]
-        description: str
-        click_action: Optional[str]
-
-    def __init__(self, data: ChatTypes.BadgeVersion) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<BadgeVersion id={self.id} title={self.title} description={self.description}>'
-
-    def __str__(self) -> str:
-        return self.title
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, BadgeVersion):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChatTypes.BadgeVersion) -> None:
-        self.id: str = data['id']
-        self.title: str = data['title']
-        _images = {'url_1x': data['image_url_1x'],
-                   'url_2x': data['image_url_2x'],
-                   'url_4x': data['image_url_4x']}
-        self.images = Images(data=_images)
-        self.click_url: Optional[str] = data['click_url']
-        self.description: str = data['description']
-        self.click_action: str = data['click_action']
-
-
-class Badge:
-    """
-    Represents a badge set.
-
-    Attributes
-    ----------
-    set_id: str
-        The unique ID of the badge set.
-    versions: List[BadgeVersion]
-        A list of BadgeVersion instances representing the versions of the badge set.
-
-    Methods
-    -------
-    __eq__(other: object) -> bool
-        Checks if two Badge instances are equal based on their set IDs.
-    __ne__(other: object) -> bool
-        Checks if two Badge instances are not equal.
-    """
-    __slots__ = ('set_id', 'versions')
-
-    if TYPE_CHECKING:
-        set_id: str
-        versions: List[BadgeVersion]
-
-    def __init__(self, data: ChatTypes.Badge) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Badge set_id={self.set_id}>'
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Badge):
-            return self.set_id == other.set_id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChatTypes.Badge) -> None:
-        self.set_id = data['set_id']
-        self.versions = [BadgeVersion(data=version) for version in data['versions']]
-
-
-# -------------------------------------
-#           + ChatSettings +
-# -------------------------------------
-class ChatSettings:
-    """
-    Represents settings for a chat.
-
-    Attributes
-    ----------
-    slow_mode: Value
-        The slow mode settings.
-    follower_mode: Value
-        The follower mode settings.
-    is_emote_mode_enabled: bool
-        Indicates whether emote mode is enabled.
-    non_moderator_chat_delay: Optional[Value]
-        Optional non-moderator chat delay settings.
-    is_subscriber_mode_enabled: bool
-        Indicates whether subscriber mode is enabled.
-    is_unique_chat_mode_enabled: bool
-        Indicates whether unique chat mode is enabled.
-    """
-    # ... (Constructor and other methods)
-    __slots__ = ('slow_mode', 'follower_mode', 'is_emote_mode_enabled', 'non_moderator_chat_delay',
-                 'is_subscriber_mode_enabled', 'is_unique_chat_mode_enabled')
-
-    if TYPE_CHECKING:
-        slow_mode: Value
-        follower_mode: Value
-        is_emote_mode_enabled: bool
-        non_moderator_chat_delay: Optional[Value]
-        is_subscriber_mode_enabled: bool
-        is_unique_chat_mode_enabled: bool
-
-    def __init__(self, data: ChatTypes.ChatSettings) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return '<ChatSettings>'
-
-    def _form_data(self, data: ChatTypes.ChatSettings) -> None:
-        self.is_emote_mode_enabled = data['emote_mode']
-        self.is_subscriber_mode_enabled = data['subscriber_mode']
-        self.is_unique_chat_mode_enabled = data['unique_chat_mode']
-        _follower_mode = data['follower_mode']
-        _follower_mode_duration = data['follower_mode_duration'] or 0
-        _slow_mode = data['slow_mode']
-        _slow_mode_wait_time = data['slow_mode_wait_time']
-        self.follower_mode = Value(data={'is_enabled': _follower_mode, 'value': _follower_mode_duration})
-        self.slow_mode = Value(data={'is_enabled': _slow_mode, 'value': _slow_mode_wait_time})
-        # Require a user access token that includes the ``moderator:read:chat_settings`` scope.
-        _non_moderator_chat_delay = data.get('non_moderator_chat_delay')
-        _non_moderator_chat_delay_duration = data.get('non_moderator_chat_delay_duration')
-        self.non_moderator_chat_delay = None
-        if _non_moderator_chat_delay:
-            self.non_moderator_chat_delay = Value(data={'is_enabled': _non_moderator_chat_delay,
-                                                        'value': _non_moderator_chat_delay_duration})
-
-    def to_json(self) -> ChatTypes.ChatSettingsToJson:
-        # This is useful when you want to modify settings of the object and update it.
-        return ({
-            'emote_mode': self.is_emote_mode_enabled,
-            'follower_mode': self.follower_mode.is_enabled,
-            'follower_mode_duration': self.follower_mode.value,
-            'non_moderator_chat_delay': self.non_moderator_chat_delay.is_enabled,
-            'non_moderator_chat_delay_duration': self.non_moderator_chat_delay.value,
-            'slow_mode': self.slow_mode.is_enabled,
-            'slow_mode_wait_time': self.slow_mode.value,
-            'subscriber_mode': self.is_subscriber_mode_enabled,
-            'unique_chat_mode': self.is_unique_chat_mode_enabled
-        })
-
-
-# ------------------------------------
-#             + AutoMod +
-# ------------------------------------
-class AutoModSettings:
-    """
-    Represents AutoMod settings for a chat.
-
-    Attributes
-    ----------
-    misogyny: int
-        The misogyny filter level.
-    bullying: int
-        The bullying filter level.
-    swearing: int
-        The swearing filter level.
-    disability: int
-        The disability filter level.
-    aggression: int
-        The aggression filter level.
-    overall_level: Optional[int]
-        The overall moderation level (optional).
-    sex_based_terms: int
-        The filter level for sex-based terms.
-    sexuality_sex_or_gender: int
-        The filter level for sexuality, sex, or gender-related terms.
-    race_ethnicity_or_religion: int
-        The filter level for race, ethnicity, or religion-related terms.
-    """
-    __slots__ = ('misogyny', 'bullying', 'swearing', 'disability', 'aggression', 'overall_level',
-                 'sex_based_terms', 'sexuality_sex_or_gender', 'race_ethnicity_or_religion')
-    if TYPE_CHECKING:
-        misogyny: int
-        bullying: int
-        swearing: int
-        disability: int
-        aggression: int
-        overall_level: Optional[int]
-        sex_based_terms: int
-        sexuality_sex_or_gender: int
-        race_ethnicity_or_religion: int
-
-    def __init__(self, data: ChatTypes.AutoModSettings) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return '<AutoModSettings>'
-
-    def _form_data(self, data: ChatTypes.AutoModSettings) -> None:
-        self.bullying = data['bullying']
-        self.misogyny = data['misogyny']
-        self.swearing = data['swearing']
-        self.aggression = data['aggression']
-        self.disability = data['disability']
-        self.overall_level = data['overall_level']
-        self.sex_based_terms = data['sex_based_terms']
-        self.sexuality_sex_or_gender = data['sexuality_sex_or_gender']
-        self.race_ethnicity_or_religion = data['race_ethnicity_or_religion']
-
-    def to_json(self) -> ChatTypes.AutoModSettingsToJson:
-        # This is useful when you want to modify settings of the object and update it.
-        # overall_level does not Include
-        return ({
-            'bullying': self.bullying,
-            'misogyny': self.misogyny,
-            'swearing': self.swearing,
-            'aggression': self.aggression,
-            'disability': self.disability,
-            'sex_based_terms': self.sex_based_terms,
-            'sexuality_sex_or_gender': self.sexuality_sex_or_gender,
-            'race_ethnicity_or_religion': self.race_ethnicity_or_religion})
-
-
-class BlockedTerm:
-    """
-    Represents a blocked term in chat.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the blocked term.
-    text: str
-        The text of the blocked term.
-    created_at: datetime
-        The date and time when the blocked term was created.
-    expires_at: Optional[datetime]
-        The date and time when the blocked term expires (optional).
-    updated_at: datetime
-        The date and time when the blocked term was last updated.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the text of the blocked term as a string.
-    __eq__(other: object) -> bool
-        Checks if two BlockedTerm instances are equal based on their IDs.
-    __ne__(other: object) -> bool
-        Checks if two BlockedTerm instances are not equal.
-    """
-    __slots__ = ('id', 'text', 'created_at', 'expires_at', 'updated_at')
-
-    if TYPE_CHECKING:
-        id: str
-        text: str
-        created_at: datetime
-        expires_at: Optional[datetime]
-        updated_at: datetime
-
-    def __init__(self, data: ChatTypes.BlockedTerm) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<BlockedTerm id={self.id} text={self.text} created_at={self.created_at}>'
-
-    def __str__(self) -> str:
-        return self.text
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, BlockedTerm):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChatTypes.BlockedTerm) -> None:
-        self.id = data['id']
-        self.text = data['text']
-        self.created_at = convert_rfc3339(data['created_at'])
-        self.expires_at = convert_rfc3339(data['expires_at'])
-        self.updated_at = convert_rfc3339(data['updated_at'])
-
-
-class ChannelAutoMod:
-    """
-    Represents a channel's AutoMod settings.
-    """
-    __slots__ = ('_b_id', '_m_id', '__state')
-
-    def __init__(self, state: ConnectionState, broadcaster_id: str, moderator_id: str):
-        self._b_id: str = broadcaster_id
-        self._m_id: str = moderator_id
-        self.__state: ConnectionState = state
-
-    async def get_automod_settings(self) -> AutoModSettings:
-        """
-        Get the AutoMod settings for the channel.
-
-        | Scopes                            | Description           |
-        | --------------------------------- | ----------------------|
-        | `moderator:read:automod_settings` | Get AutoMod Settings. |
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:read:automod_settings scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-
-        Returns
-        -------
-        AutoModSettings
-            The AutoMod settings for the channel.
-        """
-        data = await self.__state.http.get_automod_settings(broadcaster_id=self._b_id,
-                                                            moderator_id=self._m_id)
-        return AutoModSettings(data=data)
-
-    @overload
-    async def update_automod_settings(self, automod: AutoModSettings) -> AutoModSettings:
-        ...
-
-    @overload
-    async def update_automod_settings(self, overall_level: int) -> AutoModSettings:
-        ...
-
-    @overload
-    async def update_automod_settings(self,
-                                      aggression: int = MISSING,
-                                      bullying: int = MISSING,
-                                      disability: int = MISSING,
-                                      misogyny: int = MISSING,
-                                      race_ethnicity_or_religion: int = MISSING,
-                                      sex_based_terms: int = MISSING,
-                                      sexuality_sex_or_gender: int = MISSING,
-                                      swearing: int = MISSING) -> AutoModSettings:
-        ...
-
-    async def update_automod_settings(self,
-                                      automod: AutoModSettings = MISSING,
-                                      overall_level: int = MISSING,
-                                      aggression: int = MISSING,
-                                      bullying: int = MISSING,
-                                      disability: int = MISSING,
-                                      misogyny: int = MISSING,
-                                      race_ethnicity_or_religion: int = MISSING,
-                                      sex_based_terms: int = MISSING,
-                                      sexuality_sex_or_gender: int = MISSING,
-                                      swearing: int = MISSING) -> AutoModSettings:
-        """
-        Update the AutoMod settings for the channel.
-
-        ???+ Warning
-            You must choose either `automod` (AutoModSettings object) or `overall_level`
-            or `rest of Parameters` as they are mutually exclusive.
-
-        ??? Note
-            You can set either an overall AutoMod level (overall_level) or individual filter levels,
-            but not both.
-            - If you set an overall_level, it applies default filter levels to the individual settings.
-
-            The filter levels range from 0 (no filtering) to 4 (most aggressive filtering).
-            Higher levels indicate more aggressive filtering.
-
-        Parameters
-        ----------
-        automod: AutoModSettings
-            An instance of AutoModSettings containing updated settings.
-        overall_level: int
-            The overall AutoMod level for the channel.
-        aggression: int
-            The aggression filter level.
-        bullying: int
-            The bullying filter level.
-        disability: int
-            The disability filter level.
-        misogyny: int
-            The misogyny filter level.
-        race_ethnicity_or_religion: int
-            The race/ethnicity/religion filter level.
-        sex_based_terms: int
-            The sex-based terms filter level.
-        sexuality_sex_or_gender: int
-            The sexuality/sex/gender filter level.
-        swearing: int
-            The swearing filter level.
-
-        Raises
-        ------
-        BadRequest
-            * The value of one or more AutoMod settings is not valid.
-        Unauthorized
-            * The user access token must include the moderator:manage:automod_settings scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-
-        Returns
-        -------
-        AutoModSettings
-            The updated AutoMod settings for the channel.
-        """
-        settings = {'broadcaster_id': self._b_id, 'moderator_id': self._m_id}
-        if isinstance(automod, AutoModSettings):
-            for key, value in automod.to_json().items():
-                settings[key] = value
-        else:
-            settings['overall_level'] = overall_level
-            settings['aggression'] = aggression
-            settings['bullying'] = bullying
-            settings['disability'] = disability
-            settings['misogyny'] = misogyny
-            settings['race_ethnicity_or_religion'] = race_ethnicity_or_religion
-            settings['sex_based_terms'] = sex_based_terms
-            settings['sexuality_sex_or_gender'] = sexuality_sex_or_gender
-            settings['swearing'] = swearing
-        data = await self.__state.http.update_automod_settings(**settings)
-        return AutoModSettings(data=data)
-
-    async def fetch_blocked_terms(self, limit: int = 4) -> AsyncGenerator[List[BlockedTerm]]:
-        """
-        Fetch the list of blocked terms for the channel.
-
-        ???+ Warning
-            This method uses [pagination](https://dev.twitch.tv/docs/api/guide/#pagination).
-            Set the limit to -1 to retrieve all data, but exercise caution due to potential performance
-            and rate limit impacts.
-
-        | Scopes                                                             | Description        |
-        | ------------------------------------------------------------------ | -------------------|
-        | `moderator:read:blocked_terms` or `moderator:manage:blocked_terms` | Get Blocked Terms. |
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:read:blocked_terms or
-             moderator:manage:blocked_terms scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-
-        Parameters
-        ----------
-        limit: int
-            The maximum number of blocked terms to fetch (default is 4).
-
-        Yields
-        ------
-        List[BlockedTerm]
-            A list of blocked terms for the channel.
-        """
-        async for terms in self.__state.http.fetch_blocked_terms(limit=limit,
-                                                                 broadcaster_id=self._b_id,
-                                                                 moderator_id=self._m_id):
-            yield [BlockedTerm(data=term) for term in terms]
-
-    async def add_blocked_term(self, text: str) -> BlockedTerm:
-        """
-        Add a blocked term to the channel's AutoMod settings.
-
-        | Scopes                           | Description        |
-        | -------------------------------- | -------------------|
-        | `moderator:manage:blocked_terms` | Add Blocked Term.  |
-
-        Parameters
-        ----------
-        text: str
-            The word or phrase to block from being used in the broadcaster’s chat room.
-
-            The term must contain a minimum of 2 characters and may contain up to a
-            maximum of 500 characters.
-
-        Raises
-        ------
-        ValueError
-            * The term must contain 2 to 500 characters.
-        Unauthorized
-            * The user access token must include the moderator:manage:blocked_terms scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-
-        Returns
-        -------
-        BlockedTerm
-            The blocked term that was added.
-        """
-        data = await self.__state.http.add_blocked_term(broadcaster_id=self._b_id, moderator_id=self._m_id,
-                                                        text=text)
-        return BlockedTerm(data=data)
-
-    async def remove_blocked_term(self, term: BlockedTerm) -> None:
-        """
-        Remove a blocked term from the channel's AutoMod settings.
-
-        | Scopes                          | Description          |
-        | ------------------------------- | ---------------------|
-        | `moderator:manage:blocked_term` | Remove Blocked Term. |
-
-
-        Parameters
-        ----------
-        term: BlockedTerm
-            The blocked term to remove.
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:manage:blocked_terms scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-        """
-        await self.__state.http.remove_blocked_term(broadcaster_id=self._b_id, moderator_id=self._m_id,
-                                                    term_id=term.id)
-
-
-# -------------------------------------
-#            + ShieldMode +
-# -------------------------------------
-class ShieldModeSettings:
-    """
-    Represents shield mode settings.
-
-    Attributes
-    ----------
-    is_active: bool
-        Indicates if shield mode is currently active.
-    moderator: Optional[BaseUser]
-        The moderator who activated shield mode (optional).
-    last_activated_at: Optional[datetime]
-        The date and time when shield mode was last activated (optional).
-
-    Methods
-    -------
-    __bool__() -> bool
-        Checks if shield mode is currently active.
-    """
-    __slots__ = ('is_active', 'moderator', 'last_activated_at')
-
-    if TYPE_CHECKING:
-        is_active: bool
-        moderator: Optional[BaseUser]
-        last_activated_at: Optional[datetime]
-
-    def __init__(self, data: Union[ChatTypes.ShieldMode, Union[ChatTypes.ShieldModeBeginEvent,
-                                                               ChatTypes.ShieldModeEndEvent]]) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<ShieldMode is_active={self.is_active} moderator={self.moderator!r}>'
-
-    def __bool__(self) -> bool:
-        return self.is_active
-
-    def _form_data(self, data: Union[ChatTypes.ShieldMode, Union[ChatTypes.ShieldModeBeginEvent,
-                                                                 ChatTypes.ShieldModeEndEvent]]) -> None:
-        # Both of the attributes last_activated_at and moderator could be ``None``,
-        # if the broadcaster has never used shieldmode.
-        self.moderator = None
-        if data.get('moderator_id') or data.get('moderator_user_id'):
-            self.moderator = BaseUser(data, prefix=['moderator_', 'moderator_user_'])
-        # Missing Between events.
-        _last_activated_at: Optional[str] = data.get('last_activated_at')
-        _started_at: Optional[str] = data.get('started_at')
-        _ended_at: Optional[str] = data.get('ended_at')
-        self.last_activated_at = convert_rfc3339(timestamp=_last_activated_at or _started_at or _ended_at)
-        _is_active: Optional[bool] = data.get('is_active')
-        self.is_active: bool = _is_active if bool(_is_active) else (bool(_started_at))
-
-
-class ChannelShieldMode:
-    """
-    Represents a channel's shield mode settings.
-    """
-    __slots__ = ('_b_id', '_m_id', '__state')
-
-    def __init__(self, state: ConnectionState, broadcaster_id: str, moderator_id: str):
-        self._b_id: str = broadcaster_id
-        self._m_id: str = moderator_id
-        self.__state: ConnectionState = state
-
-    async def get_status(self) -> ShieldModeSettings:
-        """
-        Get the current shield mode settings of the channel.
-
-        | Scopes                                                         | Description             |
-        | -------------------------------------------------------------- | ------------------------|
-        | `moderator:read:shield_mode` or `moderator:manage:shield_mode` | Get Shield Mode Status. |
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:read:shield_mode or
-             moderator:manage:shield_mode scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-
-        Returns
-        -------
-        ShieldModeSettings
-            The current shield mode settings for the channel.
-        """
-        data = await self.__state.http.get_shield_mode_status(broadcaster_id=self._b_id,
-                                                              moderator_id=self._m_id)
-        return ShieldModeSettings(data=data)
-
-    async def update_status(self, activate: bool) -> ShieldModeSettings:
-        """
-        Update the shield mode status for the channel.
-
-        | Scopes                         | Description                |
-        | -------------------------------| ---------------------------|
-        | `moderator:manage:shield_mode` | Update Shield Mode Status. |
-
-        Parameters
-        ----------
-        activate: bool
-            Indicates whether to activate or deactivate shield mode.
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:manage:shield_mode scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-
-        Returns
-        -------
-        ShieldModeSettings
-            The updated shield mode settings for the channel.
-        """
-        data = await self.__state.http.update_shield_mode_status(broadcaster_id=self._b_id,
-                                                                 moderator_id=self._m_id,
-                                                                 activate=activate)
-        return ShieldModeSettings(data=data)
-
-
-# -------------------------------------
-#             + UserChat +
-# -------------------------------------
-class ChannelChat:
-    """
-    Represents the chat-related functionality for a channel.
-    """
-    __slots__ = ('_b_id', '_m_id', '_state')
-
-    def __init__(self, state: ConnectionState, broadcaster_id: str, moderator_id: str):
-        self._b_id: str = broadcaster_id
-        self._m_id: str = moderator_id
+    def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
         self._state: ConnectionState = state
+        self._b_id: str = broadcaster_id
 
-    @property
-    def shieldmode(self) -> ChannelShieldMode:
+    async def get_settings(self) -> chat.Settings:
         """
-        Represents the shield mode settings for the channel's chat.
+        Retrieve the current chat settings for the broadcaster.
+
+        ???+ note
+            The scopes only required if you want to include non_moderator extra keys.
+
+        | Scopes                           | Description                                |
+        | -------------------------------- | -------------------------------------------|
+        | `moderator:read:chat_settings`   | View a broadcaster’s chat room settings.   |
+        | `moderator:manage:chat_settings` | Manage a broadcaster’s chat room settings. |
 
         Returns
         -------
-        ChannelShieldMode
-            The shield mode settings for the chat.
+        chat.Settings
+            A dictionary containing chat settings for the broadcaster.
         """
-        return ChannelShieldMode(state=self._state, broadcaster_id=self._b_id, moderator_id=self._m_id)
-
-    @property
-    def automod(self) -> ChannelAutoMod:
-        """
-        Represents the AutoMod settings for the channel's chat.
-
-        Returns
-        -------
-        ChannelAutoMod
-            The AutoMod settings for the chat.
-        """
-        return ChannelAutoMod(state=self._state, broadcaster_id=self._b_id, moderator_id=self._m_id)
-
-    async def get_settings(self) -> ChatSettings:
-        """
-        Get the chat settings for the channel.
-
-        Returns
-        -------
-        ChatSettings
-            The chat settings for the channel.
-        """
-        data = await self._state.http.get_chat_settings(broadcaster_id=self._b_id, moderator_id=self._m_id)
-        return ChatSettings(data=data)
-
-    @overload
-    async def update_settings(self, chat_settings: ChatSettings):
-        ...
-
-    @overload
-    async def update_settings(self,
-                              emote_mode: bool = MISSING,
-                              subscriber_mode: bool = MISSING,
-                              unique_chat_mode: bool = MISSING,
-                              follower_mode: bool = MISSING,
-                              follower_mode_duration: int = MISSING,
-                              non_moderator_chat_delay: bool = MISSING,
-                              non_moderator_chat_delay_duration: Literal[2, 4, 6] = MISSING,
-                              slow_mode: bool = MISSING,
-                              slow_mode_wait_time: int = MISSING):
-        ...
+        data: Data[List[chat.Settings]] = await self._state.http.get_chat_settings(self._b_id, self._state.user.id)
+        return data['data'][0]
 
     async def update_settings(self,
-                              chat_settings: ChatSettings = MISSING,
-                              emote_mode: bool = MISSING,
-                              subscriber_mode: bool = MISSING,
-                              unique_chat_mode: bool = MISSING,
-                              follower_mode: bool = MISSING,
-                              follower_mode_duration: int = MISSING,
-                              non_moderator_chat_delay: bool = MISSING,
-                              non_moderator_chat_delay_duration: Literal[2, 4, 6] = MISSING,
-                              slow_mode: bool = MISSING,
-                              slow_mode_wait_time: int = MISSING):
+                              emote_mode: Optional[bool] = None,
+                              follower_mode: Optional[bool] = None,
+                              follower_mode_duration: Optional[int] = None,
+                              non_moderator_chat_delay: Optional[bool] = None,
+                              non_moderator_chat_delay_duration: Optional[int] = None,
+                              slow_mode: Optional[bool] = None,
+                              slow_mode_wait_time: Optional[int] = None,
+                              subscriber_mode: Optional[bool] = None,
+                              unique_chat_mode: Optional[bool] = None) -> chat.Settings:
         """
-        Update the chat settings for the channel.
+        Update the chat settings for the broadcaster.
 
-        ???+ Warning
-            You must choose either `chat_settings` (ChatSettings object)
-            `rest of Parameters` as they are mutually exclusive.
-
-        | Scopes                           | Description           |
-        | -------------------------------- | ----------------------|
-        | `moderator:manage:chat_settings` | Update Chat Settings. |
+        | Scopes                           | Description                                |
+        | -------------------------------- | -------------------------------------------|
+        | `moderator:manage:chat_settings` | Manage a broadcaster’s chat room settings. |
 
         Parameters
         ----------
-        chat_settings: ChatSettings
-            An instance of ChatSettings containing updated settings.
-        emote_mode: bool
-            Set to True if only emotes are allowed in chat messages
-        follower_mode: bool
-            Set to True if the chat room should be restricted to followers only
-        follower_mode_duration: int
-            The length of time in minutes that users must follow the broadcaster before participating
-            in chat.
-
-             `Only set if follower_mode is True`.
-
-            Possible values:
-
-            * 0 through 129600 (3 months).
-        non_moderator_chat_delay: bool
-            Set to True if a delay should be applied before chat messages appear
-        non_moderator_chat_delay_duration: Literal[2, 4, 6]
-            The amount of time in seconds that messages are delayed before appearing in chat.
-
-            `Set only if non_moderator_chat_delay is True`.
-        slow_mode: bool
-            Set to True if a wait period should be applied between messages
-        slow_mode_wait_time: int
-            The amount of time in seconds that users must wait between sending messages.
-
-            `Set only if slow_mode is True`.
-
-            Possible values:
-
-            * 3 through 120.
-        subscriber_mode: bool
-            Set to True if the chat room should be restricted to subscribers only
-        unique_chat_mode: bool
-            Set to True if users must post only unique messages
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:manage:chat_settings scope.
-        Forbidden
-            * The user in the moderator_id query parameter must have moderator privileges
-             in the broadcaster's channel.
+        emote_mode: Optional[bool]
+            Whether to enable emote-only mode.
+        follower_mode: Optional[bool]
+            Whether to enable follower-only mode.
+        follower_mode_duration: Optional[int]
+            Duration of the follower-only mode in minutes.
+        non_moderator_chat_delay: Optional[bool]
+            Whether to enable chat delay for non-moderators.
+        non_moderator_chat_delay_duration: Optional[int]
+            Duration of the chat delay for non-moderators in seconds.
+        slow_mode: Optional[bool]
+            Whether to enable slow mode.
+        slow_mode_wait_time: Optional[int]
+            The duration of the slow mode in seconds.
+        subscriber_mode: Optional[bool]
+            Whether to enable subscriber-only mode.
+        unique_chat_mode: Optional[bool]
+            Whether to enable unique chat mode.
 
         Returns
         -------
-        ChatSettings
-            The updated chat settings for the channel.
+        chat.Settings
+            A dictionary containing the updated chat settings.
         """
-
-        settings = {'broadcaster_id': self._b_id, 'moderator_id': self._m_id}
-        if isinstance(chat_settings, ChatSettings):
-            for key, value in chat_settings.to_json().items():
-                settings[key] = value
-        else:
-            settings['emote_mode'] = emote_mode
-            settings['follower_mode'] = follower_mode
-            settings['follower_mode_duration'] = follower_mode_duration
-            settings['non_moderator_chat_delay'] = non_moderator_chat_delay
-            settings['non_moderator_chat_delay_duration'] = non_moderator_chat_delay_duration
-            settings['slow_mode'] = slow_mode
-            settings['slow_mode_wait_time'] = slow_mode_wait_time
-            settings['subscriber_mode'] = subscriber_mode
-            settings['unique_chat_mode'] = unique_chat_mode
-        data = await self._state.http.update_chat_settings(**settings)
-        return ChatSettings(data=data)
-
-    async def fetch_chatters(self, limit: int = 4) -> AsyncGenerator[List[BaseUser]]:
-        """
-        Fetch a list of chatters in the channel.
-
-        ???+ Warning
-            This method uses [pagination](https://dev.twitch.tv/docs/api/guide/#pagination).
-            Set the limit to -1 to retrieve all data, but exercise caution due to potential performance
-            and rate limit impacts.
-
-        ??? Note
-            There might be a delay between when users join and leave a chat and when the count
-            is updated accordingly.
-
-        | Scopes                    | Description   |
-        | ------------------------- | --------------|
-        | `moderator:read:chatters` | Get Chatters. |
-
-        Parameters
-        ----------
-        limit: int
-            The maximum number of chatters to fetch.
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:read:chatters scope.
-        Forbidden
-            * The user in the moderator_id query parameter is not one of the broadcaster's moderators.
-
-        Yields
-        ------
-        List[BaseUser]
-            A list of BaseUser objects representing the chatters.
-        """
-        async for users in self._state.http.fetch_chatters(limit=limit,
-                                                           broadcaster_id=self._b_id,
-                                                           moderator_id=self._b_id):
-            yield [BaseUser(user, prefix='user_') for user in users]
+        kwargs: Dict[str, Any] = {
+            'emote_mode': emote_mode,
+            'follower_mode': follower_mode,
+            'follower_mode_duration': follower_mode_duration if follower_mode else None,
+            'non_moderator_chat_delay': non_moderator_chat_delay,
+            'non_moderator_chat_delay_duration': (non_moderator_chat_delay_duration
+                                                  if non_moderator_chat_delay else None),
+            'slow_mode': slow_mode,
+            'slow_mode_wait_time': slow_mode_wait_time if slow_mode else None,
+            'subscriber_mode': subscriber_mode,
+            'unique_chat_mode': unique_chat_mode
+        }
+        data: Data[List[chat.Settings]] = await self._state.http.update_chat_settings(self._b_id, self._state.user.id,
+                                                                                      **kwargs)
+        return data['data'][0]
 
     async def get_total_chatters(self) -> int:
         """
-        Get the total number of chatters in the channel.
+        Get the total number of chatters in the broadcaster's chat.
 
-        | Scopes                    | Description   |
-        | ------------------------- | --------------|
-        | `moderator:read:chatters` | Get Chatters. |
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token must include the moderator:read:chatters scope.
-        Forbidden
-            * The user in the moderator_id query parameter is not one of the broadcaster's moderators.
+        | Scopes                    | Description                                     |
+        | ------------------------- | ------------------------------------------------|
+        | `moderator:read:chatters` | View the chatters in a broadcaster’s chat room. |
 
         Returns
         -------
         int
-            The total number of chatters in the channel.
+            The total number of chatters.
         """
-        data = await self._state.http.get_total_chatters(broadcaster_id=self._b_id, moderator_id=self._m_id)
-        return data
+        data: TData[List[users.SpecificUser]] = await self._state.http.get_chatters(self._b_id, self._state.user.id,
+                                                                                    first=1)
+        return data['total']
 
-    async def get_emotes(self) -> List[Emote]:
+    async def fetch_chatters(self, *, first: int = 100) -> AsyncGenerator[List[users.SpecificUser], None]:
         """
-        Get the emotes available in the channel.
+        Fetch a list of chatters in the broadcaster's chat.
+
+        | Scopes                    | Description                                     |
+        | ------------------------- | ------------------------------------------------|
+        | `moderator:read:chatters` | View the chatters in a broadcaster’s chat room. |
+
+        Parameters
+        ----------
+        first: int
+            The number of chatters to fetch per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[users.SpecificUser], None]
+            A list of dictionaries representing chatters.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._b_id,
+            'moderator_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: TData[List[users.SpecificUser]] = await self._state.http.get_chatters(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def get_emotes(self) -> Tuple[List[chat.Emote], str]:
+        """
+        Retrieve the emotes and template for the broadcaster's channel.
+
+        | Scopes                    | Description                                     |
+        | ------------------------- | ------------------------------------------------|
+        | `moderator:read:chatters` | View the chatters in a broadcaster’s chat room. |
 
         Returns
         -------
-        List[Emote]
-            A list of Emote objects representing the emotes.
+        Tuple[List[chat.Emote], str]
+            A tuple where the first element is a list of dictionaries representing emotes,
+            and the second element is a string representing the template.
         """
-        data = await self._state.http.get_channel_emotes(broadcaster_id=self._b_id)
-        return [Emote(data=emote, template_url=data[0]) for emote in data[1]]
+        data: Edata[List[chat.Emote]] = await self._state.http.get_channel_emotes(self._b_id)
+        return data['data'], data['template']
 
-    async def get_cheermotes(self) -> List[Cheermote]:
+    async def get_cheermotes(self) -> List[bits.Cheermote]:
         """
-        Retrieve a list of Cheermotes that users can use to cheer with Bits in any Bits-enabled channel's
-        chat room.
-
-        Returns
-        -------
-        List[Cheermote]
-            A list of Cheermote instances representing the available cheermotes.
-        """
-        data = await self._state.http.get_cheermotes(broadcaster_id=self._b_id)
-        return [Cheermote(data=cheermote) for cheermote in data]
-
-    async def get_badges(self) -> List[Badge]:
-        """
-        Retrieve the broadcaster's list of custom chat badges.
+        Retrieve the cheermotes for the broadcaster's channel.
 
         Returns
         -------
-        List[Badge]
-            A list of Badge instances representing the custom chat badges.
+        List[bits.Cheermote]
+            A list of dictionaries representing cheermotes.
         """
-        data = await self._state.http.get_channel_chat_badges(broadcaster_id=self._b_id)
-        return [Badge(data=badge) for badge in data]
+        data: Data[List[bits.Cheermote]] = await self._state.http.get_cheermotes(self._b_id)
+        return data['data']
 
-    async def send_announcement(self, message: str, *,
-                                color: ChatTypes.AnnouncementColors = MISSING) -> None:
+    async def get_badges(self) -> List[chat.Badge]:
         """
-        Sends an announcement to the broadcaster's chat room.
+        Retrieve the chat badges for the broadcaster's channel.
 
-        | Scopes                           | Description             |
-        | -------------------------------- | ------------------------|
-        | `moderator:manage:announcements` | Send Chat Announcement. |
+        Returns
+        -------
+        List[chat.Badge]
+            A list of dictionaries representing chat badges.
+        """
+        data: Data[List[chat.Badge]] = await self._state.http.get_channel_chat_badges(self._b_id)
+        return data['data']
+
+    async def send_shoutout(self, user: User) -> None:
+        """
+        Send a shoutout to another broadcaster.
+
+        | Scopes                       | Description                       |
+        | ---------------------------- | ----------------------------------|
+        | `moderator:manage:shoutouts` | Manage a broadcaster’s shoutouts. |
+
+        Parameters
+        ----------
+        user: User
+            The user to send a shoutout to.
+        """
+        await self._state.http.send_a_shoutout(self._b_id, self._state.user.id, to_broadcaster_id=user.id)
+
+    async def send_announcement(self,
+                                message: str,
+                                *,
+                                color: Literal['blue', 'green', 'orange', 'purple', 'primary'] = 'primary'):
+        """
+        Send an announcement message to the chat.
+
+        | Scopes                           | Description                                                       |
+        | -------------------------------- | ------------------------------------------------------------------|
+        | `moderator:manage:announcements` | Send announcements in channels where you have the moderator role. |
 
         Parameters
         ----------
         message: str
-            The message to be sent as an announcement.
-        color: str
+            The announcement message to send.
+        color: Literal['blue', 'green', 'orange', 'purple', 'primary']
             The color of the announcement message.
-            Possible values are:
-             * primary (default)
-             * blue,
-             * green,
-             * orange
-             * purple
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token is missing the moderator:manage:announcements scope.
         """
-        await self._state.http.send_chat_announcements(broadcaster_id=self._b_id,
-                                                       moderator_id=self._m_id,
-                                                       message=message, color=color)
+        await self._state.http.send_chat_announcement(self._b_id, self._state.user.id, message=message, color=color)
 
-    async def clear_chat(self):
+    async def warn_user(self, user: User, reason: str) -> None:
         """
-        Clears all chat messages from the broadcaster's chat room.
+        Send a warning to a user in the chat.
 
-        | Scopes                           | Description           |
-        | -------------------------------- | ----------------------|
-        | `moderator:manage:chat_messages` | Delete Chat Messages. |
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token is missing the moderator:manage:chat_messages scope.
-        """
-        await self._state.http.delete_chat_messages(broadcaster_id=self._b_id,
-                                                    moderator_id=self._m_id)
-
-    async def delete_message(self, message: Union[str, Message]):
-        """
-        Removes a single chat message from the broadcaster’s chat room.
-
-        | Scopes                           | Description           |
-        | -------------------------------- | ----------------------|
-        | `moderator:manage:chat_messages` | Delete Chat Messages. |
+        | Scopes                      | Description                                               |
+        | --------------------------- | ----------------------------------------------------------|
+        | `moderator:manage:warnings` | Warn users in channels where you have the moderator role. |
 
         Parameters
         ----------
-        message: Union[str, Message]
-            Message object or The ID of the message to remove.
-
-            Restrictions:
-            * The message must have been created within the last 6 hours.
-            * The message must not belong to the broadcaster.
-            * The message must not belong to another moderator.
-
-        Raises
-        ------
-        BadRequest
-            * You may not delete another moderator's messages.
-            * You may not delete the broadcaster's messages.
-        Unauthorized
-            * The user access token is missing the moderator:manage:chat_messages scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-        NotFound
-            * The ID in message_id was not found.
-            * The specified message was created more than 6 hours ago.
+        user: User
+            The user to warn.
+        reason: str
+            The reason for the warning.
         """
-        if isinstance(message, Message):
-            message = message.id
-        await self._state.http.delete_chat_messages(broadcaster_id=self._b_id, moderator_id=self._m_id,
-                                                    message_id=message)
+        await self._state.http.warn_chat_user(self._b_id, self._state.user.id, user_id=user.id, reason=reason)
 
-    async def get_chat_colors(self, users: List[Union[str, BaseUser]]) -> List[Optional[str]]:
+    async def send_message(self, text: str, reply_message_id: Optional[str] = None) -> chat.SendMessageStatus:
         """
-        Get the chat colors of more than one user at once.
+        Send a message to the chat.
+
+        ???+ warning
+            It's strongly discouraged to send messages to other channels without the owner's permission.
+            Doing so could result in a permanent ban from twitch. Please be cautious.
+
+        | Scopes           | Description                                                     |
+        | ---------------- | ----------------------------------------------------------------|
+        | `user:read:chat` | Join a specified chat channel as your user and appear as a bot. |
 
         Parameters
         ----------
-        users: List[Union[str, BaseUser]]
-            A list of usernames or BaseUser objects for which to retrieve chat colors.
+        text: str
+            The message text to send.
+        reply_message_id: Optional[str]
+            The ID of the message to reply to.
 
         Returns
         -------
-        List[Optional[str]]
-            A List of chat colors; None if not set.
+        chat.SendMessageStatus
+            A dictionary containing the status of the user sent message.
         """
-        users = [user.id for user in (await self._state.get_users(users))]
-        data = await self._state.http.get_users_chat_color(user_ids=users)
-        return data
+        data: Data[List[chat.SendMessageStatus]] = await self._state.http.send_chat_message(
+            self._b_id,
+            self._state.user.id,
+            text=text,
+            reply_parent_message_id=reply_message_id)
+        return data['data'][0]
+
+    async def delete_message(self, msg_id: str) -> None:
+        """
+        Delete a message from the chat.
+
+        | Scopes                           | Description                                                         |
+        | -------------------------------- | --------------------------------------------------------------------|
+        | `moderator:manage:chat_messages` | Delete chat messages in channels where you have the moderator role. |
+
+        Parameters
+        ----------
+        msg_id: str
+            The ID of the message to delete.
+        """
+        await self._state.http.delete_chat_messages(self._b_id, self._state.user.id, message_id=msg_id)
+
+    async def clear_chat(self) -> None:
+        """
+        Clear all messages from the chat.
+
+        | Scopes                           | Description                                                         |
+        | -------------------------------- | --------------------------------------------------------------------|
+        | `moderator:manage:chat_messages` | Delete chat messages in channels where you have the moderator role. |
+        """
+        await self._state.http.delete_chat_messages(self._b_id, self._state.user.id)
+
+    async def get_shieldmode(self) -> moderation.ShieldModeStatus:
+        """
+        Retrieve the current shield mode status for the broadcaster's channel.
+
+        | Scopes                         | Description                                |
+        | ------------------------------ | -------------------------------------------|
+        | `moderator:read:shield_mode`   | View a broadcaster’s Shield Mode status.   |
+        | `moderator:manage:shield_mode` | Manage a broadcaster’s Shield Mode status. |
+
+
+        Returns
+        -------
+        moderation.ShieldModeStatus
+            A dictionary representing the shield mode status.
+        """
+        data: Data[List[moderation.ShieldModeStatus]] = await self._state.http.get_shield_mode_status(
+            self._b_id,
+            self._state.user.id)
+        return data['data'][0]
+
+    async def update_shieldmode(self, activate: bool) -> moderation.ShieldModeStatus:
+        """
+        Update the shield mode status for the broadcaster's channel.
+
+        | Scopes                         | Description                                |
+        | ------------------------------ | -------------------------------------------|
+        | `moderator:manage:shield_mode` | Manage a broadcaster’s Shield Mode status. |
+
+        Parameters
+        ----------
+        activate: bool
+            Whether to activate or deactivate shield mode.
+
+        Returns
+        -------
+        moderation.ShieldModeStatus
+            A dictionary representing the updated shield mode status.
+        """
+        data: Data[List[moderation.ShieldModeStatus]] = await self._state.http.update_shield_mode_status(
+            self._b_id,
+            self._state.user.id,
+            is_active=activate)
+        return data['data'][0]
+
+    async def get_automod_settings(self) -> moderation.AutoModSettings:
+        """
+        Retrieve the current AutoMod settings for the broadcaster's channel.
+
+        | Scopes                              | Description                              |
+        | ----------------------------------- | -----------------------------------------|
+        | `moderator:read:automod_settings`   | View a broadcaster’s AutoMod settings.   |
+        | `moderator:manage:automod_settings` | Manage a broadcaster’s AutoMod settings. |
+
+        Returns
+        -------
+        moderation.AutoModSettings
+            A dictionary representing the AutoMod settings.
+        """
+        data: Data[List[moderation.AutoModSettings]] = await self._state.http.get_automod_settings(self._b_id,
+                                                                                                   self._state.user.id)
+        return data['data'][0]
+
+    async def update_automod_settings(self,
+                                      aggression: Optional[int] = None,
+                                      bullying: Optional[int] = None,
+                                      disability: Optional[int] = None,
+                                      misogyny: Optional[int] = None,
+                                      race_ethnicity_or_religion: Optional[int] = None,
+                                      sex_based_terms: Optional[int] = None,
+                                      sexuality_sex_or_gender: Optional[int] = None,
+                                      swearing: Optional[int] = None) -> moderation.AutoModSettings:
+        """
+        Update the AutoMod settings for the broadcaster's channel.
+
+        | Scopes                              | Description                              |
+        | ----------------------------------- | -----------------------------------------|
+        | `moderator:manage:automod_settings` | Manage a broadcaster’s AutoMod settings. |
+
+        Parameters
+        ----------
+        aggression: Optional[int]
+            The level of aggression moderation.
+        bullying: Optional[int]
+            The level of bullying moderation.
+        disability: Optional[int]
+            The level of disability-related moderation.
+        misogyny: Optional[int]
+            The level of misogyny moderation.
+        race_ethnicity_or_religion: Optional[int]
+            The level of race, ethnicity, or religion-related moderation.
+        sex_based_terms: Optional[int]
+            The level of sex-based terms moderation.
+        sexuality_sex_or_gender: Optional[int]
+            The level of sexuality, sex, or gender-related moderation.
+        swearing: Optional[int]
+            The level of swearing moderation.
+
+        Returns
+        -------
+        moderation.AutoModSettings
+            A dictionary representing the updated AutoMod settings.
+        """
+        kwargs: Dict[str, Any] = {
+            'aggression': aggression,
+            'bullying': bullying,
+            'disability': disability,
+            'misogyny': misogyny,
+            'race_ethnicity_or_religion': race_ethnicity_or_religion,
+            'sex_based_terms': sex_based_terms,
+            'sexuality_sex_or_gender': sexuality_sex_or_gender,
+            'swearing': swearing
+        }
+        data: Data[List[moderation.AutoModSettings]] = await self._state.http.update_automod_settings(
+            self._b_id,
+            self._state.user.id,
+            **kwargs)
+        return data['data'][0]
+
+    async def update_automod_settings_level(self, overall_level: int) -> moderation.AutoModSettings:
+        """
+        Update the overall AutoMod settings level for the broadcaster's channel.
+
+        | Scopes                              | Description                              |
+        | ----------------------------------- | -----------------------------------------|
+        | `moderator:manage:automod_settings` | Manage a broadcaster’s AutoMod settings. |
+
+        Parameters
+        ----------
+        overall_level: int
+            The new overall AutoMod settings level.
+
+        Returns
+        -------
+        moderation.AutoModSettings
+            A dictionary representing the updated AutoMod settings.
+        """
+        data: Data[List[moderation.AutoModSettings]] = await self._state.http.update_automod_settings(
+            self._b_id,
+            self._state.user.id,
+            overall_level=overall_level)
+        return data['data'][0]
+
+    async def automod_held_message(self, message_id: str, action: Literal['allow', 'deny']) -> None:
+        """
+        Manage a held AutoMod message by either allowing or denying it.
+
+        | Scopes                     | Description                                 |
+        | -------------------------- | --------------------------------------------|
+        | `moderator:manage:automod` | Manage messages held for review by AutoMod. |
+
+        Parameters
+        ----------
+        message_id: str
+            The ID of the message to manage.
+
+        action: Literal['allow', 'deny']
+            The action to perform on the held message; either 'allow' or 'deny'.
+        """
+        await self._state.http.manage_held_automod_messages(self._state.user.id, message_id, action)
+
+    async def fetch_blocked_terms(self, first: int = 100) -> AsyncGenerator[List[moderation.BlockedTerm], None]:
+        """
+        Retrieve blocked terms for the broadcaster's channel in pages.
+
+        | Scopes                           | Description                                   |
+        | -------------------------------- | ----------------------------------------------|
+        | `moderator:read:blocked_terms`   | View a broadcaster’s list of blocked terms.   |
+        | `moderator:manage:blocked_terms` | Manage a broadcaster’s list of blocked terms. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of blocked terms to retrieve per page.
+
+        Yields
+        ------
+        AsyncGenerator[List[moderation.BlockedTerm], None]
+            A list of dictionaries, each representing a blocked term.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._b_id,
+            'moderator_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[moderation.BlockedTerm]] = await self._state.http.get_blocked_terms(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def add_blocked_term(self, text: str) -> moderation.BlockedTerm:
+        """
+        Add a term to the list of blocked terms for the broadcaster's channel.
+
+        | Scopes                           | Description                                   |
+        | -------------------------------- | ----------------------------------------------|
+        | `moderator:manage:blocked_terms` | Manage a broadcaster’s list of blocked terms. |
+
+        Parameters
+        ----------
+        text: str
+            The term to be blocked.
+
+        Returns
+        -------
+        moderation.BlockedTerm
+            A dictionary representing the blocked term that was added.
+        """
+        data: Data[List[moderation.BlockedTerm]] = await self._state.http.add_blocked_term(self._b_id,
+                                                                                           self._state.user.id,
+                                                                                           text=text)
+        return data['data'][0]
+
+    async def remove_blocked_term(self, term_id: str) -> None:
+        """
+        Remove a term from the list of blocked terms for the broadcaster's channel.
+
+        | Scopes                           | Description                                   |
+        | -------------------------------- | ----------------------------------------------|
+        | `moderator:manage:blocked_terms` | Manage a broadcaster’s list of blocked terms. |
+
+        Parameters
+        ----------
+        term_id: str
+            The ID of the blocked term to be removed.
+        """
+        await self._state.http.remove_blocked_term(self._b_id, self._state.user.id, term_id=term_id)
+
+
+class ClientChat(Chat):
+    """
+    Represents a client-specific channel chat.
+    """
+    __slots__ = ()
+
+    def __init__(self, state: ConnectionState) -> None:
+        super().__init__(state, state.user.id)
+        self._state: ConnectionState = state
+
+    async def automod_check_messages(self, messages: List[str]) -> List[moderation.AutoModMessageStatus]:
+        """
+        Check the AutoMod status of multiple messages.
+
+        | Scopes            | Description                  |
+        | ----------------- | -----------------------------|
+        | `moderation:read` | View a channel’s moderation. |
+
+        Parameters
+        ----------
+        messages: List[str]
+            A list of messages to check.
+
+        Returns
+        -------
+        List[moderation.AutoModMessageStatus]
+            A list of dictionaries, each representing the AutoMod status of a message.
+        """
+        data: Data[List[moderation.AutoModMessageStatus]] = await self._state.http.check_automod_status(
+            self._state.user.id,
+            messages)
+        return data['data']

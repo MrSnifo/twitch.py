@@ -4,35 +4,23 @@ icon: fontawesome/solid/xmarks-lines
 
 ## ::: twitch.errors.TwitchException
 ___
-## ::: twitch.errors.TwitchServerError
+## ::: twitch.errors.ClientException
 ---
 ## ::: twitch.errors.HTTPException
 ---
-### ::: twitch.errors.SessionClosed
+## ::: twitch.errors.TwitchServerError
 ---
-### ::: twitch.errors.BadRequest
+## ::: twitch.errors.Forbidden
 ---
-### ::: twitch.errors.InvalidToken
+## ::: twitch.errors.NotFound
 ---
-### ::: twitch.errors.Unauthorized
+## ::: twitch.errors.InvalidData
 ---
-### ::: twitch.errors.Forbidden
+## ::: twitch.errors.AuthFailure
 ---
-### ::: twitch.errors.RateLimit
-
-## ::: twitch.errors.WebSocketError
-___
-### ::: twitch.errors.WebsocketClosed
----
-### ::: twitch.errors.WsReconnect
-
-## ::: twitch.errors.ClientException
-___
-### ::: twitch.errors.NotFound
----
-### ::: twitch.errors.Conflict
----
-### ::: twitch.errors.UserRoleConflict
+## ::: twitch.errors.ConnectionClosed
 
 
 </br></br></br>
+
+

@@ -1,24 +1,77 @@
----
-hide:
-  - toc
----
 # Twitchify
-Twitchify is a Python library that simplifies Twitch integration by combining WebSocket EventSub,
-Helix API, and IRC Chat. It offers real-time event notifications and makes it easy to utilize the Helix
-API for a wide range of Twitch-related functionality.
 
-## Features
-- **Real-time Event Notifications:** Stay up-to-date with Twitch events through WebSocket EventSub, ensuring your application responds instantly.
-- **Helix API Support:** Access the full power of the Twitch Helix API with a single user access token.
-- **Bot Support:** Easily listen to channel messages.
-- **Type Hinting:** Twitchify includes built-in support for type hinting, promoting code clarity and maintainability.
+[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
+[![Python versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
 
-## Why Choose Twitchify?
-Twitchify puts the user first, making it ideal for personal use and hassle-free Twitch event setup. Unlike other libraries that require multiple tokens, Twitchify simplifies the process with just one user access token.
-Developers can create Twitch applications effortlessly, thanks to Twitchify's seamless integration of WebSocket EventSub and Helix API. Real-time event notifications and built-in authentication make handling Twitch events a breeze.
+Twitchify is your streamlined solution for interacting with the Twitch API.
+It provides a straightforward way to handle real-time events and access Twitch's
+Helix API-all from a single client. With Twitchify, you can easily manage and
+interact with multiple channels using just one user access token.
 
-## What is the difference between a Client and a Bot?
-The client supports EventSub and Helix API, while the bot inherently supports IRC chat, allowing it to listen to any channel's chatroom.
+## Quick Start
 
-## Need Help or Have Questions?
-If you need assistance or have questions, don't hesitate to reach out to @Snifo on the #general-python channel on the [Twitch API Discord server](https://discord.gg/8NXaEyV).
+### Installation
+
+Get Twitchify up and running with:
+
+```shell
+# Windows
+py -3 -m pip install -U twitchify
+
+# Linux/macOS
+python3 -m pip install -U twitchify
+```
+
+### Basic Example
+
+Start coding with ease:
+
+```python
+from twitch.types import eventsub
+from twitch import Client
+
+client = Client(client_id='YOUR_CLIENT_ID')
+
+@client.event
+async def on_ready():
+    print('Client is ready.')
+
+@client.event
+async def on_follow(data: eventsub.channels.FollowEvent):
+    await client.channel.chat.send_message(f'{data["user_name"]} just followed!')
+
+client.run('YOUR_USER_ACCESS_TOKEN')
+```
+
+## OAuth Authentication
+
+Setting up OAuth is a breeze-just add a single line and let Twitchify handle the rest.
+It’s almost like magic!
+
+```python
+from twitch.ext.oauth import DeviceAuthFlow, Scopes
+from twitch import Client
+
+client = Client(client_id='YOUR_CLIENT_ID')
+
+DeviceAuthFlow(
+    client=client,
+    scopes=[Scopes.USER_READ_EMAIL]
+)
+
+@client.event
+async def on_auth(access_token: str, refresh_token: str):
+    print(f'Token: {access_token}')
+
+client.run()
+```
+
+## Learn More
+
+Explore the [Documentation](https://twitchify.readthedocs.io/en/latest/) for more details and advanced features.
+
+## Need Help?
+
+Join the [Twitch API Discord](https://discord.gg/8NXaEyV) and mention @Snifo for support.
+
+Pogu ^^

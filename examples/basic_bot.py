@@ -1,60 +1,40 @@
-from twitch import Follow, Message
-from twitch.bot import Bot
+from twitch.ext.oauth import DeviceAuthFlow, Scopes
+from twitch import Client
 
-# Replace with your actual client_id and client_secret
-client_id = "YOUR_CLIENT_ID"
-client_secret = "YOUR_CLIENT_SECRET"
+client = Client(client_id='YOUR_CLIENT_ID')
 
-bot = Bot(
-    client_id=client_id,
-    client_secret=client_secret
+# Setup Device Authentication Flow with necessary scopes.
+# This is required for obtaining user-specific access tokens.
+DeviceAuthFlow(
+    client=client,
+    scopes=[Scopes.USER_READ_EMAIL]
 )
 
 
-@bot.event
-async def on_ready():
+@client.event
+async def on_code(code: str):
     """
-    This called when the Twitch client is ready to receive events.
+    Handles the device authorization code event.
     """
-    print(f"Ready as {bot.user.display_name}")
+    print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
 
 
-@bot.event
-async def on_refresh_token(access_token: str):
-    """
-    This called when a new access token has been generated.
-    """
-    # Store this access_token for future use.
-    print("Received a new access token:", access_token)
-
-
-@bot.event
-async def on_follow(user: Follow):
-    """
-    This called when a user follows the channel.
-    """
-    await bot.send(f"{user.display_name} just followed you!")
-
-
-@bot.event
+@client.event
 async def on_auth(access_token: str, refresh_token: str):
     """
-    This called when the client is successfully authenticated.
+    Handles the authentication event.
     """
-    # Store those for future use.
-    print('Successfully authenticated!')
+    print(f'access_token={access_token}\nrefresh_token={refresh_token}')
 
 
-@bot.event
-async def on_message(message: Message):
+@client.event
+async def on_ready():
     """
-    This called when the bot receives a message from a channel chat room.
+    Handles the client ready event.
     """
-    if message.author == bot.user:
-        if message.content.startswith('!ping'):
-            await bot.replay(message, 'Pong!')
-    print(f'{message.author}: {message}')
+    print('PogU')
 
 
-# You can simply use this method for mainly authentication.
-bot.run(scopes=['moderator:read:followers', 'chat:edit'])
+# Start the client and begin processing events.
+# This method should be called to start the event loop and handle incoming events.
+client.run()

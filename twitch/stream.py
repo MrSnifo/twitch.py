@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present Snifo
+Copyright (c) 2024-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,364 +21,418 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
-from .utils import MISSING, convert_rfc3339
-from .errors import NotFound
-from .user import BaseUser
+from .utils import datetime_to_str
+import datetime
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
-    from typing import Optional, List, Union
-    from .types import stream as StreamTypes
+    from typing import Optional, List, AsyncGenerator, Dict, Any, Literal
+    from .types import Data, PData, channels, streams
     from .state import ConnectionState
-    from datetime import datetime
+    from .user import User
 
-__all__ = ('ChannelStream', 'Stream', 'StreamMarker', 'Category')
-
-
-class Category:
-    """
-    Represents a category for a stream or game.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the category.
-    name: str
-        The name of the category.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the name of the Category.
-    __eq__(other: object) -> bool
-        Checks if two Category instances are equal based on their IDs.
-    __ne__(other: object) -> bool
-    """
-    __slots__ = ('id', 'name', '__weakref__')
-
-    if TYPE_CHECKING:
-        id: str
-        name: str
-
-    def __init__(self, data: Union[StreamTypes.Category, StreamTypes.SpecificCategory,
-                                   StreamTypes.SpecificGame]) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Category id={self.id} name={self.name}>'
-
-    def __str__(self) -> str:
-        return self.name
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Category):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: Union[StreamTypes.Category, StreamTypes.SpecificCategory,
-                                     StreamTypes.SpecificGame]) -> None:
-        _id_keys = ('id', 'game_id', 'category_id')
-        _name_keys = ('name', 'game_name', 'category_name')
-        self.id = next((data.get(key) for key in _id_keys if data.get(key)), 'unknown')
-        self.name = next((data.get(key) for key in _name_keys if data.get(key)), 'unknown')
+__all__ = ('Stream', 'ClientStream')
 
 
 class Stream:
     """
-    Represents a Twitch stream.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the stream.
-    url: str
-        The URL of the stream.
-    tags: List[str]
-        The tags associated with the stream.
-    type: str
-        The type of the stream.
-    title: str
-        The title of the stream.
-    category: Optional[Category]
-        The category associated with the stream.
-    language: str
-        The language of the stream.
-    is_mature: bool
-        Indicates if the stream is marked as mature.
-    started_at: datetime
-        The date and time when the stream started.
-    broadcaster: BaseUser
-        The user who is broadcasting the stream.
-    viewer_count: int
-        The current viewer count of the stream.
-    thumbnail_url: str
-        The URL of the stream's thumbnail.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the title of the Stream.
-    __int__() -> int
-        Returns the viewer count as an integer.
-    __eq__(other: object) -> bool
-        Checks if two Stream instances are equal based on their IDs or broadcaster's ID.
-    __ne__(other: object) -> bool
-        Checks if two Stream instances are not equal.
+    Represents a Twitch channel stream.
     """
-    __slots__ = ('id', 'url', 'tags', 'type', 'title', 'category', 'language', 'is_mature', 'started_at',
-                 'broadcaster', 'viewer_count', 'thumbnail_url')
 
-    if TYPE_CHECKING:
-        id: str
-        url: str
-        tags: List[str]
-        type: str
-        title: str
-        category: Optional[Category]
-        language: str
-        is_mature: bool
-        started_at: datetime
-        broadcaster: BaseUser
-        viewer_count: int
-        thumbnail_url: str
+    __slots__ = ('_state', '_b_id')
 
-    def __init__(self, data: StreamTypes.Stream) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Stream id={self.id} broadcaster={self.broadcaster!r} viewer_count={self.viewer_count}>'
-
-    def __str__(self) -> str:
-        return self.title
-
-    def __int__(self) -> int:
-        return self.viewer_count
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Stream):
-            return self.id == other.id
-        if isinstance(other, BaseUser):
-            return self.broadcaster.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: StreamTypes.Stream) -> None:
-        self.id = data['id']
-        self.type = data['type'] or 'unknown'
-        self.tags = data['tags']
-        self.title = data['title']
-        self.language = data['language']
-        self.category = Category(data=data) if data['game_id'] else None
-        self.is_mature = data['is_mature']
-        self.started_at = convert_rfc3339(data['started_at'])
-        self.broadcaster = BaseUser(data, prefix='user_')
-        self.url = f'https://www.twitch.tv/{self.broadcaster.name}'
-        self.viewer_count = data['viewer_count']
-        self.thumbnail_url = data['thumbnail_url']
-
-
-class StreamMarker:
-    """
-    Represents a marker set during a Twitch stream.
-
-    Attributes
-    ----------
-    id: str
-        The unique ID of the stream marker.
-    url: Optional[str]
-        The URL associated with the stream marker (optional).
-    created_at: datetime
-        The date and time when the marker was created.
-    description: str
-        The description of the stream marker.
-    position_seconds: int
-        The position in seconds where the marker was set.
-
-    Methods
-    -------
-    __eq__(other: object) -> bool
-        Checks if two StreamMarker instances are equal based on their IDs.
-    __ne__(other: object) -> bool
-        Checks if two StreamMarker instances are not equal.
-    """
-    if TYPE_CHECKING:
-        id: str
-        url: Optional[str]
-        created_at: datetime
-        description: str
-        position_seconds: int
-
-    def __init__(self, data: StreamTypes.StreamMarker) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return (
-            f'<StreamMarker id={self.id} description={self.description} '
-            f'position_seconds={self.position_seconds}>'
-        )
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, StreamMarker):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: StreamTypes.StreamMarker) -> None:
-        self.id = data['id']
-        self.created_at = convert_rfc3339(data['created_at'])
-        self.description = data['description']
-        self.position_seconds = data['position_seconds']
-        # `url` is missing when creating a Stream Marker.
-        self.url = data.get('url')
-
-
-class ChannelStream:
-    """
-    Represents a channel's stream-related functionality.
-    """
-    __slots__ = ('_b_id', '_m_id', '__state')
-
-    def __init__(self, state: ConnectionState, broadcaster_id: str, moderator_id: str) -> None:
+    def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
+        self._state: ConnectionState = state
         self._b_id: str = broadcaster_id
-        self._m_id: str = moderator_id
-        self.__state: ConnectionState = state
 
-    async def get_info(self) -> Stream:
+    @overload
+    async def get_live(self) -> streams.StreamInfo:
+        ...
+
+    @overload
+    async def get_live(self) -> None:
+        ...
+
+    async def get_live(self) -> Optional[streams.StreamInfo]:
         """
-        Get information about the channel's current stream.
-
-        Raises
-        ------
-        NotFound
-            * Stream is not currently active.
+        Retrieve the live stream information for the broadcaster.
 
         Returns
         -------
-        Stream
-            Information about the current stream.
+        Optional[streams.StreamInfo]
+            A dictionary representing the live stream information if the broadcaster is live; otherwise, None.
         """
-        async for streams in self.__state.http.fetch_streams(limit=1, user_ids=[self._b_id]):
-            if streams:
-                return Stream(data=streams[0])
-            raise NotFound("The stream you're looking for is not currently active.")
+        data: PData[List[streams.StreamInfo]] = await self._state.http.get_streams(user_ids=[self._b_id])
+        return data['data'][0] if len(data['data']) != 0 else None
 
-    async def create_marker(self, description: str = MISSING) -> StreamMarker:
+    async def create_marker(self, description: Optional[str] = None) -> streams.StreamMarkerInfo:
         """
-        Create a marker in the channel's current stream.
+        Create a stream marker for the broadcaster.
 
-        ???+ Danger
-            You may not add markers:
-
-            * If the stream is not live.
-            * If the stream has not enabled video on demand (VOD).
-            * If the stream is a premiere.
-            * If the stream is a rerun of a past broadcast, including past premieres.
-
-        | Scopes                     | Description             |
-        | -------------------------- | ----------------------- |
-        | `channel:manage:broadcast` | Create Stream Marker.   |
+        | Scopes                     | Description                                 |
+        | -------------------------- | --------------------------------------------|
+        | `channel:manage:broadcast` | Manage a channel’s broadcast configuration. |
 
         Parameters
         ----------
-        description: str
-            The description for the marker.
-
-        Raises
-        ------
-        ValueError
-            * The maximum length of the description is 140 characters.
-        Unauthorized
-            * The user access token must include the user:manage:broadcast scope.
-        Forbidden
-            * The user in the access token must own the video.
-            * The user must be one of the broadcaster's editors.
-        NotFound
-            * The user is not streaming live.
-            * The user hasn't enabled video on demand (VOD).
+        description: Optional[str]
+            A description for the marker.
 
         Returns
         -------
-        StreamMarker
-            Information about the created stream marker.
+        streams.StreamMarkerInfo
+            A dictionary representing the stream marker information.
         """
-        data = await self.__state.http.create_stream_marker(user_id=self._b_id, description=description)
-        return StreamMarker(data=data)
+        data: Data[List[streams.StreamMarkerInfo]] = await self._state.http.create_stream_marker(self._b_id,
+                                                                                                 description)
+        return data['data'][0] if len(data['data']) != 0 else None
 
-    async def send_shoutout(self, broadcaster: Union[str, BaseUser, Stream]) -> None:
+    async def send_shoutout(self, user: User) -> None:
         """
-        Send a shoutout to another broadcaster during the stream.
+        Send a shoutout to another broadcaster.
 
-        ???+ Warning
-            The broadcaster may send a Shoutout once every 2 minutes.
-            They may send the same broadcaster a Shoutout once every 60 minutes.
-
-        | Scopes                       | Description        |
-        | ---------------------------- | ------------------ |
-        | `moderator:manage:shoutouts` | Send a Shoutout.   |
-
-        Raises
-        ------
-        NotFound
-            * Unable to find the requested user.
-        BadRequest
-            * The broadcaster may not give themselves a Shoutout.
-            * The broadcaster is not streaming live or does not have one or more viewers.
-        Unauthorized
-            * The user access token must include the moderator:manage:shoutouts scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-            * The broadcaster may not send the specified broadcaster a Shoutout.
-        RateLimit
-            * Exceeded the number of Shoutouts they may send within a given window.
-            * Exceeded the number of Shoutouts they may send the same broadcaster within a given window.
+        | Scopes                       | Description                       |
+        | ---------------------------- | ----------------------------------|
+        | `moderator:manage:shoutouts` | Manage a broadcaster’s shoutouts. |
 
         Parameters
         ----------
-        broadcaster: Union[str, BaseUser, Stream]
-            The broadcaster to send the shoutout to.
+        user: User
+            The user to whom the shoutout will be sent.
         """
-        if isinstance(broadcaster, Stream):
-            broadcaster = broadcaster.broadcaster
-        broadcaster = await self.__state.get_user(user=broadcaster)
-        await self.__state.http.send_shoutout(broadcaster_id=self._b_id, moderator_id=self._m_id,
-                                              to_broadcaster_id=broadcaster.id)
+        await self._state.http.send_a_shoutout(self._b_id, self._state.user.id, to_broadcaster_id=user.id)
 
-    async def create_clip(self, has_delay: bool = False) -> str:
+    async def create_clip(self, has_delay: bool = False) -> channels.ClipEdit:
         """
-        Create a clip from the channel's current stream.
+        Create a clip of the broadcaster's stream.
 
-        | Scopes       | Description    |
-        | ------------ | -------------- |
-        | `clips:edit` | Create Clip.   |
+        | Scopes       | Description                 |
+        | ------------ | ----------------------------|
+        | `clips:edit` | Manage Clips for a channel. |
 
         Parameters
         ----------
-        has_delay: optional
-            Indicates whether the clip should include stream delay. Defaults to False.
+        has_delay: bool
+            Whether to create the clip with a delay.
 
-        Raises
+        Returns
+        -------
+        channels.ClipEdit
+            A dictionary representing the clip edit information.
+        """
+        data: Data[List[channels.ClipEdit]] = await self._state.http.create_clip(self._b_id, has_delay=has_delay)
+        return data['data'][0]
+
+    async def fetch_schedule(self,
+                             segment_ids: Optional[List[str]] = None,
+                             start_time: Optional[datetime.datetime] = None,
+                             *,
+                             first: int = 25) -> AsyncGenerator[streams.Schedule, None]:
+        """
+        Fetch the broadcaster's stream schedule.
+
+        Parameters
+        ----------
+        segment_ids: Optional[List[str]]
+            A list of segment IDs to filter the schedule.
+        start_time: Optional[datetime.datetime]
+            The start time to filter the schedule.
+        first: int
+            The number of items to return per request.
+
+        Yields
         ------
-        Unauthorized
-            * The user access token must include the clips:edit scope.
-        Forbidden
-            * Only followers and/or subscriber can capture clips.
-            * The specified broadcaster has not enabled clips on their channel.
-        NotFound
-            * Stream is not currently active.
+        AsyncGenerator[streams.Schedule, None]
+            A dictionary representing a schedule segment.
+        """
+        kwargs: Dict[str, Any] = {
+            'segment_ids': segment_ids,
+            'start_time': datetime_to_str(start_time),
+            'broadcaster_id': self._b_id,
+            'first': first
+        }
+        while True:
+            data: PData[List[streams.Schedule]] = await self._state.http.get_channel_stream_schedule(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def get_channel_icalendar(self) -> str:
+        """
+        Retrieve the iCalendar link for the broadcaster's stream schedule.
 
         Returns
         -------
         str
-            The edit URL of the created clip.
+            A string representing the iCalendar link for the broadcaster's stream schedule.
         """
-        data = await self.__state.http.create_clip(broadcaster_id=self._b_id, has_delay=has_delay)
-        return data['edit_url']
+        data: str = await self._state.http.get_channel_icalendar(self._b_id)
+        return data
+
+
+class ClientStream(Stream):
+    """
+    Represents a client-specific channel stream.
+    """
+
+    __slots__ = ()
+
+    def __init__(self, state: ConnectionState) -> None:
+        super().__init__(state, state.user.id)
+        self._state: ConnectionState = state
+
+    async def get_key(self) -> str:
+        """
+        Retrieve the stream key for the client.
+
+        | Scopes                    | Description                           |
+        | ------------------------- | --------------------------------------|
+        | `channel:read:stream_key` | View an authorized user’s stream key. |
+
+        Returns
+        -------
+        str
+            A string representing the stream key.
+        """
+        data: Data[List[streams.StreamKey]] = await self._state.http.get_stream_key(self._state.user.id)
+        return data['data'][0]['stream_key']
+
+    async def start_commercial(self, length: int = 180) -> streams.CommercialStatus:
+        """
+        Start a commercial break on the client's stream.
+
+        | Scopes                    | Description                   |
+        | ------------------------- | ------------------------------|
+        | `channel:edit:commercial` | Run commercials on a channel. |
+
+        Parameters
+        ----------
+        length: int
+            The duration of the commercial in seconds.
+
+        Returns
+        -------
+        streams.CommercialStatus
+            A dictionary representing the status of the commercial break.
+        """
+        data: Data[List[streams.CommercialStatus]] = await self._state.http.start_commercial(self._state.user.id,
+                                                                                             length)
+        return data['data'][0]
+
+    async def start_raid(self, user: User) -> streams.RaidInfo:
+        """
+        Start a raid to another broadcaster's channel.
+
+        | Scopes                 | Description                               |
+        | ---------------------- | ------------------------------------------|
+        | `channel:manage:raids` | Manage a channel raiding another channel. |
+
+        Parameters
+        ----------
+        user: User
+            The user to whom the raid will be directed.
+
+        Returns
+        -------
+        streams.RaidInfo
+            A dictionary representing the raid information.
+        """
+        data: Data[List[streams.RaidInfo]] = await self._state.http.start_raid(self._state.user.id, user.id)
+        return data['data'][0]
+
+    async def cancel_raid(self) -> None:
+        """
+        Cancel an ongoing raid.
+
+        | Scopes                 | Description                               |
+        | ---------------------- | ------------------------------------------|
+        | `channel:manage:raids` | Manage a channel raiding another channel. |
+        """
+        await self._state.http.cancel_raid(self._state.user.id)
+
+    async def get_ad_schedule(self) -> streams.AdSchedule:
+        """
+        Retrieve the advertisement schedule for the client.
+
+        | Scopes             | Description                                        |
+        | ------------------ | ---------------------------------------------------|
+        | `channel:read:ads` | Read the ads schedule and details on your channel. |
+        | `channel:manage:ads` | Manage ads schedule on a channel.                |
+
+        Returns
+        -------
+        streams.AdSchedule
+            A dictionary representing the advertisement schedule.
+        """
+        data: Data[List[streams.AdSchedule]] = await self._state.http.get_ad_schedule(self._state.user.id)
+        return data['data'][0]
+
+    async def snooze_next_ad(self) -> streams.AdSnooze:
+        """
+        Snooze the next scheduled advertisement.
+
+        | Scopes               | Description                       |
+        | -------------------- | ----------------------------------|
+        | `channel:manage:ads` | Manage ads schedule on a channel. |
+
+        Returns
+        -------
+        streams.AdSnooze
+            A dictionary representing the snooze status of the next ad.
+        """
+        data: Data[List[streams.AdSnooze]] = await self._state.http.snooze_next_ad(self._state.user.id)
+        return data['data'][0]
+
+    @overload
+    async def update_schedule_vacation(self,
+                                       enable: Literal[False],
+                                       vacation_start_time: None = None,
+                                       vacation_end_time: None = None,
+                                       timezone: None = None) -> None: ...
+
+    @overload
+    async def update_schedule_vacation(self,
+                                       enable: Literal[True],
+                                       vacation_start_time: datetime.datetime,
+                                       vacation_end_time: datetime.datetime,
+                                       timezone: str) -> None: ...
+
+    async def update_schedule_vacation(self,
+                                       enable: bool,
+                                       vacation_start_time: Optional[datetime.datetime] = None,
+                                       vacation_end_time: Optional[datetime.datetime] = None,
+                                       timezone: Optional[str] = None) -> None:
+        """
+        Update the vacation settings for the broadcast schedule.
+
+        | Scopes                    | Description                         |
+        | ------------------------- | ------------------------------------|
+        | `channel:manage:schedule` | Manage a channel’s stream schedule. |
+
+        Parameters
+        ----------
+        enable: bool
+            Whether to enable or disable vacation mode.
+        vacation_start_time: Optional[datetime.datetime]
+            The start time of the vacation.
+        vacation_end_time: Optional[datetime.datetime]
+            The end time of the vacation.
+        timezone: Optional[str]
+            The [timezone](https://nodatime.org/TimeZones) of the vacation times.
+        """
+        await self._state.http.update_channel_stream_schedule(self._state.user.id, enable,
+                                                              datetime_to_str(vacation_start_time),
+                                                              datetime_to_str(vacation_end_time),
+                                                              timezone)
+
+    async def create_schedule_segment(self,
+                                      start_time: datetime.datetime,
+                                      timezone: str,
+                                      duration: int,
+                                      is_recurring: Optional[bool] = None,
+                                      category_id: Optional[str] = None,
+                                      title: Optional[str] = None) -> streams.Schedule:
+        """
+        Create a new schedule segment for the client's stream.
+
+        | Scopes                    | Description                         |
+        | ------------------------- | ------------------------------------|
+        | `channel:manage:schedule` | Manage a channel’s stream schedule. |
+
+        Parameters
+        ----------
+        start_time: datetime.datetime
+            The start time of the schedule segment.
+        timezone: str
+            The [timezone](https://nodatime.org/TimeZones) of the start time.
+        duration: int
+            The duration of the schedule segment in minutes.
+        is_recurring: Optional[bool]
+            Whether the segment is recurring.
+        category_id: Optional[str]
+            The category ID of the segment.
+        title: Optional[str]
+            The title of the segment.
+
+        Returns
+        -------
+        streams.Schedule
+            A dictionary representing the created schedule segment.
+        """
+        data: Data[List[streams.Schedule]] = await self._state.http.create_channel_schedule_segment(
+            self._state.user.id,
+            datetime_to_str(start_time),
+            timezone,
+            duration,
+            is_recurring,
+            category_id,
+            title)
+        return data['data'][0]
+
+    async def update_schedule_segment(self,
+                                      segment_id: str,
+                                      start_time: Optional[datetime.datetime] = None,
+                                      duration: Optional[int] = None,
+                                      category_id: Optional[str] = None,
+                                      title: Optional[str] = None,
+                                      is_canceled: Optional[bool] = None,
+                                      timezone: Optional[str] = None) -> streams.Schedule:
+        """
+        Update an existing schedule segment for the client's stream.
+
+        | Scopes                    | Description                         |
+        | ------------------------- | ------------------------------------|
+        | `channel:manage:schedule` | Manage a channel’s stream schedule. |
+
+        Parameters
+        ----------
+        segment_id: str
+            The ID of the segment to update.
+        start_time: Optional[datetime.datetime]
+            The new start time of the segment.
+        duration: Optional[int]
+            The new duration of the segment in minutes.
+        category_id: Optional[str]
+            The new category ID of the segment.
+        title: Optional[str]
+            The new title of the segment.
+        is_canceled: Optional[bool]
+            Whether the segment is canceled.
+        timezone: Optional[str]
+            The [timezone](https://nodatime.org/TimeZones) of the segment times.
+
+        Returns
+        -------
+        streams.Schedule
+            A dictionary representing the updated schedule segment.
+        """
+        data: Data[List[streams.Schedule]] = await self._state.http.update_channel_schedule_segment(
+            self._state.user.id,
+            segment_id,
+            start_time,
+            duration,
+            category_id,
+            title,
+            is_canceled,
+            timezone
+        )
+        return data['data'][0]
+
+    async def delete_schedule_segment(self, segment_id: str) -> None:
+        """
+        Delete an existing schedule segment from the client's stream schedule.
+
+        | Scopes                    | Description                         |
+        | ------------------------- | ------------------------------------|
+        | `channel:manage:schedule` | Manage a channel’s stream schedule. |
+
+        Parameters
+        ----------
+        segment_id: str
+            The ID of the segment to delete.
+        """
+        await self._state.http.delete_channel_schedule_segment(self._state.user.id, segment_id)

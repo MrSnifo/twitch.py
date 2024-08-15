@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present Snifo
+Copyright (c) 2024-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,1485 +21,1712 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
-from .utils import MISSING, convert_rfc3339
-from .stream import ChannelStream, Category
-from .chat import ChannelChat
-from .errors import NotFound
-from .user import BaseUser
+from .utils import datetime_to_str, convert_rfc3339
+from .stream import Stream, ClientStream
+from .chat import Chat, ClientChat
 
-from typing import TYPE_CHECKING
+from typing import overload, TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Union, Optional, List, AsyncGenerator, Literal
-    from .types import channel as ChannelTypes
+    from .types import (Data, PData, TData, channels, moderation, streams, users, TPData, activity, DTData, bits,
+                        interaction)
+    from typing import Optional, List, AsyncGenerator, Literal, Dict, Any
     from .state import ConnectionState
-    from datetime import datetime
+    from .user import User
+    import datetime
 
-__all__ = ('Video', 'VideoMutedSegments',
-           'Clip',
-           'Channel',
-           'Follow', 'Editor', 'BitsLeaderboard', 'BannedUser', 'Subscription',
-           'Schedule', 'ScheduleVacation', 'ScheduleSegment',
-           'Charity', 'CharityDonation',
-           'ChannelFollowers',
-           'ChannelExtensions', 'Extensions', 'Extension', 'ActiveExtension', 'BaseExtension',
-           'ChannelSchedule',
-           'UserChannel')
+__all__ = ('Channel', 'ClientChannel')
 
 
-# ----------------------------------
-#             + Video +
-# ----------------------------------
-class VideoMutedSegments:
-    """
-    Represents muted segments within a video.
-
-    Attributes
-    ----------
-    offset: int
-        The offset (in seconds) where the muted segment starts.
-    duration: int
-        The duration (in seconds) of the muted segment.
-    """
-    __slots__ = ('offset', 'duration')
-
-    if TYPE_CHECKING:
-        offset: int
-        duration: int
-
-    def __init__(self, data: ChannelTypes.VideoMutedSegments) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<VideoMutedSegments offset={self.offset} duration={self.duration}>'
-
-    def _form_data(self, data: ChannelTypes.VideoMutedSegments) -> None:
-        self.offset = data['offset']
-        self.duration = data['duration']
-
-
-class Video:
-    """
-    Represents a video on a channel.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier for the video.
-    url: str
-        The URL of the video.
-    type: str
-        The type of video.
-    user: BaseUser
-        The user who created the video.
-    title: str
-        The title of the video.
-    duration: str
-        The duration of the video.
-    language: str
-        The language of the video.
-    stream_id: Optional[str]
-        The ID of the associated stream, if available.
-    created_at: datetime
-        The date and time when the video was created.
-    view_count: str
-        The number of views for the video.
-    description: str
-        The description of the video.
-    is_viewable: bool
-        Indicates whether the video is viewable to the public.
-    published_at: datetime
-        The date and time when the video was published.
-    thumbnail_url: str
-        The URL of the video's thumbnail.
-    muted_segments: Optional[List[VideoMutedSegments]]
-        A list of muted segments in the video, if available.
-    is_muted_segments: bool
-        Indicates whether the video has muted segments.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the URL of the video as a string.
-    __eq__(other: object) -> bool
-        Compares the current Video instance with another Video or Clip instance for equality.
-    __ne__(other: object) -> bool
-        Compares the current Video instance with another Video or Clip instance for inequality.
-    """
-    __slots__ = ('id', 'url', 'type', 'user', 'title', 'duration', 'language', 'stream_id', 'created_at',
-                 'view_count', 'description', 'is_viewable', 'published_at', 'thumbnail_url',
-                 'muted_segments', 'is_muted_segments')
-
-    if TYPE_CHECKING:
-        id: str
-        url: str
-        type: str
-        user: BaseUser
-        title: str
-        duration: str
-        language: str
-        stream_id: Optional[str]
-        created_at: datetime
-        view_count: str
-        description: str
-        is_viewable: bool
-        published_at: datetime
-        thumbnail_url: str
-        muted_segments: Optional[List[VideoMutedSegments]]
-        is_muted_segments: bool
-
-    def __init__(self, data: ChannelTypes.Video) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Video id={self.id} user={self.user!r} published_at={self.published_at}>'
-
-    def __str__(self) -> str:
-        return self.url
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Video):
-            return self.id == other.id
-        if isinstance(other, Clip):
-            return self.id == other.video_id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChannelTypes.Video) -> None:
-        self.id: str = data['id']
-        self.url: str = data['url']
-        self.user: BaseUser = BaseUser(data, prefix='user_')
-        self.type: str = data['type']
-        self.title: str = data['title']
-        self.duration: str = data['duration']
-        self.language: str = data['language']
-        self.is_viewable = data['viewable'] == 'public'
-        self.stream_id: Optional[str] = data['stream_id']
-        self.view_count: str = data['view_count']
-        self.created_at: datetime = convert_rfc3339(data['created_at'])
-        self.description: str = data['description']
-        self.published_at: datetime = convert_rfc3339(data['published_at'])
-        self.thumbnail_url: str = data['thumbnail_url']
-        self.muted_segments = None
-        if data['muted_segments']:
-            self.muted_segments = [VideoMutedSegments(data=s) for s in data['muted_segments']]
-        self.is_muted_segments = self.muted_segments is not None
-
-
-# ---------------------------------
-#             + Clip +
-# ---------------------------------
-class Clip:
-    """
-    Represents a video clip on a channel.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier for the clip.
-    url: str
-        The URL of the clip.
-    title: str
-        The title of the clip.
-    creator: BaseUser
-        The user who created the clip.
-    duration: float
-        The duration (in seconds) of the clip.
-    language: str
-        The language of the clip.
-    video_id: Optional[str]
-        The ID of the associated video, if available.
-    embed_url: str
-        The URL for embedding the clip.
-    created_at: datetime
-        The date and time when the clip was created.
-    view_count: int
-        The number of views for the clip.
-    vod_offset: Optional[int]
-        The offset (in seconds) within the VOD if the clip is from a VOD, if available.
-    broadcaster: BaseUser
-        The broadcaster associated with the clip.
-    category_id: Optional[str]
-        The category (game) ID, if available.
-    thumbnail_url: str
-        The URL of the clip's thumbnail.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the URL of the clip as a string.
-    __eq__(other: object) -> bool
-        Compares the current Clip instance with another Clip instance for equality.
-    __ne__(other: object) -> bool
-        Compares the current Clip instance with another Clip instance for inequality.
-    """
-    __slots__ = ('id', 'url', 'title', 'creator', 'duration', 'language', 'video_id', 'embed_url',
-                 'created_at', 'view_count', 'vod_offset', 'broadcaster', 'category_id', 'thumbnail_url')
-
-    if TYPE_CHECKING:
-        id: str
-        url: str
-        title: str
-        creator: BaseUser
-        duration: float
-        language: str
-        video_id: Optional[str]
-        embed_url: str
-        created_at: datetime
-        view_count: int
-        vod_offset: Optional[int]
-        broadcaster: BaseUser
-        category_id: Optional[str]
-        thumbnail_url: str
-
-    def __init__(self, data: ChannelTypes.Clip) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return (
-            f'<Clip id={self.id}  title={self.title} video_id={self.video_id} created_at={self.created_at}>'
-        )
-
-    def __str__(self) -> str:
-        return self.url
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Clip):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChannelTypes.Clip) -> None:
-        self.id: str = data['id']
-        self.url: str = data['url']
-        self.title: str = data['title']
-        # ``creator_login`` is missing in the payload.
-        data['creator_login'] = data['creator_name'].lower()
-        self.creator: BaseUser = BaseUser(data, prefix='creator_')
-        self.duration: float = data['duration']
-        self.language: str = data['language']
-        self.video_id: Optional[str] = data['video_id'] or None
-        self.embed_url: str = data['embed_url']
-        self.view_count: int = data['view_count']
-        self.created_at: datetime = convert_rfc3339(data['created_at'])
-        self.vod_offset: Optional[int] = data['vod_offset']
-        # ``broadcaster_login`` is missing in the payload.
-        data['broadcaster_login'] = data['broadcaster_name'].lower()
-        self.broadcaster: BaseUser = BaseUser(data, prefix='broadcaster_')
-        self.category_id: Optional[str] = data['game_id'] or None
-        self.thumbnail_url: str = data['thumbnail_url']
-
-
-# ------------------------------------
-#            + Channel +
-# ------------------------------------
 class Channel:
     """
     Represents a Twitch channel.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier for the channel.
-    url: str
-        The URL of the channel.
-    ccls: List[str]
-        Content classification labels for the channel.
-    tags: List[str]
-        Tags associated with the channel.
-    delay: int
-        The delay (in seconds) of the channel's stream.
-    title: str
-        The title of the channel.
-    category: Optional[Category]
-        The category (game) associated with the channel, if available.
-    language: str
-        The language of the channel.
-    broadcaster: BaseUser
-        The broadcaster of the channel.
-    is_branded_content: bool
-        Indicates whether the channel features branded content.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the title of the channel as a string.
-    __eq__(other: object) -> bool
-        Compares the current Channel instance with another Channel or BaseUser instance for equality.
-    __ne__(other: object) -> bool
-        Compares the current Channel instance with another Channel or BaseUser instance for inequality.
-    """
-    __slots__ = ('id', 'url', 'ccls', 'tags', 'delay', 'title', 'category', 'language', 'broadcaster',
-                 'is_branded_content')
-
-    if TYPE_CHECKING:
-        id: str
-        url: str
-        ccls: List[str]
-        tags: List[str]
-        delay: int
-        title: str
-        category: Optional[Category]
-        language: str
-        broadcaster: BaseUser
-        is_branded_content: bool
-
-    def __init__(self, data: ChannelTypes.Channel) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Channel broadcaster={self.broadcaster!r} title={self.title} category={self.category!r}>'
-
-    def __str__(self) -> str:
-        return self.title
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Channel):
-            return self.broadcaster.id == other.broadcaster.id
-        if isinstance(other, BaseUser):
-            return self.broadcaster.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChannelTypes.Channel) -> None:
-        self.id = data['broadcaster_id']
-        self.ccls = data['content_classification_labels']
-        self.tags = data['tags']
-        self.delay = data['delay']
-        self.title = data['title']
-        self.language = data['broadcaster_language']
-        self.category = Category(data=data) if data['game_id'] else None
-        self.broadcaster = BaseUser(data, prefix='broadcaster_')
-        self.url = f'https://www.twitch.tv/{self.broadcaster.name}'
-        self.is_branded_content = data['is_branded_content']
-
-
-# -----------------------------------
-#              + User +
-# -----------------------------------
-class Follow(BaseUser):
-    """
-    Represents a follower relationship between users.
-
-    Attributes
-    ----------
-    followed_at: datetime
-        The date and time when the follow relationship was established.
-    """
-    __slots__ = ('followed_at',)
-
-    if TYPE_CHECKING:
-        followed_at: datetime
-
-    def __init__(self, data: Union[ChannelTypes.Followed, ChannelTypes.Follower]) -> None:
-        super().__init__(data, prefix=['broadcaster_', 'user_'])
-        self._update_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Follow name={self.name} followed_at={self.followed_at}>'
-
-    def _update_data(self, data: Union[ChannelTypes.Followed, ChannelTypes.Follower]) -> None:
-        super()._update_data(data=data)
-        self.followed_at = convert_rfc3339(data['followed_at'])
-
-
-class Editor(BaseUser):
-    """
-    Represents a user with editing privileges for a channel.
-
-    Attributes
-    ----------
-    added_at: datetime
-        The date and time when the user was granted editing privileges.
-    """
-    __slots__ = ('added_at',)
-
-    if TYPE_CHECKING:
-        added_at: datetime
-
-    def __init__(self, data: ChannelTypes.Editor) -> None:
-        super().__init__(data, prefix='user_')
-        self._update_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Editor name={self.name} added_at={self.added_at}>'
-
-    def _update_data(self, data: ChannelTypes.Editor) -> None:
-        super()._update_data(data=data)
-        # ``user_login`` is missing in the payload.
-        data['user_login'] = data['user_name'].lower()
-        self.added_at = convert_rfc3339(timestamp=data['created_at'])
-
-
-class BitsLeaderboard(BaseUser):
-    """
-    Represents a user's position on the bits' leaderboard.
-
-    Attributes
-    ----------
-    rank: int
-        The user's rank on the leaderboard.
-    score: int
-        The user's score on the leaderboard.
-
-    Methods
-    -------
-    __int__() -> int
-        the user's score.
-    """
-    __slots__ = ('rank', 'score')
-
-    if TYPE_CHECKING:
-        rank: int
-        score: str
-
-    def __init__(self, data: ChannelTypes.UserBitsLeaderboard) -> None:
-        super().__init__(data, prefix='user_')
-        self._update_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<BitsLeaderboard name{self.name} rank={self.rank} score={self.score}>'
-
-    def __int__(self) -> int:
-        return self.score
-
-    def _update_data(self, data: ChannelTypes.UserBitsLeaderboard) -> None:
-        super()._update_data(data=data)
-        self.rank: int = data['rank']
-        self.score: int = data['score']
-
-
-class BannedUser(BaseUser):
-    """
-    Represents a banned user in a channel.
-
-    Attributes
-    ----------
-    reason: str
-        The reason for the ban.
-    ends_at: Optional[datetime]
-        The date and time when the ban ends, if not permanent.
-    banned_at: datetime
-        The date and time when the user was banned.
-    banned_by: BaseUser
-        The user who banned the other user.
-    is_permanent: bool
-        Indicates whether the ban is permanent.
-    """
-    __slots__ = ('reason', 'ends_at', 'banned_at', 'banned_by', 'is_permanent')
-
-    if TYPE_CHECKING:
-        reason: str
-        ends_at: Optional[datetime]
-        banned_at: datetime
-        banned_by: BaseUser
-        is_permanent: bool
-
-    def __init__(self, data: Union[ChannelTypes.BannedUser, ChannelTypes.BannedUserEvent]) -> None:
-        super().__init__(data, prefix='user_')
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return (
-            f'<BannedUser name={self.name} banned_by={self.banned_by!r} is_permanent={self.is_permanent}>'
-        )
-
-    def _form_data(self, data: Union[ChannelTypes.BannedUser, ChannelTypes.BannedUserEvent]) -> None:
-        super()._update_data(data=data)
-        self.reason: str = data['reason']
-        self.banned_by: BaseUser = BaseUser(data, prefix=['moderator_', 'moderator_user_'])
-        _created_at = data.get('created_at')
-        _banned_at = data.get('banned_at')
-        self.banned_at = convert_rfc3339(_created_at or _banned_at)
-        _expires_at = data.get('expires_at')
-        _ends_at = data.get('ends_at')
-        self.ends_at: Optional[datetime] = convert_rfc3339(_expires_at or _ends_at)
-        self.is_permanent = self.ends_at is None
-
-
-class Subscription:
-    """
-    Represents a user's subscription to a channel.
-
-    Attributes
-    ----------
-    tier: int
-        The subscription tier.
-    user: BaseUser
-        The user who subscribed.
-    gifter: Optional[BaseUser]
-        The user who gifted the subscription, if applicable.
-    is_gift: bool
-        Indicates whether the subscription is a gift.
-    plan_name: Optional[str]
-        The name of the subscription plan, if available.
-
-    Methods
-    -------
-    __eq__(other: object) -> bool
-        Compares the current Subscription instance with another Subscription
-        or BaseUser instance for equality.
-    __ne__(other: object) -> bool
-        Compares the current Subscription instance with another Subscription
-        or BaseUser instance for inequality.
-    """
-    if TYPE_CHECKING:
-        tier: int
-        user: BaseUser
-        gifter: Optional[BaseUser]
-        is_gift: bool
-        plan_name: Optional[str]
-
-    def __init__(self, data: ChannelTypes.Subscription) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Subscription user={self.user!r} tier={self.tier} is_gift={self.is_gift}>'
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Subscription):
-            return self.user.id == other.user.id
-        if isinstance(other, BaseUser):
-            return self.user.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChannelTypes.Subscription) -> None:
-        self.tier = data['tier']
-        self.user = BaseUser(data, prefix=['user_', 'broadcaster_'])
-        self.gifter = BaseUser(data, prefix='gifter_') if data.get('gifter_id') else None
-        self.is_gift = data['is_gift']
-        self.plan_name = data.get('plan_name')
-
-
-# -----------------------------------
-#            + Schedule +
-# -----------------------------------
-class ScheduleSegment:
-    """
-    Represents a segment in a channel's schedule.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier of the schedule segment.
-    title: str
-        The title of the schedule segment.
-    category: Optional[Category]
-        The category associated with the schedule segment, if available.
-    end_time: datetime
-        The end time of the schedule segment.
-    start_time: datetime
-        The start time of the schedule segment.
-    is_recurring: bool
-        Indicates whether the schedule segment is recurring.
-    frequency_day: str
-        The day of the week on which the schedule segment recurs.
-    canceled_until: Optional[datetime]
-        The date and time until which the schedule segment is canceled, if canceled.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the title of the schedule segment as a string.
-    __eq__(other: object) -> bool
-        Compares the current ScheduleSegment instance with another for equality.
-    __ne__(other: object) -> bool
-        Compares the current ScheduleSegment instance with another for inequality.
-    """
-    __slots__ = ('id', 'title', 'category', 'end_time', 'start_time', 'is_recurring', 'frequency_day',
-                 'canceled_until')
-    if TYPE_CHECKING:
-        id: str
-        title: str
-        category: Optional[Category]
-        end_time: datetime
-        start_time: datetime
-        is_recurring: bool
-        frequency_day: str
-        canceled_until: Optional[datetime]
-
-    def __init__(self, data: ChannelTypes.ScheduleSegment) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<ScheduleSegment id={self.id} start_time={self.start_time} end_time={self.end_time}>'
-
-    def __str__(self) -> str:
-        return self.title
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, ScheduleSegment):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: ChannelTypes.ScheduleSegment) -> None:
-        self.id = data['id']
-        self.title = data['title']
-        self.category = Category(data=data['category']) if data['category'] else None
-        self.end_time = convert_rfc3339(data['end_time'])
-        self.start_time = convert_rfc3339(data['start_time'])
-        self.frequency_day = self.start_time.strftime("%A")
-        self.is_recurring = data['is_recurring']
-        self.canceled_until = convert_rfc3339(data['canceled_until'])
-
-
-class ScheduleVacation:
-    """
-    Represents a vacation in a channel's schedule.
-
-    Attributes
-    ----------
-    start_time: datetime
-        The start time of the vacation.
-    end_time: datetime
-        The end time of the vacation.
-    """
-    __slots__ = ('start_time', 'end_time')
-
-    if TYPE_CHECKING:
-        start_time: datetime
-        end_time: datetime
-
-    def __init__(self, data: ChannelTypes.ScheduleVacation) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<ScheduleVacation start_time={self.start_time} end_time={self.end_time}>'
-
-    def _form_data(self, data: ChannelTypes.ScheduleVacation) -> None:
-        self.start_time = convert_rfc3339(data['start_time'])
-        self.end_time = convert_rfc3339(data['end_time'])
-
-
-class Schedule:
-    """
-    Represents a channel's schedule.
-
-    Attributes
-    ----------
-    segments: List[ScheduleSegment]
-        A list of schedule segments.
-    vacation: Optional[ScheduleVacation]
-        Information about any ongoing vacation, if applicable.
-    is_in_vacation: bool
-        Indicates whether the channel is currently in vacation.
-
-    Methods
-    -------
-    __bool__() -> bool
-        Checks if the channel is currently on vacation.
-    """
-    __slots__ = ('segments', 'vacation', 'is_in_vacation')
-
-    if TYPE_CHECKING:
-        segments: List[ScheduleSegment]
-        vacation: Optional[ScheduleVacation]
-        is_in_vacation: bool
-
-    def __init__(self, data: ChannelTypes.Schedule) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Schedule is_in_vacation={self.is_in_vacation}>'
-
-    def __bool__(self) -> bool:
-        return self.is_in_vacation
-
-    def _form_data(self, data: ChannelTypes.Schedule):
-        self.segments = [ScheduleSegment(data=s) for s in data['segments']]
-        self.vacation = ScheduleVacation(data=data['vacation']) if data['vacation'] else None
-        self.is_in_vacation = self.vacation is not None
-
-
-# ----------------------------------
-#           + Charity +
-# ----------------------------------
-class CharityAmount:
-    """
-    Represents a charitable donation amount.
-
-    Attributes
-    ----------
-    value: float
-        The value of the donation amount.
-    currency: str
-        The currency in which the donation is made.
-
-    Methods
-    -------
-    __float__() -> float
-        Converts the donation amount to a float.
-    __int__() -> int
-        Converts the donation amount to an integer.
-    """
-    __slots__ = ('value', 'currency')
-
-    if TYPE_CHECKING:
-        value: float
-        currency: str
-
-    def __init__(self, data: ChannelTypes.CharityAmount) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<CharityAmount value={self.value} currency={self.currency}>'
-
-    def __float__(self) -> float:
-        return self.value
-
-    def __int__(self) -> int:
-        return int(self.value)
-
-    def _form_data(self, data: ChannelTypes.CharityAmount) -> None:
-        self.value: float = (data['value'] / 10 ** data['decimal_places'])
-        self.currency: str = data['currency']
-
-
-class CharityDonation(BaseUser):
-    """
-    Represents a charitable donation made by a user.
-
-    Attributes
-    ----------
-    donation_id: str
-        The unique identifier of the donation.
-    campaign_id: str
-        The campaign identifier associated with the donation.
-    amount: CharityAmount
-        The amount of the donation.
-
-    Methods
-    -------
-    __eq__(other: object) -> bool
-        Compares the current CharityDonation instance with another for equality.
-    __ne__(other: object) -> bool
-        Compares the current CharityDonation instance with another for inequality.
-    """
-    __slots__ = ('donation_id', 'campaign_id', 'amount')
-
-    if TYPE_CHECKING:
-        id: str
-        campaign_id: str
-        amount: CharityAmount
-
-    def __init__(self, data: Union[ChannelTypes.CharityDonation, ChannelTypes.CharityDonationEvent]) -> None:
-        super().__init__(data=data, prefix='user_')
-        self._update_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<CharityDonation id={self.id} name={self.name} amount={self.amount!r}>'
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, CharityDonation):
-            return self.campaign_id == other.campaign_id
-        if isinstance(other, Charity):
-            return self.campaign_id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _update_data(self, data: Union[ChannelTypes.CharityDonation,
-                                       ChannelTypes.CharityDonationEvent]) -> None:
-        super()._update_data(data=data)
-        self.donation_id: str = data['id']
-        self.campaign_id: str = data['campaign_id']
-        self.amount: CharityAmount = CharityAmount(data=data['amount'])
-
-
-class Charity:
-    """
-    Represents a charitable organization or campaign.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier of the charity.
-    name: str
-        The name of the charity.
-    logo: str
-        The URL of the charity's logo.
-    website: str
-        The URL of the charity's website.
-    description: str
-        A description of the charity.
-    target_amount: Optional[CharityAmount]
-        The target donation amount for the charity, if defined.
-    current_amount: Optional[CharityAmount]
-        The current donation amount received by the charity, if available.
-
-    Methods
-    -------
-    __int__() -> int
-        Converts the current donation amount to an integer.
-    __eq__(other: object) -> bool
-        Compares the current Charity instance with another for equality.
-    __ne__(other: object) -> bool
-        Compares the current Charity instance with another for inequality.
-    """
-    __slots__ = ('id', 'name', 'logo', 'website', 'description', 'target_amount', 'current_amount')
-
-    if TYPE_CHECKING:
-        id: str
-        name: str
-        logo: str
-        website: str
-        description: str
-        target_amount: Optional[CharityAmount]
-        current_amount: Optional[CharityAmount]
-
-    def __init__(self, data: Union[ChannelTypes.Charity, ChannelTypes.CharityDonation]) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<Charity id={self.id} name={self.name} target_amount={self.target_amount!r}>'
-
-    def __int__(self) -> int:
-        return self.current_amount or 0
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Charity):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _form_data(self, data: Union[ChannelTypes.Charity, ChannelTypes.CharityDonation]) -> None:
-        self.id: str = data.get('campaign_id', data['id'])
-        self.name: str = data['charity_name']
-        self.logo: str = data['charity_logo']
-        self.website: str = data.get('charity_website')
-        self.description: str = data.get('charity_description')
-        # This is None if the broadcaster has not defined a fundraising goal,
-        # or it is None if it's from EventSub.
-        _target_amount: Optional[ChannelTypes.CharityAmount] = data.get('target_amount')
-        self.target_amount = CharityAmount(data=_target_amount) if _target_amount else None
-        # This is None if it's from Event.
-        _current_amount: Optional[ChannelTypes.CharityAmount] = data.get('current_amount')
-        self.current_amount = CharityAmount(data=_current_amount) if _current_amount else None
-
-
-# -------------------------------
-#      + Channel Followers +
-# -------------------------------
-class ChannelFollowers:
-    """
-    Represents a channel's followers.
     """
 
-    __slots__ = ('__state', '_b_id')
+    __slots__ = ('_state', '_b_id')
 
     def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
+        self._state: ConnectionState = state
         self._b_id: str = broadcaster_id
-        self.__state: ConnectionState = state
 
-    async def get_total(self) -> int:
+    @property
+    def chat(self) -> Chat:
         """
-        Get the total number of followers for the channel.
+        Get the chat functionality associated with this channel.
+
+        Returns
+        -------
+        Chat
+            The `Chat` object representing the chat functionality for the channel.
+        """
+        return Chat(state=self._state, broadcaster_id=self._b_id)
+
+    @property
+    def stream(self) -> Stream:
+        """
+        Get the streaming functionality associated with this channel.
+
+        Returns
+        -------
+        Stream
+            The `Stream` object representing the streaming functionality for the channel.
+        """
+        return Stream(state=self._state, broadcaster_id=self._b_id)
+
+    async def get_info(self) -> channels.ChannelInfo:
+        """
+        Retrieve detailed information about the channel.
+
+        Returns
+        -------
+        channels.ChannelInfo
+            A dictionary containing the channel's information, including details such as title, description, and more.
+        """
+        data: Data[List[channels.ChannelInfo]] = await self._state.http.get_channel_information([self._b_id])
+        return data['data'][0]
+
+    async def get_teams(self) -> List[channels.ChannelTeam]:
+        """
+        Retrieve the teams associated with the channel.
+
+        Returns
+        -------
+        List[dict]
+            A list of dictionaries representing the teams that the channel is part of.
+        """
+        data: Data[List[channels.ChannelTeam]] = await self._state.http.get_channel_teams(broadcaster_id=self._b_id)
+        return data['data']
+
+    async def get_total_followers(self) -> int:
+        """
+        Retrieve the total number of followers for the channel.
+
+        | Scopes                     | Description                          |
+        | -------------------------- | -------------------------------------|
+        | `moderator:read:followers` | Read the followers of a broadcaster. |
 
         Returns
         -------
         int
-            The total number of followers for the channel.
+            The total count of followers for the channel.
         """
-        data = await self.__state.http.get_channel_total_followers(broadcaster_id=self._b_id)
-        return data
+        data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(broadcaster_id=self._b_id,
+                                                                                            first=1)
+        return data['total']
 
-    async def fetch_all(self, limit: int = 4) -> AsyncGenerator[List[Follow]]:
+    @overload
+    async def check_follower(self, user: User) -> channels.Follower:
+        ...
+
+    @overload
+    async def check_follower(self, user: User) -> None:
+        ...
+
+    async def check_follower(self, user: User) -> Optional[channels.Follower]:
         """
-        Fetch a list of channel followers.
+        Check if a specific user is a follower of the channel.
 
-        ???+ Danger
-            Only channel moderators or the broadcaster himself can access the list of followers.
-
-            this will result an empty list.
-
-        ???+ Warning
-            This method uses [pagination](https://dev.twitch.tv/docs/api/guide/#pagination).
-            Set the limit to -1 to retrieve all data, but be cautious of potential performance
-            and rate limit impacts.
-
-        | Scopes                     | Description             |
-        | -------------------------- | ------------------------|
-        | `moderator:read:followers` | Get Channel Followers.  |
+        | Scopes                     | Description                          |
+        | -------------------------- | -------------------------------------|
+        | `moderator:read:followers` | Read the followers of a broadcaster. |
 
         Parameters
         ----------
-        limit: int
-            The maximum number of followers to fetch.
+        user: User
+            The user to check for being a follower.
 
-        Raises
-        ------
-        NotFound
-            * Unable to find the requested user.
-            * The user is not following.
-        Unauthorized
-            * The user access token is missing the moderator:read:followers scope.
-            * user is not a moderator for the broadcaster.
+        Returns
+        -------
+        Optional[channels.Follower]
+            A dictionary representing the follower if the user is a follower, otherwise `None`.
+        """
+        data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(self._b_id, user_id=user.id)
+        return data['data'][0] if len(data['data']) != 0 else None
+
+    async def fetch_followers(self, *, first: int = 100) -> AsyncGenerator[List[channels.Follower], None]:
+        """
+        Retrieve followers for the channel in pages.
+
+        | Scopes                     | Description                          |
+        | -------------------------- | -------------------------------------|
+        | `moderator:read:followers` | Read the followers of a broadcaster. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of results to retrieve per page.
 
         Yields
         ------
-        List[Follow]
-            A list of Follow objects representing channel followers.
+        AsyncGenerator[List[channels.Follower], None]
+            A generator yielding lists of dictionaries representing followers.
         """
-        async for users in self.__state.http.fetch_channel_followers(limit=limit, broadcaster_id=self._b_id):
-            yield [Follow(data=user) for user in users]
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._b_id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
 
-    async def check(self, user: Union[str, BaseUser]):
+    async def get_banned_users(self, __users: List[User], /) -> List[moderation.BannedUser]:
         """
-        Check if a user is following the channel.
+        Retrieve information about banned users from the channel.
 
-        | Scopes                     | Description             |
-        | -------------------------- | ------------------------|
-        | `moderator:read:followers` | Get Channel Followers.  |
+        | Scopes                          | Description                       |
+        | ------------------------------- | ----------------------------------|
+        | `moderation:read`               | View a channel’s moderation data. |
+        | `moderator:manage:banned_users` | Ban and unban users.              |
 
         Parameters
         ----------
-        user: Union[str, BaseUser]
-            The user or user name to check for following.
-
-        Raises
-        ------
-        NotFound
-            If the user is not following the channel.
-        Unauthorized
-            * The user access token is missing the moderator:read:followers scope.
-            * user is not a moderator for the broadcaster.
+        __users: List[User]
+            A list of users to check if they are banned.
 
         Returns
         -------
-        Follow
-            A Follow object representing the user's follow status.
+        List[moderation.BannedUser]
+            A list of dictionaries representing the banned users.
         """
-        user = await self.__state.get_user(user)
-        async for users in self.__state.http.fetch_channel_followers(limit=1,
-                                                                     broadcaster_id=self._b_id,
-                                                                     user_id=user.id):
-            if len(users) == 1:
-                return Follow(data=users[0])
-            raise NotFound('The user is not following.')
+        data: PData[List[moderation.BannedUser]] = await self._state.http.get_banned_users(
+            self._b_id,
+            user_ids=[user.id for user in __users])
+        return data['data']
 
-
-# ----------------------------------
-#           + Extension +
-# ----------------------------------
-class BaseExtension:
-    """
-    Represents a base extension.
-
-    Attributes
-    ----------
-    id: Optional[str]
-        The unique identifier of the extension.
-    name: Optional[str]
-        The name of the extension.
-    version: Optional[str]
-        The version of the extension.
-
-    Methods
-    -------
-    __str__() -> str
-        Returns the name of the extension or 'Empty' if the name is not available.
-    __eq__(other) -> bool
-        Compares the current extension with another for equality.
-    __ne__(other: object) -> bool
-        Compares the current extension with another for inequality.
-    """
-    __slots__ = ('id', 'name', 'version')
-
-    if TYPE_CHECKING:
-        id: Optional[str]
-        name: Optional[str]
-        version: Optional[str]
-
-    def __init__(self, data: Union[ChannelTypes.Extension, ChannelTypes.ActiveExtension]) -> None:
-        self._update_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<BaseExtension id={self.id} name={self.name} version={self.version}>'
-
-    def __str__(self) -> str:
-        return self.name or 'Empty'
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, ActiveExtension):
-            if other.is_active:
-                return self.id == other.id
-            return False
-        if isinstance(other, BaseExtension):
-            return self.id == other.id
-        return False
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
-
-    def _update_data(self, data: Union[ChannelTypes.Extension, ChannelTypes.ActiveExtension]) -> None:
-        self.id = data.get('id')
-        self.name = data.get('name')
-        self.version = data.get('version')
-
-
-class ActiveExtension(BaseExtension):
-    """
-    Represents an active extension.
-
-    Attributes
-    ----------
-    is_active: bool
-        Indicates whether the extension is active.
-    slot_number: int
-        The slot number of the extension.
-    x: Optional[str]
-        The X-coordinate of the extension.
-    y: Optional[str]
-        The Y-coordinate of the extension.
-
-    Methods
-    -------
-    __bool__() -> bool
-        Returns True if the extension is active, False otherwise.
-    __int__() -> int
-        Returns the slot number of the extension as an integer.
-    """
-    __slots__ = ('x', 'y', 'is_active', 'slot_number')
-
-    if TYPE_CHECKING:
-        x: Optional[str]
-        y: Optional[str]
-        is_active: bool
-        slot_number: int
-
-    def __init__(self, data: ChannelTypes.ActiveExtension) -> None:
-        super().__init__(data=data)
-        self._update_data(data=data)
-
-    def __repr__(self) -> str:
-        return f'<ActiveExtension id={self.id} name={self.name} is_active={self.is_active}>'
-
-    def __bool__(self) -> bool:
-        return self.is_active
-
-    def __int__(self) -> int:
-        return self.slot_number
-
-    def _update_data(self, data: ChannelTypes.ActiveExtension) -> None:
-        super()._update_data(data=data)
-        self.x = data.get('x')
-        self.y = data.get('y')
-        self.is_active = data['active']
-        self.slot_number = data['slot_number']
-
-
-class Extension(BaseExtension):
-    """
-    Represents an extension.
-
-    Attributes
-    ----------
-    type: List[str]
-        The types of the extension.
-    can_activate: bool
-        Indicates whether the extension can be activated.
-
-    Methods
-    -------
-    __bool__() -> bool
-        Returns True if the extension can be activated, False otherwise.
-    """
-    __slots__ = ('type', 'can_activate')
-
-    if TYPE_CHECKING:
-        type: List[str]
-        can_activate: bool
-
-    def __init__(self, data: ChannelTypes.Extension) -> None:
-        super().__init__(data=data)
-        self._update_data(data=data)
-
-    def __bool__(self) -> bool:
-        return self.can_activate
-
-    def __repr__(self) -> str:
-        return f'<Extension id={self.id} name={self.name} can_activate={self.can_activate}>'
-
-    def _update_data(self, data: ChannelTypes.Extension) -> None:
-        super()._update_data(data=data)
-        self.type = data['type']
-        self.can_activate = data['can_activate']
-
-
-class Extensions:
-    """
-    Represents a collection of extensions.
-
-    Attributes
-    ----------
-    panel: List[ActiveExtension]
-        List of active extensions in the panel.
-    overlay: List[ActiveExtension]
-        List of active overlay extensions.
-    component: List[ActiveExtension]
-        List of active component extensions.
-    """
-    __slots__ = ('panel', 'overlay', 'component')
-
-    if TYPE_CHECKING:
-        panel: List[ActiveExtension]
-        overlay: List[ActiveExtension]
-        component: List[ActiveExtension]
-
-    def __init__(self, data: ChannelTypes.Extensions) -> None:
-        self._form_data(data=data)
-
-    def __repr__(self) -> str:
-        return '<Extensions>'
-
-    def _form_data(self, data: ChannelTypes.Extensions) -> None:
-        self.panel: List[ActiveExtension] = [ActiveExtension(data=ex) for ex in data['panel']]
-        self.overlay: List[ActiveExtension] = [ActiveExtension(data=ex) for ex in data['overlay']]
-        self.component: List[ActiveExtension] = [ActiveExtension(data=ex) for ex in data['component']]
-
-
-class ChannelExtensions:
-    """
-    Represents extensions associated with a specific channel.
-    """
-    __slots__ = ('_b_id', '__state')
-
-    def __init__(self, state: ConnectionState, broadcaster_id: str):
-        self._b_id: str = broadcaster_id
-        self.__state: ConnectionState = state
-
-    async def get_active(self) -> Extensions:
+    async def fetch_banned_users(self, *, first: int = 100) -> AsyncGenerator[List[moderation.BannedUser], None]:
         """
-        Get a list of active extensions that the broadcaster has installed for each configuration.
+        Retrieve banned users from the channel in pages.
 
-        | Scopes                                         | Description                    |
-        | ---------------------------------------------- | -------------------------------|
-        | `user:read:broadcast` or `user:edit:broadcast` | Get client active extensions.  |
-
-        Raises
-        ------
-        Unauthorized
-            * The user access token is missing the user:read:broadcast or user:edit:broadcast scope.
-
-        Returns
-        -------
-        Extensions
-            An object representing the active extensions for the channel.
-        """
-        data = await self.__state.http.get_user_active_extensions(user_id=self._b_id)
-        return Extensions(data=data)
-
-
-# --------------------------------
-#           + Schedule +
-# --------------------------------
-class ChannelSchedule:
-    """
-    Represents a channel's stream schedule.
-    """
-    __slots__ = ('_b_id', '__state')
-
-    def __init__(self, state: ConnectionState, broadcaster_id: str):
-        self._b_id: str = broadcaster_id
-        self.__state: ConnectionState = state
-
-    async def fetch_all(self, start_time: datetime = MISSING, limit: int = 4) -> AsyncGenerator[Schedule]:
-        """
-        Fetch all stream schedule segments for the channel.
-
-        ???+ Warning
-            This method uses [pagination](https://dev.twitch.tv/docs/api/guide/#pagination).
-            Set the limit to -1 to retrieve all data, but be cautious of potential performance
-            and rate limit impacts.
-
-        Raises
-        ------
-        NotFound
-            * The broadcaster has not created a streaming schedule.
+        | Scopes                          | Description                                                       |
+        | ------------------------------- | ------------------------------------------------------------------|
+        | `moderation:read`               | View a channel’s moderation data including Moderators, Bans, ..., |
+        | `moderator:manage:banned_users` | Ban and unban users.                                              |
 
         Parameters
         ----------
-        start_time: datetime
-            The start time to filter segments. Default is None.
-        limit: int
-            The maximum number of segments to fetch. Default is 4.
+        first: int
+            The maximum number of results to retrieve per page.
 
         Yields
-        -------
-        Schedule
-            A Schedule object representing a stream schedule segment.
+        ------
+        AsyncGenerator[List[moderation.BannedUser], None]
+            A generator yielding lists of dictionaries representing banned users.
         """
-        async for schedule in self.__state.http.fetch_channel_stream_schedule(
-                limit=limit, broadcaster_id=self._b_id, start_time=start_time):
-            yield Schedule(data=schedule)
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._b_id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[moderation.BannedUser]] = await self._state.http.get_banned_users(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
 
-    async def get_segments(self, segments: List[ScheduleSegment]) -> Schedule:
+    async def ban(self, user: User, duration: Optional[int] = None, reason: Optional[str] = None) -> None:
         """
-        Get stream schedule segments.
+        Ban a user from the channel.
+
+        | Scopes                          | Description          |
+        | ------------------------------- | ---------------------|
+        | `moderator:manage:banned_users` | Ban and unban users. |
 
         Parameters
         ----------
-        segments: List[ScheduleSegment]
-            A list of ScheduleSegment objects representing the segments to fetch.
+        user: User
+            The user to be banned.
+        duration: Optional[int]
+            The duration of the ban in minutes.
+        reason: Optional[str]
+            The reason for banning the user.
+        """
+        await self._state.http.ban_user(self._b_id, self._state.user.id, user.id, duration=duration, reason=reason)
 
-        Raises
-        ------
-        NotFound
-            * The broadcaster has not created a streaming schedule.
+    async def unban(self, user: User) -> None:
+        """
+        Unban a user from the channel.
+
+        | Scopes                          | Description          |
+        | ------------------------------- | ---------------------|
+        | `moderator:manage:banned_users` | Ban and unban users. |
+
+        Parameters
+        ----------
+        user: User
+            The user to be unbanned.
+        """
+        await self._state.http.unban_user(self._b_id, self._state.user.id, user.id)
+
+    @overload
+    async def check_unban_request(self,
+                                  user: User,
+                                  *,
+                                  status: Literal['pending', 'approved', 'denied', 'acknowledged', 'canceled']
+                                  ) -> moderation.UnBanRequest:
+        ...
+
+    @overload
+    async def check_unban_request(self,
+                                  user: User,
+                                  *,
+                                  status: Literal['pending', 'approved', 'denied', 'acknowledged', 'canceled']
+                                  ) -> None:
+        ...
+
+    async def check_unban_request(self,
+                                  user: User,
+                                  *,
+                                  status: Literal['pending', 'approved', 'denied', 'acknowledged', 'canceled']
+                                  ) -> Optional[moderation.UnBanRequest]:
+        """
+        Retrieve a specific unban request for a user.
+
+        | Scopes                            | Description                            |
+        | --------------------------------- | ---------------------------------------|
+        | `moderator:read:unban_requests`   | View a broadcaster’s unban requests.   |
+        | `moderator:manage:unban_requests` | Manage a broadcaster’s unban requests. |
+
+        Parameters
+        ----------
+        user: User
+            The user for whom the unban request is to be retrieved.
+        status: Literal['pending', 'approved', 'denied', 'acknowledged', 'canceled']
+            The status of the unban request to filter by.
 
         Returns
         -------
-        Schedule
-            A Schedule object representing the fetched stream schedule segment.
-
+        Optional[moderation.UnBanRequest]
+            A dictionary containing the details of the unban request if it exists; otherwise, None.
         """
-        segment_ids = [segment.id for segment in segments]
-        async for schedule in self.__state.http.fetch_channel_stream_schedule(limit=1,
-                                                                              broadcaster_id=self._b_id,
-                                                                              segment_ids=segment_ids):
-            return Schedule(data=schedule)
+        data: PData[List[moderation.UnBanRequest]] = await self._state.http.get_unban_requests(self._b_id,
+                                                                                               self._state.user.id,
+                                                                                               status=status,
+                                                                                               user_id=user.id)
+        return data['data'][0] if len(data['data']) != 0 else None
+
+    async def fetch_unban_requests(self,
+                                   status: Literal['pending', 'approved', 'denied', 'acknowledged', 'canceled'],
+                                   *,
+                                   first: int = 100) -> AsyncGenerator[List[moderation.UnBanRequest], None]:
+        """
+        Retrieve unban requests from the channel in pages.
+
+        | Scopes                            | Description                            |
+        | --------------------------------- | ---------------------------------------|
+        | `moderator:read:unban_requests`   | View a broadcaster’s unban requests.   |
+        | `moderator:manage:unban_requests` | Manage a broadcaster’s unban requests. |
+
+        Parameters
+        ----------
+        status: Literal['pending', 'approved', 'denied', 'acknowledged', 'canceled']
+            The status of the unban requests to filter by.
+        first: int
+            The maximum number of results to retrieve per page.
+
+        Yields
+        ------
+        AsyncGenerator[List[moderation.UnBanRequest], None]
+            A generator yielding lists of dictionaries representing unban requests.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._b_id,
+            'moderator_id': self._state.user.id,
+            'status': status.lower(),
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[moderation.UnBanRequest]] = await self._state.http.get_unban_requests(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def resolve_unban_request(self,
+                                    request_id: str,
+                                    status: Literal['approved', 'denied'],
+                                    resolution_text: Optional[str] = None) -> moderation.UnBanRequest:
+        """
+        Resolve an unban request.
+
+        | Scopes                            | Description                            |
+        | --------------------------------- | ---------------------------------------|
+        | `moderator:manage:unban_requests` | Manage a broadcaster’s unban requests. |
+
+        Parameters
+        ----------
+        request_id: str
+            The ID of the unban request to resolve.
+        status: Literal['approved', 'denied']
+            The status to set for the unban request.
+        resolution_text: Optional[str]
+            Optional text explaining the resolution.
+
+        Returns
+        -------
+        moderation.UnBanRequest
+            A dictionary containing the details of the resolved unban request.
+        """
+        data: Data[List[moderation.UnBanRequest]] = await self._state.http.resolve_unban_requests(
+            self._b_id,
+            self._state.user.id,
+            unban_request_id=request_id,
+            status=status,
+            resolution_text=resolution_text)
+        return data['data'][0]
+
+    async def fetch_recent_stream_markers(self, first: int = 100) -> AsyncGenerator[List[streams.StreamMarker], None]:
+        """
+        Retrieve recent stream markers for the channel in pages.
+
+        | Scopes                     | Description                                 |
+        | -------------------------- | --------------------------------------------|
+        | `user:read:broadcast`      | View a user’s broadcasting configuration.   |
+        | `channel:manage:broadcast` | Manage a channel’s broadcast configuration. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of results to retrieve per page.
+
+        Yields
+        ------
+        AsyncGenerator[List[streams.StreamMarker], None]
+            A generator yielding lists of dictionaries representing stream markers.
+        """
+        kwargs: Dict[str, Any] = {
+            'user_id': self._b_id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[streams.StreamMarker]] = await self._state.http.get_stream_markers(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def fetch_video_markers(self,
+                                  video_id: str,
+                                  first: int = 100) -> AsyncGenerator[List[streams.StreamMarker], None]:
+        """
+        Retrieve markers for a specific video in pages.
+
+        | Scopes                     | Description                                 |
+        | -------------------------- | --------------------------------------------|
+        | `user:read:broadcast`      | View a user’s broadcasting configuration.   |
+        | `channel:manage:broadcast` | Manage a channel’s broadcast configuration. |
+
+        Parameters
+        ----------
+        video_id: str
+            The ID of the video for which to retrieve markers.
+        first: int
+            The maximum number of results to retrieve per page.
+
+        Yields
+        ------
+        AsyncGenerator[List[streams.StreamMarker], None]
+            A generator yielding lists of dictionaries representing video markers.
+        """
+        kwargs: Dict[str, Any] = {
+            'video_id': video_id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[streams.StreamMarker]] = await self._state.http.get_stream_markers(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def fetch_videos(self,
+                           language: Optional[str] = None,
+                           period: Optional[Literal['all', 'day', 'month', 'week']] = None,
+                           sort: Optional[Literal['time', 'trending', 'views']] = None,
+                           video_type: Optional[Literal['all', 'archive', 'highlight', 'upload']] = None,
+                           first: Optional[int] = 100) -> AsyncGenerator[List[channels.Video], None]:
+        """
+        Retrieve videos for the channel in pages.
+
+        Parameters
+        ----------
+        language: Optional[str]
+            The language of the videos to filter by, or None to include all languages.
+        period: Optional[Literal['all', 'day', 'month', 'week']]
+            The time period for the videos, or None to include all periods.
+        sort: Optional[Literal['time', 'trending', 'views']]
+            The sorting method for the videos, or None to use the default sort.
+        video_type: Optional[Literal['all', 'archive', 'highlight', 'upload']]
+            The type of videos to retrieve, or None to include all types.
+        first: Optional[int]
+            The maximum number of results to retrieve per page.
+
+        Yields
+        ------
+        AsyncGenerator[List[channels.Video], None]
+            A generator yielding lists of dictionaries representing videos.
+        """
+        kwargs: Dict[str, Any] = {
+            'user_id': self._b_id,
+            'language': language,
+            'period': period,
+            'sort': sort,
+            'video_type': video_type,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[channels.Video]] = await self._state.http.get_videos(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def fetch_clips(self,
+                          started_at: Optional[datetime] = None,
+                          ended_at: Optional[datetime] = None,
+                          is_featured: Optional[bool] = None,
+                          first: int = 100
+                          ) -> AsyncGenerator[List[channels.Clip], None]:
+        """
+        Retrieve clips from the channel in pages.
+
+        Parameters
+        ----------
+        started_at: Optional[datetime]
+            The start date and time for filtering clips.
+        ended_at: Optional[datetime]
+            The end date and time for filtering clips.
+        is_featured: Optional[bool]
+            Whether to filter by featured clips.
+        first: int
+            The maximum number of results to retrieve per page.
+
+        Yields
+        ------
+        AsyncGenerator[List[channels.Clip], None]
+            A generator yielding lists of dictionaries representing clips.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._b_id,
+            'started_at': datetime_to_str(started_at),
+            'ended_at': datetime_to_str(ended_at),
+            'is_featured': is_featured,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[channels.Clip]] = await self._state.http.get_clips(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
 
 
-class UserChannel:
+class ClientChannel(Channel):
     """
-    Represents a user's channel.
+    Represents a client-specific channel.
+
+    !!! Danger
+        The attributes are read-only.
+        These attributes are automatically updated via EventSub whenever channel information changes.
+
+    Attributes
+    ----------
+    title: str
+        The title of the channel.
+    language: str
+        The language of the broadcaster's content.
+    category_id: str
+        The ID of the category (game) associated with the channel.
+    category_name: str
+        The name of the category (game) associated with the channel.
+    ccl: List[channels.CCL]
+        A list of content classification labels associated with the channel.
     """
 
-    __slots__ = ('_b_id', '_state', '__weakref__')
+    __slots__ = ('title', 'language', 'category_id', 'category_name', 'ccl')
 
-    def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
-        self._b_id: str = broadcaster_id
+    def __init__(self, state: ConnectionState, data: channels.ChannelInfo) -> None:
+        super().__init__(state, state.user.id)
         self._state: ConnectionState = state
+        self.title: str = data['title']
+        self.language: str = data['broadcaster_language']
+        self.category_id: str = data['game_id']
+        self.category_name: str = data['game_name']
+        self.ccl: List[channels.CCL] = data['content_classification_labels']
 
     @property
-    def chat(self) -> ChannelChat:
+    def chat(self) -> ClientChat:
         """
-        Get an instance of the ChannelChat class for managing chat-related actions.
+        Get the chat functionality associated with client user channel.
 
         Returns
         -------
-        ChannelChat
-            An instance of the ChannelChat class.
+        ClientChat
+            The `ClientChat` object representing the chat functionality for the channel.
         """
-        return ChannelChat(state=self._state, broadcaster_id=self._b_id, moderator_id=self._state.user.id)
+        return ClientChat(state=self._state)
 
     @property
-    def stream(self) -> ChannelStream:
+    def stream(self) -> ClientStream:
         """
-        Get an instance of the ChannelStream class for managing stream-related actions.
+        Get the streaming functionality associated with client user channel.
 
         Returns
         -------
-        ChannelStream
-            An instance of the ChannelStream class.
+        ClientStream
+            The `ClientStream` object representing the streaming functionality for the channel.
         """
-        return ChannelStream(state=self._state, broadcaster_id=self._b_id, moderator_id=self._state.user.id)
+        return ClientStream(state=self._state)
 
-    @property
-    def extensions(self) -> ChannelExtensions:
+    async def get_extensions(self) -> List[channels.Extension]:
         """
-        Get an instance of the ChannelExtensions class for managing channel extensions.
+        Retrieve all extensions associated with the user.
 
-        Returns
-        -------
-        ChannelExtensions
-            An instance of the ChannelExtensions class.
-        """
-        return ChannelExtensions(state=self._state, broadcaster_id=self._b_id)
-
-    @property
-    def schedule(self) -> ChannelSchedule:
-        """
-        Get an instance of the ChannelSchedule class for managing the channel's streaming schedule.
+        | Scopes                | Description                                        |
+        | --------------------- | ---------------------------------------------------|
+        | `user:read:broadcast` | View a user’s broadcasting configuration.          |
+        | `user:edit:broadcast` | View and edit a user’s broadcasting configuration. |
 
         Returns
         -------
-        ChannelSchedule
-            An instance of the ChannelSchedule class.
+        List[channels.Extension]
+            A list of dictionaries representing the user's extensions.
         """
-        return ChannelSchedule(state=self._state, broadcaster_id=self._b_id)
+        data: Data[List[channels.Extension]] = await self._state.http.get_user_extensions()
+        return data['data']
 
-    @property
-    def followers(self) -> ChannelFollowers:
+    async def get_active_extensions(self) -> channels.ActiveExtensions:
         """
-        Get an instance of the ChannelFollowers class for managing channel followers and their actions.
+        Retrieve all active extensions associated with the user.
 
-        Returns
-        -------
-        ChannelFollowers
-            An instance of the ChannelFollowers class.
-        """
-        return ChannelFollowers(state=self._state, broadcaster_id=self._b_id)
-
-    async def get_info(self) -> Channel:
-        """
-        Get information about the channel.
+        | Scopes                     | Description                                         |
+        | --------------------------- | ---------------------------------------------------|
+        | `user:read:broadcast`       | View a user’s broadcasting configuration.          |
+        | `channel:manage:extensions` | Manage a channel’s Extension configuration.        |
+        | `user:edit:broadcast`       | View and edit a user’s broadcasting configuration. |
 
         Returns
         -------
-        Channel
-            Information about the channel.
+        channels.ActiveExtensions
+            A dictionary representing the currently active extensions.
         """
-        data = await self._state.http.get_channels(broadcaster_ids=[self._b_id])
-        return Channel(data=data[0])
+        data: Data[channels.ActiveExtensions] = await self._state.http.get_user_active_extensions()
+        return data['data']
 
-    async def ban(self, user: Union[str, BaseUser], duration: int = MISSING, reason: str = MISSING) -> None:
+    @overload
+    async def update_extension(self,
+                               key: Literal['panel'],
+                               *,
+                               number: Literal['1', '2', '3'],
+                               extension_id: str,
+                               extension_version: str,
+                               activate: bool,
+                               x: None = None,
+                               y: None = None) -> channels.ActiveExtensions:
+        ...
+
+    @overload
+    async def update_extension(self,
+                               key: Literal['overlay'],
+                               *,
+                               number: Literal[1],
+                               extension_id: str,
+                               extension_version: str,
+                               activate: bool,
+                               x: None = None,
+                               y: None = None) -> channels.ActiveExtensions:
+        ...
+
+    @overload
+    async def update_extension(self,
+                               key: Literal['component'],
+                               *,
+                               number: Literal['1', '2'],
+                               extension_id: str,
+                               extension_version: str,
+                               activate: bool,
+                               x: int,
+                               y: int) -> channels.ActiveExtensions:
+        ...
+
+    async def update_extension(self,
+                               key: Literal['panel', 'overlay', 'component'],
+                               /,
+                               **kwargs: Any) -> channels.ActiveExtensions:
         """
-        Ban a user from the channel's chat.
+        Update an extension based on the provided parameters.
 
-        | Scopes                          | Description   |
-        | ------------------------------- | ------------- |
-        | `moderator:manage:banned_users` | Ban User.     |
+        | Scopes                     | Description                                         |
+        | --------------------------- | ---------------------------------------------------|
+        | `channel:manage:extensions` | Manage a channel’s Extension configuration.        |
+        | `user:edit:broadcast`       | View and edit a user’s broadcasting configuration. |
 
         Parameters
         ----------
-        user: Union[str, BaseUser]
-            The user or user name to be banned.
+        key: Literal['panel', 'overlay', 'component']
+            The type of extension to update, which can be 'panel', 'overlay', or 'component'.
+        **kwargs: dict
+            Keyword arguments for the extension update. The available arguments depend on the `key` value:
+                - `number` (Literal): The number of the extension to update.
+                - `extension_id` (str): The ID of the extension to update.
+                - `extension_version` (str): The version of the extension to update.
+                - `activate` (bool): Whether to activate or deactivate the extension.
+                - `x` (int): The x-coordinate position for 'component' extensions.
+                - `y` (int): The y-coordinate position for 'component' extensions.
+
+        Returns
+        -------
+        channels.ActiveExtensions
+            A dictionary representing the updated active extensions.
+        """
+        data: Data[channels.ActiveExtensions] = await self._state.http.update_user_extensions(key=key, **kwargs)
+        return data['data']
+
+    async def update(self,
+                     category_id: Optional[str] = None,
+                     broadcaster_language: Optional[str] = None,
+                     title: Optional[str] = None,
+                     delay: Optional[int] = None,
+                     tags: Optional[List[str]] = None,
+                     content_classification_labels: Optional[List[channels.CCL]] = None,
+                     is_branded_content: Optional[bool] = None) -> None:
+        """
+        Update the channel information.
+
+        | Scopes                     | Description                                 |
+        | -------------------------- | --------------------------------------------|
+        | `channel:manage:broadcast` | Manage a channel’s broadcast configuration. |
+
+        Parameters
+        ----------
+        category_id: Optional[str]
+            The ID of the game or category.
+        broadcaster_language: Optional[str]
+            The language of the broadcaster.
+        title: Optional[str]
+            The title of the stream.
+        delay: Optional[int]
+            The delay in seconds for the stream.
+        tags: Optional[List[str]]
+            A list of tags for the stream.
+        content_classification_labels: Optional[List[channels.CCL]]
+            A list of content classification labels.
+        is_branded_content: Optional[bool]
+            Whether the content is branded.
+        """
+        await self._state.http.modify_channel_information(self._state.user.id, category_id, broadcaster_language,
+                                                          title, delay, tags, content_classification_labels,
+                                                          is_branded_content)
+
+    async def get_moderators(self, __users: List[User], /) -> List[users.SpecificUser]:
+        """
+        Retrieve a list of specific moderators for the channel.
+
+        | Scopes                       | Description                                                 |
+        | --------------------------- | -------------------------------------------------------------|
+        | `moderation:read`           | View a channel’s moderation data.                            |
+        | `channel:manage:moderators` | Add or remove the moderator role from users in your channel. |
+
+        Parameters
+        ----------
+        __users: List[User]
+            A list of `User` objects representing the users whose moderation status is being queried.
+
+        Returns
+        -------
+        List[users.SpecificUser]
+            A list of dictionaries representing the specific moderators for the channel.
+        """
+        data: PData[List[users.SpecificUser]] = await self._state.http.get_moderators(self._state.user.id,
+                                                                                      user_ids=[u.id for u in __users],
+                                                                                      first=100)
+        return data['data']
+
+    async def fetch_moderators(self, first: int = 100) -> AsyncGenerator[List[users.SpecificUser], None]:
+        """
+        Fetch all moderators for the channel.
+
+        | Scopes                       | Description                                                 |
+        | --------------------------- | -------------------------------------------------------------|
+        | `moderation:read`           | View a channel’s moderation data.                            |
+        | `channel:manage:moderators` | Add or remove the moderator role from users in your channel. |
+
+        Parameters
+        ----------
+        first: int
+            The number of moderators to fetch per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[users.SpecificUser], None]
+            An async generator yielding lists of dictionaries representing the moderators for the channel.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[users.SpecificUser]] = await self._state.http.get_moderators(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def add_moderator(self, user: User) -> None:
+        """
+        Add a user as a moderator for the channel.
+
+        | Scopes                       | Description                                                 |
+        | --------------------------- | -------------------------------------------------------------|
+        | `channel:manage:moderators` | Add or remove the moderator role from users in your channel. |
+
+        Parameters
+        ----------
+        user: User
+            The `User` object representing the user to be added as a moderator.
+        """
+        await self._state.http.add_channel_moderator(self._state.user.id, user.id)
+
+    async def remove_moderator(self, user: User) -> None:
+        """
+        Remove a user from the list of moderators for the channel.
+
+        | Scopes                       | Description                                                 |
+        | --------------------------- | -------------------------------------------------------------|
+        | `channel:manage:moderators` | Add or remove the moderator role from users in your channel. |
+
+
+        Parameters
+        ----------
+        user: User
+            The `User` object representing the user to be removed as a moderator.
+        """
+        await self._state.http.remove_channel_moderator(self._state.user.id, user.id)
+
+    async def get_editors(self) -> List[channels.Editor]:
+        """
+        Retrieve all editors associated with the user's channel.
+
+        | Scopes                 | Description                                              |
+        | ---------------------- | ---------------------------------------------------------|
+        | `channel:read:editors` | View a list of users with the editor role for a channel. |
+
+        Returns
+        -------
+        List[channels.Editor]
+            A list of dictionaries representing the editors of the channel.
+        """
+        data: Data[List[channels.Editor]] = await self._state.http.get_channel_editors(self._state.user.id)
+        return data['data']
+
+    async def get_vips(self, __users: List[User], /) -> List[users.SpecificUser]:
+        """
+        Retrieve specific VIPs from the user's channel.
+
+        | Scopes                | Description                                            |
+        | --------------------- | -------------------------------------------------------|
+        | `channel:read:vips`   | Read the list of VIPs in your channel.                 |
+        | `channel:manage:vips` | Add or remove the VIP role from users in your channel. |
+
+        Parameters
+        ----------
+        __users: List[User]
+            A list of users to check for VIP status.
+
+        Returns
+        -------
+        List[users.SpecificUser]
+            A list of dictionaries representing the specific VIPs in the channel.
+        """
+        data: PData[List[users.SpecificUser]] = await self._state.http.get_vips(self._state.user.id,
+                                                                                user_ids=[u.id for u in __users],
+                                                                                first=100)
+        return data['data']
+
+    async def fetch_vips(self, first: int = 100) -> AsyncGenerator[List[users.SpecificUser], None]:
+        """
+        Fetch all VIPs for the channel.
+
+        | Scopes                | Description                                            |
+        | --------------------- | -------------------------------------------------------|
+        | `channel:read:vips`   | Read the list of VIPs in your channel.                 |
+        | `channel:manage:vips` | Add or remove the VIP role from users in your channel. |
+
+        Parameters
+        ----------
+        first: int
+            The number of VIPs to fetch per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[users.SpecificUser], None]
+            An async generator yielding lists of dictionaries representing the VIPs for the channel.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[users.SpecificUser]] = await self._state.http.get_vips(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def add_vip(self, user: User) -> None:
+        """
+        Add a user as a VIP in the channel.
+
+        | Scopes                | Description                                            |
+        | --------------------- | -------------------------------------------------------|
+        | `channel:manage:vips` | Add or remove the VIP role from users in your channel. |
+
+        Parameters
+        ----------
+        user: User
+            The user to be added as a VIP.
+        """
+        await self._state.http.add_channel_vip(self._state.user.id, user.id)
+
+    async def remove_vip(self, user: User) -> None:
+        """
+        Remove a user's VIP status in the channel.
+
+        | Scopes                | Description                                            |
+        | --------------------- | -------------------------------------------------------|
+        | `channel:manage:vips` | Add or remove the VIP role from users in your channel. |
+
+        Parameters
+        ----------
+        user: User
+            The user whose VIP status should be removed.
+        """
+        await self._state.http.remove_channel_vip(self._state.user.id, user.id)
+
+    async def get_total_subscriptions(self) -> int:
+        """
+        Retrieve the total number of subscriptions for the broadcaster.
+
+        | Scopes                      | Description                                   |
+        | ---------------------------- | ---------------------------------------------|
+        | `channel:read:subscriptions` | View a list of all subscribers to a channel. |
+
+        Returns
+        -------
+        int
+            The total number of subscriptions for the broadcaster.
+        """
+        data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(self._b_id,
+                                                                                                         first=1)
+        return data['total']
+
+    async def get_subscription_points(self) -> int:
+        """
+        Retrieve the total subscription points for the broadcaster.
+
+        | Scopes                      | Description                                   |
+        | ---------------------------- | ---------------------------------------------|
+        | `channel:read:subscriptions` | View a list of all subscribers to a channel. |
+
+        Returns
+        -------
+        int
+            The total subscription points for the broadcaster.
+        """
+        data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(self._b_id,
+                                                                                                         first=1)
+        return data['points']
+
+    async def get_subscriptions(self, __users: List[User], /) -> List[channels.Subscription]:
+        """
+        Retrieve the subscription details for specific users.
+
+        | Scopes                      | Description                                   |
+        | ---------------------------- | ---------------------------------------------|
+        | `channel:read:subscriptions` | View a list of all subscribers to a channel. |
+
+        Parameters
+        ----------
+        __users: List[User]
+            A list of users whose subscription details are to be retrieved.
+
+        Returns
+        -------
+        List[channels.Subscription]
+            A list of dictionaries representing the subscription details of the specified users.
+        """
+        data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(
+            self._b_id,
+            user_ids=[u.id for u in __users],
+            first=100)
+        return data['data']
+
+    async def fetch_subscriptions(self, first: int = 100) -> AsyncGenerator[List[channels.Subscription], None]:
+        """
+        Fetch all subscriptions for the broadcaster.
+
+        | Scopes                       | Description                                  |
+        | ---------------------------- | ---------------------------------------------|
+        | `channel:read:subscriptions` | View a list of all subscribers to a channel. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of subscriptions to retrieve per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[channels.Subscription], None]
+            A list of dictionaries representing the subscriptions for each page.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    @overload
+    async def get_goals(self) -> activity.Goal:
+        ...
+
+    @overload
+    async def get_goals(self) -> None:
+        ...
+
+    async def get_goals(self) -> Optional[activity.Goal]:
+        """
+        Retrieve the current creator goals for the broadcaster.
+
+        | Scopes               | Description                       |
+        | -------------------- | ----------------------------------|
+        | `channel:read:goals` | View Creator Goals for a channel. |
+
+        Returns
+        -------
+        Optional[activity.Goal]
+            A dictionary representing the current creator goal, or None if no goals are active.
+        """
+        data: Data[List[activity.Goal]] = await self._state.http.get_creator_goals(self._state.user.id)
+        return data['data'][0] if len(data['data']) != 0 else None
+
+    async def get_bits_leaderboard(self,
+                                   period: Optional[Literal['day', 'week', 'month', 'year', 'all']] = None,
+                                   started_at: Optional[datetime] = None,
+                                   user: Optional[User] = None,
+                                   count: int = 100) -> List[bits.Leaderboard]:
+        """
+        Retrieve the bits leaderboard for the broadcaster.
+
+        | Scopes      | Description                          |
+        | ----------- | -------------------------------------|
+        | `bits:read` | View Bits information for a channel. |
+
+        Parameters
+        ----------
+        period: Optional[Literal['day', 'week', 'month', 'year', 'all']]
+            The period for which to retrieve the leaderboard.
+        started_at: Optional[datetime]
+            The start date for the leaderboard.
+        user: Optional[User]
+            A specific user to filter the leaderboard.
+        count: int
+            The number of leaderboard entries to retrieve.
+
+        Returns
+        -------
+        List[bits.Leaderboard]
+            A list of dictionaries representing the bits leaderboard entries.
+        """
+        kwargs: Dict[str, Any] = {
+            'count': count,
+            'period': period,
+            'started_at': convert_rfc3339(started_at),
+            'user_id': user.id if user is not None else None
+        }
+        data: DTData[List[bits.Leaderboard]] = await self._state.http.get_bits_leaderboard(**kwargs)
+        return data['data']
+
+    @overload
+    async def get_charity_campaign(self) -> activity.Charity:
+        ...
+
+    @overload
+    async def get_charity_campaign(self) -> None:
+        ...
+
+    async def get_charity_campaign(self) -> Optional[activity.Charity]:
+        """
+        Retrieve the current charity campaign for the broadcaster.
+
+        | Scopes                 | Description                                                       |
+        | ---------------------- | ------------------------------------------------------------------|
+        | `channel:read:charity` | Read charity campaign details and user donations on your channel. |
+
+        Returns
+        -------
+        Optional[activity.Charity]
+            A dictionary representing the current charity campaign, or None if no campaign is active.
+        """
+        data: Data[List[activity.Charity]] = await self._state.http.get_charity_campaign(self._state.user.id)
+        return data['data'][0] if len(data['data']) != 0 else None
+
+    async def fetch_charity_donations(self, first: int = 100) -> AsyncGenerator[List[activity.CharityDonation], None]:
+        """
+        Fetch all donations for the current charity campaign.
+
+        | Scopes                 | Description                                                       |
+        | ---------------------- | ------------------------------------------------------------------|
+        | `channel:read:charity` | Read charity campaign details and user donations on your channel. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of donations to retrieve per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[activity.CharityDonation], None]
+            A list of dictionaries representing the charity donations for each page.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[activity.CharityDonation]] = await self._state.http.get_charity_campaign_donations(
+                **kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def fetch_hype_trains(self, first: int = 100) -> AsyncGenerator[List[interaction.HypeTrain], None]:
+        """
+        Fetch all Hype Train events for the broadcaster.
+
+        | Scopes                    | Description                                |
+        | ------------------------- | -------------------------------------------|
+        | `channel:read:hype_train` | View Hype Train information for a channel. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of Hype Train events to retrieve per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[interaction.HypeTrain], None]
+            A list of dictionaries representing the Hype Train events for each page.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[interaction.HypeTrain]] = await self._state.http.get_hype_train_events(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def get_rewards(self,
+                          reward_ids: Optional[List[str]] = None,
+                          only_manageable_rewards: bool = False) -> List[interaction.Reward]:
+        """
+        Retrieve a list of custom rewards for the broadcaster.
+
+        | Scopes                       | Description                                                              |
+        | ---------------------------- | -------------------------------------------------------------------------|
+        | `channel:read:redemptions`   | View Channel Points custom rewards and their redemptions on a channel.   |
+        | `channel:manage:redemptions` | Manage Channel Points custom rewards and their redemptions on a channel. |
+
+        Parameters
+        ----------
+        reward_ids: Optional[List[str]]
+            A list of reward IDs to filter the results.
+        only_manageable_rewards: bool
+            Whether to return only rewards that can be managed by the broadcaster.
+
+        Returns
+        -------
+        List[interaction.Reward]
+            A list of dictionaries representing the custom rewards.
+        """
+        data: Data[List[interaction.Reward]] = await self._state.http.get_custom_reward(
+            self._state.user.id,
+            reward_ids,
+            only_manageable_rewards)
+        return data['data']
+
+    async def create_reward(self,
+                            title: str,
+                            cost: int,
+                            is_enabled: bool = True,
+                            background_color: Optional[str] = None,
+                            is_user_input_required: bool = False,
+                            prompt: Optional[str] = None,
+                            is_max_per_stream_enabled: bool = False,
+                            max_per_stream: Optional[int] = None,
+                            is_max_per_user_per_stream_enabled: bool = False,
+                            max_per_user_per_stream: Optional[int] = None,
+                            is_global_cooldown_enabled: bool = False,
+                            global_cooldown_seconds: Optional[int] = None,
+                            should_redemptions_skip_request_queue: bool = False) -> interaction.Reward:
+        """
+        Create a new custom reward for the broadcaster.
+
+        | Scopes                       | Description                                                              |
+        | ---------------------------- | -------------------------------------------------------------------------|
+        | `channel:manage:redemptions` | Manage Channel Points custom rewards and their redemptions on a channel. |
+
+        Parameters
+        ----------
+        title: str
+            The title of the reward.
+        cost: int
+            The cost of the reward in channel points.
+        is_enabled: bool
+            Whether the reward is enabled.
+        background_color: Optional[str]
+            The background color of the reward.
+        is_user_input_required: bool
+            Whether user input is required to redeem the reward.
+        prompt: Optional[str]
+            The prompt to display for the reward.
+        is_max_per_stream_enabled: bool
+            Whether there is a limit on the number of times the reward can be redeemed per stream.
+        max_per_stream: Optional[int]
+            The maximum number of times the reward can be redeemed per stream.
+        is_max_per_user_per_stream_enabled: bool
+            Whether there is a limit on the number of times a user can redeem the reward per stream.
+        max_per_user_per_stream: Optional[int]
+            The maximum number of times a user can redeem the reward per stream.
+        is_global_cooldown_enabled: bool
+            Whether there is a global cooldown between redemptions.
+        global_cooldown_seconds: Optional[int]
+            The cooldown time in seconds between redemptions.
+        should_redemptions_skip_request_queue: bool
+            Whether redemptions should skip the request queue.
+
+        Returns
+        -------
+        interaction.Reward
+            A dictionary representing the created reward.
+        """
+        data: Data[List[interaction.Reward]] = await self._state.http.create_custom_rewards(
+            self._state.user.id,
+            title,
+            cost,
+            is_enabled,
+            background_color,
+            is_user_input_required,
+            prompt,
+            is_max_per_stream_enabled,
+            max_per_stream,
+            is_max_per_user_per_stream_enabled,
+            max_per_user_per_stream,
+            is_global_cooldown_enabled,
+            global_cooldown_seconds,
+            should_redemptions_skip_request_queue)
+        return data['data'][0]
+
+    async def update_reward(self,
+                            reward_id: str,
+                            title: Optional[str] = None,
+                            cost: Optional[int] = None,
+                            is_enabled: Optional[bool] = None,
+                            background_color: Optional[str] = None,
+                            is_user_input_required: Optional[bool] = None,
+                            prompt: Optional[str] = None,
+                            is_max_per_stream_enabled: Optional[bool] = None,
+                            max_per_stream: Optional[int] = None,
+                            is_max_per_user_per_stream_enabled: Optional[bool] = None,
+                            max_per_user_per_stream: Optional[int] = None,
+                            is_global_cooldown_enabled: Optional[bool] = None,
+                            global_cooldown_seconds: Optional[int] = None,
+                            should_redemptions_skip_request_queue: Optional[bool] = None) -> interaction.Reward:
+        """
+        Update an existing custom reward for the broadcaster.
+
+        | Scopes                       | Description                                                              |
+        | ---------------------------- | -------------------------------------------------------------------------|
+        | `channel:manage:redemptions` | Manage Channel Points custom rewards and their redemptions on a channel. |
+
+        Parameters
+        ----------
+        reward_id: str
+            The ID of the reward to update.
+        title: Optional[str]
+            The new title of the reward.
+        cost: Optional[int]
+            The new cost of the reward in channel points.
+        is_enabled: Optional[bool]
+            Whether the reward is enabled.
+        background_color: Optional[str]
+            The new background color of the reward.
+        is_user_input_required: Optional[bool]
+            Whether user input is required to redeem the reward.
+        prompt: Optional[str]
+            The new prompt to display for the reward.
+        is_max_per_stream_enabled: Optional[bool]
+            Whether there is a limit on the number of times the reward can be redeemed per stream.
+        max_per_stream: Optional[int]
+            The new maximum number of times the reward can be redeemed per stream.
+        is_max_per_user_per_stream_enabled: Optional[bool]
+            Whether there is a limit on the number of times a user can redeem the reward per stream.
+        max_per_user_per_stream: Optional[int]
+            The new maximum number of times a user can redeem the reward per stream.
+        is_global_cooldown_enabled: Optional[bool]
+            Whether there is a global cooldown between redemptions.
+        global_cooldown_seconds: Optional[int]
+            The new cooldown time in seconds between redemptions.
+        should_redemptions_skip_request_queue: Optional[bool]
+            Whether redemptions should skip the request queue.
+
+        Returns
+        -------
+        interaction.Reward
+            A dictionary representing the updated reward.
+        """
+        data: Data[List[interaction.Reward]] = await self._state.http.update_custom_reward(
+            self._state.user.id,
+            reward_id,
+            title,
+            cost,
+            is_enabled,
+            background_color,
+            is_user_input_required,
+            prompt,
+            is_max_per_stream_enabled,
+            max_per_stream,
+            is_max_per_user_per_stream_enabled,
+            max_per_user_per_stream,
+            is_global_cooldown_enabled,
+            global_cooldown_seconds,
+            should_redemptions_skip_request_queue)
+        return data['data'][0]
+
+    async def delete_reward(self, reward_id: str) -> None:
+        """
+        Delete an existing custom reward for the broadcaster.
+
+        | Scopes                       | Description                                                              |
+        | ---------------------------- | -------------------------------------------------------------------------|
+        | `channel:manage:redemptions` | Manage Channel Points custom rewards and their redemptions on a channel. |
+
+        Parameters
+        ----------
+        reward_id: str
+            The ID of the reward to delete.
+        """
+        await self._state.http.delete_custom_reward(self._state.user.id, reward_id)
+
+    async def get_reward_redemptions(self,
+                                     reward_id: str,
+                                     redemptions_ids: List[str],
+                                     sort: Literal['oldest', 'newest'] = 'oldest'
+                                     ) -> List[interaction.RewardRedemption]:
+        """
+        Retrieve specific redemptions for a custom reward.
+
+        | Scopes                       | Description                                                              |
+        | ---------------------------- | -------------------------------------------------------------------------|
+        | `channel:read:redemptions`   | View Channel Points custom rewards and their redemptions on a channel.   |
+        | `channel:manage:redemptions` | Manage Channel Points custom rewards and their redemptions on a channel. |
+
+        Parameters
+        ----------
+        reward_id: str
+            The ID of the reward for which to retrieve redemptions.
+        redemptions_ids: List[str]
+            A list of redemption IDs to filter the results.
+        sort: Literal['oldest', 'newest']
+            The order in which to sort the redemptions.
+
+        Returns
+        -------
+        List[interaction.RewardRedemption]
+            A list of dictionaries representing the redemptions.
+        """
+        data: PData[List[interaction.RewardRedemption]] = await self._state.http.get_custom_reward_redemption(
+            self._state.user.id,
+            reward_id,
+            redemptions_ids,
+            sort=sort,
+            first=50)
+        return data['data']
+
+    async def fetch_reward_redemptions(self,
+                                       reward_id: str,
+                                       status: Literal['canceled', 'fulfilled', 'unfulfilled'],
+                                       sort: Literal['oldest', 'newest'] = 'oldest',
+                                       first: int = 50
+                                       ) -> AsyncGenerator[List[interaction.RewardRedemption], None]:
+        """
+        Fetch redemptions for a custom reward.
+
+        | Scopes                       | Description                                                              |
+        | ---------------------------- | -------------------------------------------------------------------------|
+        | `channel:read:redemptions`   | View Channel Points custom rewards and their redemptions on a channel.   |
+        | `channel:manage:redemptions` | Manage Channel Points custom rewards and their redemptions on a channel. |
+
+        Parameters
+        ----------
+        reward_id: str
+            The ID of the reward for which to fetch redemptions.
+        status: Literal['canceled', 'fulfilled', 'unfulfilled']
+            The status of the redemptions to fetch.
+        sort: Literal['oldest', 'newest']
+            The order in which to sort the redemptions.
+        first: int
+            The maximum number of redemptions to retrieve per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[interaction.RewardRedemption], None]
+            A list of dictionaries representing the redemptions for each page.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'reward_id': reward_id,
+            'status': status,
+            'sort': sort,
+            'first': first,
+            'after': None,
+        }
+        while True:
+            data: PData[List[interaction.RewardRedemption]] = await self._state.http.get_custom_reward_redemption(
+                **kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def update_reward_redemptions(self,
+                                        reward_id: str,
+                                        redemptions_ids: List[str],
+                                        *,
+                                        status: Literal['canceled', 'fulfilled']
+                                        ) -> List[interaction.RewardRedemption]:
+        """
+        Update the status of specific reward redemptions.
+
+        | Scopes                       | Description                                                              |
+        | ---------------------------- | -------------------------------------------------------------------------|
+        | `channel:manage:redemptions` | Manage Channel Points custom rewards and their redemptions on a channel. |
+
+        Parameters
+        ----------
+        reward_id: str
+            The ID of the reward for which to update redemptions.
+        redemptions_ids: List[str]
+            A list of redemption IDs to update.
+        status: Literal['canceled', 'fulfilled']
+            The new status of the redemptions.
+
+        Returns
+        -------
+        List[interaction.RewardRedemption]
+            A list of dictionaries representing the updated redemptions.
+        """
+        data: Data[List[interaction.RewardRedemption]] = await self._state.http.update_redemption_status(
+            self._state.user.id,
+            reward_id,
+            redemptions_ids,
+            status=status)
+        return data['data']
+
+    async def get_predictions(self, prediction_ids: List[str]) -> List[interaction.Prediction]:
+        """
+        Retrieve a list of predictions by their IDs.
+
+        | Scopes                       | Description                                     |
+        | ---------------------------- | ------------------------------------------------|
+        | `channel:read:predictions`   | View a channel’s Channel Points Predictions.    |
+        | `channel:manage:predictions` | Manage of channel’s Channel Points Predictions. |
+
+        Parameters
+        ----------
+        prediction_ids: List[str]
+            A list of prediction IDs to retrieve.
+
+        Returns
+        -------
+        List[interaction.Prediction]
+            A list of dictionaries representing the predictions.
+        """
+        data: PData[List[interaction.Prediction]] = await self._state.http.get_predictions(
+            self._state.user.id,
+            prediction_ids,
+            first=25
+        )
+        return data['data']
+
+    async def fetch_predictions(self, first: int = 25) -> AsyncGenerator[List[interaction.Prediction], None]:
+        """
+        Fetch broadcaster predictions.
+
+        | Scopes                       | Description                                     |
+        | ---------------------------- | ------------------------------------------------|
+        | `channel:read:predictions`   | View a channel’s Channel Points Predictions.    |
+        | `channel:manage:predictions` | Manage of channel’s Channel Points Predictions. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of predictions to retrieve per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[interaction.Prediction], None]
+            A list of dictionaries representing the predictions for each page.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[interaction.Prediction]] = await self._state.http.get_predictions(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def create_prediction(self,
+                                title: str,
+                                outcomes: List[str],
+                                window: int) -> interaction.Prediction:
+        """
+        Create a new prediction for the broadcaster.
+
+        | Scopes                       | Description                                     |
+        | ---------------------------- | ------------------------------------------------|
+        | `channel:manage:predictions` | Manage of channel’s Channel Points Predictions. |
+
+        Parameters
+        ----------
+        title: str
+            The title of the prediction.
+        outcomes: List[str]
+            A list of possible outcomes for the prediction.
+        window: int
+            The duration of the prediction window in seconds.
+
+        Returns
+        -------
+        interaction.Prediction
+            A dictionary representing the created prediction.
+        """
+        data: Data[List[interaction.Prediction]] = await self._state.http.create_prediction(self._state.user.id,
+                                                                                            title,
+                                                                                            outcomes,
+                                                                                            window)
+        return data['data'][0]
+
+    @overload
+    async def end_prediction(self,
+                             prediction_id: str,
+                             status: Literal['resolved'],
+                             winning_outcome_id: str
+                             ) -> interaction.Prediction:
+        ...
+
+    @overload
+    async def end_prediction(self,
+                             prediction_id: str,
+                             status: Literal['canceled', 'locked'],
+                             winning_outcome_id: None = None
+                             ) -> interaction.Prediction:
+        ...
+
+    async def end_prediction(self,
+                             prediction_id: str,
+                             status: Any[Literal['resolved', 'canceled', 'locked']],
+                             winning_outcome_id: Optional[str] = None) -> interaction.Prediction:
+        """
+        End an existing prediction with a specified status.
+
+        | Scopes                       | Description                                     |
+        | ---------------------------- | ------------------------------------------------|
+        | `channel:manage:predictions` | Manage of channel’s Channel Points Predictions. |
+
+        Parameters
+        ----------
+        prediction_id: str
+            The ID of the prediction to end.
+        status: Literal['resolved', 'canceled', 'locked']
+            The status to set for the prediction.
+        winning_outcome_id: Optional[str]
+            The ID of the winning outcome if the status is 'resolved'.
+
+        Returns
+        -------
+        interaction.Prediction
+            A dictionary representing the updated prediction.
+        """
+        data: Data[List[interaction.Prediction]] = await self._state.http.end_prediction(self._state.user.id,
+                                                                                         prediction_id,
+                                                                                         status,
+                                                                                         winning_outcome_id)
+        return data['data'][0]
+
+    async def get_polls(self, poll_ids: List[str]) -> List[interaction.Poll]:
+        """
+        Retrieve a list of polls by their IDs.
+
+        | Scopes                 | Description               |
+        | ---------------------- | --------------------------|
+        | `channel:read:polls`   | View a channel’s polls.   |
+        | `channel:manage:polls` | Manage a channel’s polls. |
+
+        Parameters
+        ----------
+        poll_ids: List[str]
+            A list of poll IDs to retrieve.
+
+        Returns
+        -------
+        List[interaction.Poll]
+            A list of dictionaries representing the polls.
+        """
+        data: PData[List[interaction.Poll]] = await self._state.http.get_polls(self._state.user.id,
+                                                                               poll_ids,
+                                                                               first=20)
+        return data['data']
+
+    async def fetch_polls(self, first: int = 20) -> AsyncGenerator[List[interaction.Poll], None]:
+        """
+        Fetch broadcaster polls.
+
+        | Scopes                 | Description               |
+        | ---------------------- | --------------------------|
+        | `channel:read:polls`   | View a channel’s polls.   |
+        | `channel:manage:polls` | Manage a channel’s polls. |
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of polls to retrieve per request.
+
+        Yields
+        ------
+        AsyncGenerator[List[interaction.Poll], None]
+            A list of dictionaries representing the polls for each page.
+        """
+        kwargs: Dict[str, Any] = {
+            'broadcaster_id': self._state.user.id,
+            'first': first,
+            'after': None
+        }
+        while True:
+            data: PData[List[interaction.Poll]] = await self._state.http.get_polls(**kwargs)
+            yield data['data']
+            kwargs['after'] = data['pagination'].get('cursor')
+            if not kwargs['after']:
+                break
+
+    async def create_poll(self,
+                          title: str,
+                          choices: List[str],
+                          duration: int,
+                          channel_points_voting_enabled: bool = False,
+                          channel_points_per_vote: Optional[int] = None) -> interaction.Poll:
+        """
+        Create a new poll for the broadcaster.
+
+        | Scopes                 | Description               |
+        | ---------------------- | --------------------------|
+        | `channel:manage:polls` | Manage a channel’s polls. |
+
+        Parameters
+        ----------
+        title: str
+            The title of the poll.
+        choices: List[str]
+            A list of choices for the poll.
         duration: int
-            The duration of the ban in seconds. For timeout, specify the timeout period.
+            The duration of the poll in seconds.
+        channel_points_voting_enabled: bool
+            Whether channel points voting is enabled.
+        channel_points_per_vote: Optional[int]
+            The number of channel points required per vote if channel points voting is enabled.
 
-            * The minimum timeout is 1 second and the maximum is 1,209,600 seconds (2 weeks).
-        reason: str
-            The reason for the ban.
-
-        Raises
-        ------
-        NotFound
-            * Unable to find the requested user.
-        ValueError
-            * Duration must be between 1 second and 1,209,600 seconds (2 weeks)
-            * Reason is limited to a maximum of 500 characters.
-        BadRequest
-            * user may not be banned.
-            * The user may not be put in a timeout.
-            * The user is already banned.
-        Unauthorized
-            * The user access token must include the moderator:manage:banned_users scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-        Conflict
-            * You may not update the user's ban state while someone else is updating the state.
-        RateLimit
-            * The app has exceeded the number of requests it may make per minute for this broadcaster.
+        Returns
+        -------
+        interaction.Poll
+            A dictionary representing the created poll.
         """
-        user = await self._state.get_user(user)
-        await self._state.http.ban_user(broadcaster_id=self._b_id, moderator_id=self._state.user.id,
-                                        user_id=user.id, duration=duration, reason=reason)
+        data: Data[List[interaction.Poll]] = await self._state.http.create_poll(self._state.user.id,
+                                                                                title,
+                                                                                choices,
+                                                                                duration,
+                                                                                channel_points_voting_enabled,
+                                                                                channel_points_per_vote)
+        return data['data'][0]
 
-    async def unban(self, user: Union[str, BaseUser]) -> None:
+    async def end_poll(self, poll_id: str, status: Literal['terminated', 'archived']) -> interaction.Poll:
         """
-        Unban a previously banned user from the channel's chat.
+        End an existing poll with a specified status.
 
-        | Scopes                          | Description   |
-        | ------------------------------- | ------------- |
-        | `moderator:manage:banned_users` | UnBan User.   |
+        | Scopes                 | Description               |
+        | ---------------------- | --------------------------|
+        | `channel:manage:polls` | Manage a channel’s polls. |
 
         Parameters
         ----------
-        user: Union[str, BaseUser]
-            The user or user name to be unbanned.
+        poll_id: str
+            The ID of the poll to end.
+        status: Literal['terminated', 'archived']
+            The status to set for the poll, either 'terminated' or 'archived'.
 
-        Raises
-        ------
-        NotFound
-            * Unable to find the requested user.
-        BadRequest
-            * user may not be banned.
-            * The user may not be put in a timeout.
-            * The user is already banned.
-        Unauthorized
-            * The user access token must include the moderator:manage:banned_users scope.
-        Forbidden
-            * The user in moderator_id is not one of the broadcaster's moderators.
-        Conflict
-            * You may not update the user's ban state while someone else is updating the state.
-        RateLimit
-            * The app has exceeded the number of requests it may make per minute for this broadcaster.
+        Returns
+        -------
+        interaction.Poll
+            A dictionary representing the updated poll.
         """
-        user = await self._state.get_user(user)
-        await self._state.http.unban_user(broadcaster_id=self._b_id, moderator_id=self._state.user.id,
-                                          user_id=user.id)
+        data: Data[List[interaction.Poll]] = await self._state.http.end_poll(self._state.user.id, poll_id, status)
+        return data['data'][0]
 
-    async def fetch_videos(self, language: str = MISSING,
-                           period: Literal['all', 'day', 'month', 'week'] = 'all',
-                           videos_type: Literal['all', 'archive', 'highlight', 'upload'] = 'all',
-                           sort: Literal['time', 'trending', 'views'] = 'time',
-                           limit: int = 4) -> AsyncGenerator[List[Video]]:
+    async def delete_videos(self, video_ids: List[str]) -> List[str]:
         """
-        Fetch a list of videos from the channel.
+        Delete a list of videos by their IDs.
 
-        ???+ Warning
-            This method uses [pagination](https://dev.twitch.tv/docs/api/guide/#pagination).
-            Set the limit to -1 to retrieve all data, but be cautious of potential performance
-            and rate limit impacts.
+        | Scopes                  | Description                |
+        | ----------------------- | ---------------------------|
+        | `channel:manage:videos` | Manage a channel’s videos. |
 
         Parameters
         ----------
-        language: str
-            The language of the videos.
-        period: Literal['all', 'day', 'month', 'week']
-            The time period to filter the videos.
-        videos_type: Literal['all', 'archive', 'highlight', 'upload']
-            The type of videos to filter
-        sort: Literal['time', 'trending', 'views']
-            The sorting order of the videos
-        limit: int
-            The maximum number of videos to fetch.
+        video_ids: List[str]
+            A list of video IDs to delete.
 
-        Yields
-        ------
-        AsyncGenerator[List[Video]]
-            lists of Video objects.
+        Returns
+        -------
+        List[str]
+            A list of IDs of the deleted videos.
         """
-        async for videos in self._state.http.fetch_videos(limit=limit, user_id=self._b_id, language=language,
-                                                          period=period, sort=sort, videos_type=videos_type):
-            yield [Video(data=video) for video in videos]
-
-    async def fetch_clips(self, started_at: datetime = MISSING, ended_at: datetime = MISSING,
-                          featured: bool = MISSING,
-                          limit: int = 4) -> AsyncGenerator[List[Clip]]:
-        """
-        Fetch a list of clips from the channel.
-
-        ???+ Warning
-            This method uses [pagination](https://dev.twitch.tv/docs/api/guide/#pagination).
-            Set the limit to -1 to retrieve all data, but be cautious of potential performance
-            and rate limit impacts.
-
-        Parameters
-        ----------
-        started_at: datetime
-            The start time for filtering clips.
-        ended_at: datetime
-            The end time for filtering clips.
-        featured: bool
-            Include only featured clips if True, or non-featured clips if False.
-            If not specified, all clips are returned.
-        limit: int
-            The maximum number of clips to fetch.
-
-        Yields
-        ------
-        AsyncGenerator[List[Clip]]
-            lists of Clip objects.
-        """
-        async for clips in self._state.http.fetch_clips(limit=limit, broadcaster_id=self._b_id,
-                                                        started_at=started_at, ended_at=ended_at,
-                                                        is_featured=featured):
-            yield [Clip(data=clip) for clip in clips]
+        data: Data[List[str]] = await self._state.http.delete_videos(video_ids)
+        return data['data']

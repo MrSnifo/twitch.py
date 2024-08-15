@@ -4,7 +4,7 @@ site_name: Twitchify
 # GitHub repository
 repo_url: https://github.com/MrSniFo/Twitchify
 repo_name: Twitchify
-copyright: Copyright (c) 2023-present Snifo
+copyright: Copyright (c) 2024-present Snifo
 
 extra:
   social:
@@ -47,12 +47,16 @@ nav:
       - Quickstart: 'quickstart.md'
   - Reference:
       - Client: 'reference/client.md'
-      - Bot: 'reference/bot.md'
-      - Event Reference: 'reference/event-reference.md'
-      - Models: 'reference/models.md'
-      - Data Classes: 'reference/data-classes.md'
+      - Classes: 'reference/classes.md'
       - Exceptions: 'reference/exceptions.md'
-  - Examples: 'examples.md'
+      - Types: 'reference/types.md'
+      - Debug: 'reference/debug.md'
+  - Events Reference:
+      - 'events/index.md'
+      - Events: 'events/events.md'
+      - Types: 'events/types.md'
+  - Extension:
+      - Oauth: 'ext/oauth/index.md'
 
 markdown_extensions:
   - def_list

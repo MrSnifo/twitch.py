@@ -30,12 +30,7 @@ Go to [console](https://dev.twitch.tv/console) and sign in with your Twitch acco
 - Click on 'Applications' in the top navigation.
 - Click on 'Register Your Application'.
 - Fill in the required details for your app.
-
-???+ Note 
-    Twitchify built-in authentication uses `http://localhost:3000` Redirect URL, you can customize the port when running the client.
-
-- Set 'OAuth Redirect URLs' to your desired redirect URI.
 - Save your changes.
 
 After creating the app on the Twitch Developer Console, you will receive a Client ID and Client Secret,
-which you will use in your Twitchify client. Additionally, make sure to set the correct Redirect URI for your app.
+which you will use in your Twitchify client.

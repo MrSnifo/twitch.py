@@ -4,97 +4,117 @@ hide:
 search:
   exclude: true
 ---
-  
-???+ quote addressing Data Handling and Cache Challenges
-    When managing data updates, deletions, or patches followed by retrieval across endpoints,
-    it's crucial to consider interactions with diverse cache servers. Some of these servers may lack
-    asynchronous functionality, leading to intermittent data inconsistencies. Solely relying on local
-    caching doesn't adequately mitigate these issues, especially in scenarios involving client restarts
-    or updates from sources like twitch.tv.
 
-    Despite implementing a caching solution, it's vital to acknowledge its limitations. Notably,
-    this solution might not cover all endpoints, and a more pressing concern arises when clients restart,
-    resulting in the loss of cached data.
-
-## Basic
+## Basic Usage
 
 !!! warning
     The provided code is missing the app client secret and user refresh token. Without these components,
     the access token won't be able to regenerate when it expires.
 
 ```python
+from twitch.types import eventsub
 from twitch import Client
-from twitch.users import Follower
 
-client = Client(client_id="YOUR_CLIENT_ID")
-
+client = Client(client_id='YOUR_CLIENT_ID')
 
 @client.event
 async def on_ready():
     """
-    This called when the Twitch client is ready to receive events.
+    Handles the client ready event.
     """
-    print("Ready as %s" % client.user.display_name)
-
-
+    print('PogU')
+    
 @client.event
-async def on_follow(user: Follower):
+async def on_follow(data: eventsub.channels.FollowEvent):
     """
-    This called when a user follows the channel.
+    Handles the follow event.
+
+    Parameters
+    ----------
+    data: eventsub.channels.FollowEvent
+        The event data containing information about the new follower.
     """
-    print("%s just followed you!" % user.display_name)
+    # Send a message to the channel chat announcing the new follower.
+    await client.channel.chat.send_message(f'{data["user_name"]} has followed the channel!')
 
-
-# Run the client using your user access token.
-client.run(access_token="YOUR_ACCESS_TOKEN")
+# Start the client and begin processing events.
+# This method should be called to start the event loop and handle incoming events.
+client.run('YOUR_USER_ACCESS_TOKEN')
 ```
 
-## With Built-in Authentication
+## OAuth Authentication
 
-Twitchify simplifies the setup by allowing you to authenticate (1) without the need for third-party
-apps to collect the tokens. However, you should complete the required steps in the [setup](setup.md).
-{ .annotate }
-
-1. Using authorization code grant flow (1)
-    { .annotate }
-
-    1. This flow is meant for apps that use a server, can securely store a client secret, and can make server-to-server requests to the Twitch API. To get a user access token using the authorization code grant flow, your app must Get the user to authorize your app and then Use the authorization code to get a token. [readmore](https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#authorization-code-grant-flow)
+Twitchify simplifies the setup by allowing you to authenticate processes.
+For more information, see the [OAuth documentation](ext/oauth/index.md).
 
 ???+ tip
-    After authentication, make sure to store the received tokens `access_token` and `refresh_token`
+    After authentication, make sure to store the received `access_token` and `refresh_token`
     for future use. Storing these tokens eliminates the need for reauthorization.
 
 ```python
-from twitch import Client, Follower
+from twitch.ext.oauth import DeviceAuthFlow, Scopes
+from twitch.types import eventsub
+from twitch import Client
 
-client = Client(client_id="YOUR_CLIENT_ID", client_secret="YOUR_CLIENT_SECRET")
+client = Client(client_id='YOUR_CLIENT_ID')
+
+# Setup Device Authentication Flow with necessary scopes.
+# This is required for obtaining user-specific access tokens.
+DeviceAuthFlow(
+    client=client,
+    scopes=[Scopes.USER_READ_FOLLOWS]
+)
+
+@client.event
+async def on_code(code: str):
+    """
+    Handles the device authorization code event.
+
+    Parameters
+    ----------
+    code: str
+        The device authorization code sent to the user.
+    """
+    print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
+
+@client.event
+async def on_auth(access_token: str, refresh_token: str):
+    """
+    Handles the authentication event.
+
+    Parameters
+    ----------
+    access_token: str
+        The access token obtained after successful authentication.
+    refresh_token: str
+        The refresh token used to renew the access token when it expires.
+    """
+    print(f'access_token={access_token}\nrefresh_token={refresh_token}')
 
 @client.event
 async def on_ready():
     """
-    This called when the Twitch client is ready to receive events.
+    Handles the client ready event.
     """
-    print("Ready as %s" % client.user.display_name)
+    print('PogU')
     
 @client.event
-async def on_follow(user: Follower):
+async def on_follow(data: eventsub.channels.FollowEvent):
     """
-    This called when a user follows the channel.
+    Handles the follow event.
+
+    Parameters
+    ----------
+    data: eventsub.channels.FollowEvent
+        The event data containing information about the new follower.
     """
-    print("%s just followed you!" % user.display_name)
-    
-@client.event
-async def on_auth(access_token: str, refresh_token: str):
-    """
-    This called when the client is successfully authenticated.
-    """
-    print("Received access token:", access_token)
-    print("Received refresh token:", refresh_token)
-    
-# User should visit the provided URL to authenticate.
+    # Send a message to the channel chat announcing the new follower.
+    await client.channel.chat.send_message(f'{data["user_name"]} has followed the channel!')
+
+# Start the client and begin processing events.
+# This method should be called to start the event loop and handle incoming events.
 client.run()
 ```
 
-Remember, if you want to add more events,
-go to the [references](http://127.0.0.1:8000/reference/event-reference/) section and make sure to register
-the events using [client.event()](http://127.0.0.1:8000/reference/client/#twitch.client.Client.event).
+For more examples, check out the [examples repository](https://github.com/MrSniFo/Twitchify/tree/main/examples).
+Remember, if you want to add more events, visit the [event reference](events/index.md) section.

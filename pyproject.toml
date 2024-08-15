@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "twitchify"
+description = "Real-time Twitch Event Handling and Helix API Integration in Python"
+readme = "README.md"
+requires-python = ">=3.8.0"
+license = {text = "MIT"}
+authors = [{name = "Snifo", email = "Snifo@mail.com"}]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+
+dynamic = ["version", "dependencies"]
+
+[tool.setuptools]
+packages = [
+    "twitch",
+    "twitch.types",
+    "twitch.types.eventsub",
+    "twitch.ext.oauth",
+]
+include-package-data = true
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+combine_as_imports = true
+combine_star = true
+line_length = 120
+
+[tool.setuptools.dynamic]
+dependencies = { file = "requirements.txt" }
+
+[project.urls]
+"Homepage" = "https://github.com/mrsnifo/twitchify"
+"Documentation" = "https://twitchify.readthedocs.io/en/latest"
+"Issue tracker" = "https://github.com/mrsnifo/twitchify/issues"
+
+exclude = [
+    "**/__pycache__",
+    "build",
+    "dist",
+    "docs",
+]
+
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUnusedImport = "error"
+pythonVersion = "3.8"
+typeCheckingMode = "basic"
+

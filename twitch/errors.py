@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present Snifo
+Copyright (c) 2024-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,25 +22,24 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-__all__ = (
-    'TwitchException',
-    'TwitchServerError',
-    'HTTPException',
-    'SessionClosed',
-    'BadRequest',
-    'InvalidToken',
-    'Unauthorized',
-    'Forbidden',
-    'RateLimit',
-    'WebSocketError',
-    'WebsocketClosed',
-    'WebsocketUnused',
-    'WsReconnect',
-    'ClientException',
-    'NotFound',
-    'UserRoleConflict',
-    'Conflict'
-)
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Dict, Optional, Any, Union
+    from aiohttp import ClientWebSocketResponse
+    from aiohttp import ClientResponse
+
+
+__all__ = ('TwitchException',
+           'ClientException',
+           'HTTPException',
+           'TwitchServerError',
+           'Forbidden',
+           'NotFound',
+           'InvalidData',
+           'AuthFailure',
+           'ConnectionClosed')
 
 
 class TwitchException(Exception):
@@ -50,141 +49,60 @@ class TwitchException(Exception):
     pass
 
 
-class TwitchServerError(TwitchException):
+class ClientException(TwitchException):
     """
     Exception raised when an operation in the Client class fails.
     """
-
-    def __init__(self):
-        super().__init__('Twitch API server error.')
+    pass
 
 
 class HTTPException(TwitchException):
-    """
-    Exception raised when an HTTP request operation fails.
-    """
+    """Exception raised for failed HTTP requests."""
+
+    def __init__(self, response: ClientResponse, message: Optional[Union[str, Dict[str, Any]]]):
+        self.response = response
+        self.status = response.status if hasattr(response, 'status') else 0
+
+        if isinstance(message, dict):
+            self.code = message.get('status', 0)
+            self.text = message.get('message', '')
+        else:
+            self.text = message or ''
+            self.code = 0
+        super().__init__(f'{self.response.reason} (error code: {self.code}): {self.text}')
+
+
+class TwitchServerError(HTTPException):
+    """Exception raised when a 500 range status code occurs."""
     pass
-
-
-class SessionClosed(HTTPException):
-    """
-    Exception raised when the session is not open.
-    """
-    pass
-
-
-class BadRequest(HTTPException):
-    """
-    Exception raised when Twitch refuses the request.
-    """
-
-    def __init__(self, message: str = ''):
-        super().__init__(message)
-
-
-class InvalidToken(HTTPException):
-    """
-    Exception raised when the token is invalid.
-    """
-
-    def __init__(self, message: str = ''):
-        super().__init__(message)
-
-
-class Unauthorized(HTTPException):
-    """
-    Exception raised when the request is unauthorized.
-    """
-
-    def __init__(self, message: str = ''):
-        super().__init__(message)
 
 
 class Forbidden(HTTPException):
-    """
-    Exception raised when the request is Forbidden.
-    """
-
-    def __init__(self, message: str = ''):
-        super().__init__(message)
-
-
-class RateLimit(HTTPException):
-    """
-    Exception raised when too many requests are exceeded.
-    """
-
-    def __init__(self, message: str = 'Rate limit exceeded.'):
-        super().__init__(message)
-
-
-# -------------------------------------------
-#                  Websocket
-# -------------------------------------------
-
-class WebSocketError(HTTPException):
-    """
-    Exception raised when a websocket error occurs.
-    """
-
-    def __init__(self, message: str = ''):
-        super().__init__(message)
-
-
-class WebsocketClosed(WebSocketError):
-    """
-    Exception raised when the websocket connection is closed.
-    """
+    """Exception raised when status code 403 occurs."""
     pass
 
 
-class WebsocketUnused(WebSocketError):
-    """
-    Exception is raised when no subscription has been created within 10 seconds.
-    """
-
-
-class WsReconnect(WebSocketError):
-    """
-    Exception raised to indicate that WebSocket should reconnect to a new URL.
-    """
-
-    def __init__(self, url: str):
-        super().__init__(url)
-
-
-# ---------------------------------------
-#             Client Exception
-# ---------------------------------------
-class ClientException(TwitchException):
-    """
-    Exception raised when a Client operation fails.
-    """
+class NotFound(HTTPException):
+    """Exception raised when status code 404 occurs."""
     pass
 
 
-class NotFound(ClientException):
+class InvalidData(ClientException):
+    """Exception raised when encountering unknown or invalid data from Twitch."""
+    pass
+
+
+class AuthFailure(ClientException):
+    """Exception raised when authentication fails, typically due to invalid credentials."""
+    pass
+
+
+class ConnectionClosed(ClientException):
     """
-    Exception raised when the user does not exist.
-    """
-
-    def __init__(self, message: str = 'Unable to find the requested user.'):
-        super().__init__(message)
-
-
-class UserRoleConflict(ClientException):
-    """
-    Exception raised when there is a conflict with the user's role
-    """
-
-    def __init__(self, message: str = ''):
-        super().__init__(message)
-
-
-class Conflict(ClientException):
-    """
-    Exception raised when the request could not be processed because of conflict in the request.
+    Exception raised when the WebSocket connection is closed unexpectedly.
     """
 
-    def __init__(self, message: str = ''):
-        super().__init__(message)
+    def __init__(self, socket: ClientWebSocketResponse, *, code: Optional[int] = None):
+        self.code: int = code or socket.close_code or -1
+        self.reason: str = ''
+        super().__init__(f'WebSocket closed with {self.code} close code.')

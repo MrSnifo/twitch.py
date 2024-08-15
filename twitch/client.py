@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2023-present Snifo
+Copyright (c) 2024-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,25 +21,25 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
 from __future__ import annotations
 
-from .broadcaster import ClientUser, ClientChannel, ClientChat, ClientStream
-from .utils import setup_logging, Scopes, MISSING, EXCLUSIVE
-from .channel import UserChannel, Video, Clip
-from .gateway import EventSubWebSocket
-from .http import HTTPClient, Server
-from .stream import Category, Stream
+from .gateway import EventSubWebSocket, ReconnectWebSocket
+from .errors import HTTPException, ConnectionClosed
 from .state import ConnectionState
-from .user import BaseUser, User
-from .chat import Emote, Badge
+from .http import HTTPClient
+from . import utils
+import datetime
 import asyncio
+import aiohttp
 
 from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
-    from typing import Any, List, Optional, Callable, Type, Union, AsyncGenerator, Literal
-    from .types import http as HttpTypes
+    from typing import Optional, Type, Self, Callable, Any, List, Tuple, Dict, AsyncGenerator, Literal
+    from .types import chat, channels, search, streams, bits, analytics
+    from .channel import ClientChannel
+    from .user import ClientUser, User
     from types import TracebackType
-    from datetime import datetime
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -49,124 +49,201 @@ __all__ = ('Client',)
 
 class Client:
     """
-    Represents a Twitch client.
+    A client for interacting with the Twitch API.
 
-    ???+ info
-        This client is designed to listen to EventSub events by default,
-        abut it can also use the Helix API if you need more functionality.
-
-        If you require additional features, consider using the `twitch.bot.Bot` class.
-
-        Default scopes: `user:read:email`
+    This class manages authentication and communication with the Twitch API, handling
+    both HTTP requests and WebSocket connections for real-time events. It provides
+    properties to access user and channel information and to check if the user is live.
 
     Parameters
     ----------
     client_id: str
-        Your app's client ID.
+        The client ID used for authentication with the Twitch API.
     client_secret: Optional[str]
-        Your app's client secret. Required when generating
-        a new access token if the user access token is not provided.
-        It ensures manual authorization or token generating.
-    cli: bool
-        Whether to run the client in development mode using the Twitch CLI.
-        For testing purposes during development.
-    port: int
-        The port for the Twitch **CLI websocket** and **Eventsub subscription API**.
+        The client secret used for authentication with the Twitch API. Default is None.
+    **options:
+        Additional configuration options:
+        - 'cli': bool
+            Flag indicating if CLI mode is enabled. Default is False.
+        - 'cli_port': int
+            The port number used for CLI mode. Default is 8080.
     """
 
-    def __init__(self, client_id: str, client_secret: str = MISSING, cli: bool = False,
-                 port: int = 8080) -> None:
-        # Tokens.
-        self._client_id: str = client_id
-        self._client_secret: str = client_secret
-        # Default scopes.
-        self.scopes: List[str] = ['user:read:email']
-        # CLI.
-        self._port: int = port
-        self._cli: bool = cli
-        # Client.
+    def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:
         self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self.http: HTTPClient = HTTPClient(
-            dispatcher=self.dispatch, client_id=client_id, secret_secret=client_secret
-        )
-        self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch, http=self.http)
-
-    async def __aenter__(self) -> Client:
-        return self
-
-    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
-                        exc_value: Optional[BaseException],
-                        traceback: Optional[TracebackType]) -> None:
-        await self._setup_loop()
-        if self.http.is_open:
-            await self.http.close()
-
-    async def close(self):
-        await self.http.close()
-        self.loop = MISSING
+        cli: bool = options.get('cli', False)
+        cli_port: int = options.get('cli_port', 8080)
+        self.client_id: str = client_id
+        self.client_secret: str = client_secret
+        self.http: HTTPClient = HTTPClient(client_id, client_secret, loop=self.loop, cli=cli, cli_port=cli_port)
+        self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch,
+                                                            custom_dispatch=self.custom_dispatch,
+                                                            http=self.http)
+        self._closing_task: Optional[asyncio.Task] = None
+        self.ws: Optional[EventSubWebSocket] = None
 
     @property
     def user(self) -> Optional[ClientUser]:
         """
-        Represents the client.
+        Retrieve the current user associated with the client.
 
-        returns
+        Returns
         -------
         Optional[ClientUser]
-            Client user.
+            The current user if authenticated, otherwise None.
         """
         return self._connection.user
 
     @property
     def channel(self) -> Optional[ClientChannel]:
         """
-        Represents the client channel.
+        Retrieve the channel of the current user associated with the client.
 
-        returns
+        Returns
         -------
         Optional[ClientChannel]
-            Client channel.
+            The channel of the current user if authenticated, otherwise None.
         """
-        return self._connection.channel
+        return self._connection.user.channel if self._connection.user is not None else None
 
     @property
-    def chat(self) -> Optional[ClientChat]:
+    def total_subscription_cost(self) -> Optional[int]:
         """
-        Represents the client channel chat.
+        Retrieve the total cost of all active subscriptions for the current user.
 
-        returns
+        Returns
         -------
-        Optional[ClientChannel]
-            Client channel chat.
+        Optional[int]
+            The total cost of all active subscriptions if the user is authenticated, otherwise None.
         """
-        return self._connection.chat
+        return self._connection.total_cost
 
     @property
-    def stream(self) -> Optional[ClientStream]:
+    def max_subscription_cost(self) -> Optional[int]:
         """
-        Represents the client channel stream.
+        Retrieve the maximum allowed total cost for all subscriptions.
 
-        returns
+        Returns
         -------
-        Optional[ClientStream]
-            Client channel stream.
+        Optional[int]
+            The maximum allowed total cost for all subscriptions if the user is authenticated, otherwise None.
         """
-        return self._connection.stream
+        return self._connection.max_total_cost
 
-    @property
-    def is_streaming(self) -> bool:
+    async def close(self) -> None:
         """
-        Indicates if the client is streaming.
+        Closes the connection to the Twitch API.
 
-        returns
+        This method ensures that all connections, including WebSocket and HTTP connections,
+        are properly closed. If a closing task is already running, it waits for it to complete.
+
+        If WebSocket is open, it is closed with a normal closure code (1000). After closing
+        the WebSocket, it clears the connection state and closes the HTTP client.
+        """
+        if self._closing_task:
+            return await self._closing_task
+
+        async def _close():
+            if self.ws is not None and self.ws.is_open:
+                await self.ws.close(code=1000)
+
+            self.clear()
+            await self.http.close()
+            self.loop = None
+
+        self._closing_task = asyncio.create_task(_close())
+        await self._closing_task
+
+    def clear(self) -> None:
+        """
+        Clears the connection state and resets the closing task.
+
+        This method is used to reset the connection state and prepare the client for a fresh
+        start or clean up after closing the connection.
+        """
+        self._connection.clear()
+        self._closing_task = None
+
+    def is_closed(self) -> bool:
+        """
+        Check if the client is currently closing or closed.
+
+        Returns
         -------
         bool
-            True if the client is streaming, False otherwise.
+            True if the client is in the process of closing or has been closed, otherwise False.
         """
-        return self._connection.is_streaming
+        return self._closing_task is not None
+
+    async def __aenter__(self) -> Self:
+        """
+        Asynchronous context manager entry method.
+
+        Returns
+        -------
+        Self
+            The current instance of the client, allowing it to be used within an async context manager.
+        """
+        return self
+
+    async def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                        exc_value: Optional[BaseException],
+                        traceback: Optional[TracebackType]) -> None:
+        """
+        Asynchronous context manager exit method.
+
+        Closes the HTTP client connection when exiting the async context manager.
+
+        Parameters
+        ----------
+        exc_type: Optional[Type[BaseException]]
+            The type of the exception raised, if any.
+        exc_value: Optional[BaseException]
+            The exception instance, if any.
+        traceback: Optional[TracebackType]
+            The traceback object, if any.
+        """
+        await self.http.close()
+
+    async def wait_until_ready(self) -> None:
+        """
+        Wait until the client is ready.
+        """
+        if self._connection.ready is None:
+            raise RuntimeError(
+                'Client not initialized. Ensure authorization or context manager is used before this call.'
+            )
+        await self._connection.ready.wait()
+
+    async def _async_loop(self) -> None:
+        # Starts the asynchronous loop for managing client operations.
+        loop = asyncio.get_running_loop()
+        self.loop = loop
+        self.http.loop = loop
+
+    @staticmethod
+    async def on_error(event_name: str, error: Exception, /, *args: Any, **kwargs: Any) -> None:
+        """
+        Handle errors occurring during event dispatch.
+
+        This static method logs an exception that occurred during the processing of an event.
+
+        Parameters
+        ----------
+        event_name: str
+            The name of the event that caused the error.
+        error: Exception
+            The exception that was raised.
+        *args: Any
+            Positional arguments passed to the event.
+        **kwargs: Any
+            Keyword arguments passed to the event.
+        """
+        _logger.exception('Ignoring error: %s from %s, args: %s kwargs: %s', error, event_name,
+                          args, kwargs)
 
     async def _run_event(self, coro: Callable[..., Any], event_name: str, *args: Any, **kwargs: Any) -> None:
-        # Execute the specified event coroutine with the given arguments.
+        # Run an event coroutine and handle exceptions.
         try:
             await coro(*args, **kwargs)
         except asyncio.CancelledError:
@@ -174,13 +251,22 @@ class Client:
         except Exception as error:
             await self.on_error(event_name, error, *args, **kwargs)
 
-    async def _setup_loop(self):
-        loop = asyncio.get_running_loop()
-        self.loop = loop
+    def custom_dispatch(self, event: str, coro: Callable[..., Any], /, *args: Any, **kwargs: Any) -> None:
+        # Dispatch a custom event with a coroutine callback.
+        try:
+            if asyncio.iscoroutinefunction(coro):
+                _logger.debug('Dispatching custom event %s', event)
+                wrapped = self._run_event(coro, event, *args, **kwargs)
+                # Schedule the task
+                self.loop.create_task(wrapped, name=f'Twitchify:custom:{event}')
+        except AttributeError:
+            pass
+        except Exception as error:
+            _logger.error('Event: %s Error: %s', event, error)
 
     def dispatch(self, event: str, /, *args: Any, **kwargs: Any) -> None:
-        # Dispatch a specified event with the given arguments.
-        method = "on_" + event
+        # Dispatch a specified event with a coroutine callback.
+        method = 'on_' + event
         try:
             coro = getattr(self, method)
             if coro is not None and asyncio.iscoroutinefunction(coro):
@@ -188,7 +274,6 @@ class Client:
                 wrapped = self._run_event(coro, method, *args, **kwargs)
                 # Schedule the task
                 self.loop.create_task(wrapped, name=f'Twitchify:{method}')
-
         except AttributeError:
             pass
         except Exception as error:
@@ -196,20 +281,18 @@ class Client:
 
     def event(self, coro: Callable[..., Any], /) -> None:
         """
-        A decorator that registers an event to listen to.
+        Register a coroutine function as an event handler.
+
+        This method assigns the given coroutine function to be used as an event handler with the same
+        name as the coroutine function.
 
         Parameters
         ----------
         coro: Callable[..., Any]
-            The coroutine function representing the event to listen to.
-
-        Raises
-        ------
-        TypeError
-            If the function is not a coroutine.
+            The coroutine function to register as an event handler.
 
         Example
-        --------
+        -------
         ```py
         @client.event
         async def on_ready():
@@ -217,448 +300,756 @@ class Client:
         ```
         """
         if not asyncio.iscoroutinefunction(coro):
-            raise TypeError("The registered event must be a coroutine function")
+            raise TypeError('The registered event must be a coroutine function')
         setattr(self, coro.__name__, coro)
 
-    @staticmethod
-    async def on_error(event_name: str, error: Exception, /, *args: Any, **kwargs: Any) -> None:
+    async def add_custom_event(self,
+                               name: str,
+                               /,
+                               user: User,
+                               callback: Callable[..., Any],
+                               *,
+                               options: Optional[Dict[str, Any]] = None) -> None:
         """
-        The default error handler provided by the client.
-        This method is called when an uncaught exception occurs during event processing.
+        Add a custom event for a user.
+
+        This method registers a callback function for a custom event and user.
 
         Parameters
         ----------
-        event_name: str
-            The name of the event that raised the error.
-        error: Exception
-            The exception object representing the error.
-        *args: Any
-            Additional positional arguments that were passed to the event handler.
-        **kwargs: Any
-            Additional keyword arguments that were passed to the event handler.
-        """
-        _logger.exception('Ignoring error: %s from %s, args: %s kwargs: %s', error, event_name,
-                          args, kwargs)
+        name: str
+            The name of the [event](../events/events.md) to subscribe to.
+        user: User
+            The user for whom the subscription is being created.
+        callback: Callable[..., Any]
+            The coroutine function to call when the event occurs.
+        options: Optional[Dict[str, Any]]
+            Custom event condition.
 
-    async def connect(self, access_token: str = MISSING, *, refresh_token: str = MISSING,
-                      reconnect: bool = True) -> None:
-        """
-        Establishes a connection.
+        Example
+        --------
+        ```py
+        async def on_yonk(data: eventsub.chat.MessageEvent):
+            print(data)
 
-        ???+ Warning
-            You can either use access_token alone or use refresh_token along with the client_secret
-            to ensure token generation. Using only access_token may result in it expiring at any time.
+        async def on_random_channel_message(data: eventsub.chat.MessageEvent):
+            print(data)
+
+        @client.event
+        async def on_ready():
+            user = await client.get_user('snifo')
+            await client.add_custom_event('on_chat_message', user, on_random_channel_message)
+
+            # Options not required, but sometimes we want to listen to a specific reward.
+            await client.add_custom_event('on_points_reward_redemption_add', user, on_yonk, options={'reward_id': '1'})
+        ```
+        """
+        if not asyncio.iscoroutinefunction(callback):
+            raise TypeError('The registered custom event must be a coroutine function')
+
+        if not name.startswith('on_'):
+            raise TypeError('Event name must start with "on_" to be recognized as a valid custom event.')
+
+        await self._connection.create_subscription(user.id,
+                                                   name.replace('on_', '', 1),
+                                                   self.ws.session_id,
+                                                   callback=callback,
+                                                   condition_options=options)
+
+    async def remove_custom_event(self, name: str, /, user: User) -> None:
+        """
+        Remove a custom event for a user.
+
+        This method unsubscribes a user from a custom event.
+
+        Parameters
+        ----------
+        name: str
+            The name of the [event](../events/events.md) to unsubscribe from.
+        user: User
+            The user whose subscription is being removed.
+        """
+
+        if not name.startswith('on_'):
+            raise TypeError('Event name must start with "on_" to be recognized as a valid custom event.')
+
+        await self._connection.remove_subscription(user.id, name.replace('on_', '', 1))
+
+    async def authorize(self, access_token: str, refresh_token: Optional[str] = None) -> None:
+        """
+        Authorize the client with the given access and optionally refresh token.
+
+        This method initializes the event loop if it's not already running,
+        then calls the HTTP clients authorize method to authenticate with
+        the Twitch API. After successful authorization, it initializes the
+        client connection state with the user ID.
 
         Parameters
         ----------
         access_token: str
-            The User access token. If not provided, a web server will be opened for manual authentication.
-        refresh_token: str
-            A token used for obtaining a new access tokens, but it requires the app's client secret.
-        reconnect: bool
-            Whether to attempt reconnecting on internet or Twitch failures.
+            The OAuth2 access token used for authentication.
+        refresh_token: Optional[str], default=None
+            The OAuth2 refresh token used to obtain a new access token if needed.
         """
-        # Setup loop
         if self.loop is None:
-            await self._setup_loop()
+            await self._async_loop()
+        self._connection.ready = asyncio.Event()
+        data = await self.http.authorize(access_token, refresh_token)
+        await self._connection.initialize_client(user_id=data['user_id'])
 
-        # Validating the access key and opening a new session.
-        validation = await self.http.open_session(access_token=access_token, refresh_token=refresh_token)
-        # Retrieving the client.
-        await self._connection.setup_client()
-
-        events = [attr.replace('on_', '', 1) for attr in dir(self) if attr.startswith('on_')]
-        # Creating an EventSub websocket.
-        EventSub = EventSubWebSocket(connection=self._connection, loop=self.loop, events=events)
-        # Debug mode.
-        if self._cli:
-            EventSub.cli = f'ws://localhost:{self._port}/ws'
-            self.http.cli = f'http://localhost:{self._port}/eventsub/subscriptions'
-        # Creating tasks.
-        tasks: List[asyncio.Task] = [
-            self.loop.create_task(self.http.refresher(expires_in=validation['expires_in']),
-                                  name="Twitchify:Refresher"),
-            self.loop.create_task(EventSub.connect(reconnect=reconnect), name="Twitchify:EventSub")
-        ]
-        await asyncio.gather(*tasks)
-
-    async def start(self, access_token: str = MISSING, *, refresh_token: str = MISSING, port: int = 3000,
-                    force_verify: bool = True, reconnect: bool = True, scopes: HttpTypes.Scopes = MISSING,
-                    log_level: int = logging.INFO) -> None:
+    async def connect(self, *, reconnect: bool = True) -> None:
         """
-        Connect to the Twitch API and handle authentication.
+        Establish a WebSocket connection to the Twitch API and handle events.
 
-        ???+ info
-            This method provides a simple way to connect to the Twitch API. If an `access_token` is provided,
-            it will use that token for authorization. If not, it will initiate a web server for manual
-            authentication. The `access_token` and `refresh_token` will be automatically added if obtained
-            through the authorization flow.
+        This method tries to connect to the Twitch WebSocket server and handle
+        incoming events. If the WebSocket connection is closed or errors occur,
+        it handles reconnections based on the `reconnect` flag. It also logs
+        connection errors and attempts to reconnect if necessary.
+
+        Parameters
+        ----------
+        reconnect: bool
+            Indicates whether to attempt reconnection if the WebSocket connection is lost.
+        """
+        kwargs: Dict[str, Any] = {'reconnect': False}
+        while not self.is_closed():
+            try:
+                websocket = EventSubWebSocket.initialize_websocket(self, self._connection, **kwargs)
+                self.ws = await asyncio.wait_for(websocket, timeout=60.0)
+                while True:
+                    await self.ws.poll_handle_dispatch()
+            except ReconnectWebSocket as exc:
+                _logger.debug('Websocket is reconnecting to %s', exc.url)
+                kwargs['gateway'] = exc.url
+                kwargs['reconnect'] = True
+            except (OSError, HTTPException, ConnectionClosed, asyncio.TimeoutError, aiohttp.ClientError) as exc:
+                self._connection.ws_disconnect()
+                if not reconnect or self.is_closed():
+                    await self.close()
+                    raise
+                _logger.exception("%s Attempting a reconnect in 8s", exc)
+                await asyncio.sleep(8)
+                kwargs = {'reconnect': False}
+                continue
+
+    async def start(self, access_token: str, refresh_token: Optional[str] = None, *, reconnect: bool = True) -> None:
+        """
+        Start the client by authorizing and connecting to the Twitch API.
+
+        This method authorizes the client with the provided access token and
+        optionally refresh token. It then establishes a WebSocket connection
+        to the Twitch API and starts handling events. It raises errors if the
+        access token or refresh token is missing based on the client configuration.
 
         Parameters
         ----------
         access_token: str
-            The user's access token. If not provided, a web server will be opened for manual authorization.
-        refresh_token: str
-            A token used for obtaining new access tokens without requiring user re-authorization.
-            Requires the app's client secret.
-        port: int
-            The port for the Twitch CLI websocket and the authorization web server.
-        force_verify: bool
-            Force the user to re-authorize if True.
-        scopes: List
-            A list of scopes required by the Twitch API to support your app's functionality.
-
-            If `token` is `MISSING`, the user will manually authenticate using these scopes,
-            If not provided, the default value will be all available scopes.
+            The OAuth2 access token used for authentication.
+        refresh_token: Optional[str]
+            The OAuth2 refresh token used to obtain a new access token if needed.
         reconnect: bool
-            Whether to attempt reconnecting on internet or Twitch failures.
-        log_level: int
-            The log level for the library's logger. Can be one of the following:
-
-            - logging.ERROR (40): For critical errors.
-            - logging.WARNING (30): For non-critical warnings.
-            - logging.INFO (20): For general information.
-            - logging.DEBUG (10): For detailed debugging information.
+            Indicates whether to attempt reconnection if the WebSocket connection is lost.
 
         Raises
         ------
         TypeError
-            - If the client_secret is not provided, and the user access token is not provided.
-              In this case, it's not possible to generate a new access token, and the client cannot
-              interact with the Twitch API without authorization.
-            - If a scope does not exist.
+            If the access token or refresh token is missing or if the client secret is not provided when needed.
         """
-        # Setup logger.
-        setup_logging(level=log_level)
-        refresh_token = None if refresh_token is MISSING else refresh_token
-        if access_token is MISSING and not (refresh_token and self._client_secret):
-            if self._client_secret:
-                if scopes is MISSING:
-                    # Global scopes.
-                    self.scopes = Scopes
-                else:
-                    if not all(scope in Scopes for scope in scopes):
-                        raise TypeError('One or more scopes do not exist.')
-                    self.scopes.extend(scopes)
-                # Authenticates with the Twitch API using OAuth 2.0 authorization code grant flow.
-                async with Server(port=port) as server:
-                    auth_url = server.url(client_id=self._client_id, scopes=self.scopes,
-                                          force_verify=force_verify)
-                    _logger.info('1. Create an app on the Twitch Developer Console:\n'
-                                 '   - Go to https://dev.twitch.tv/console\n'
-                                 '   - Sign in with your Twitch account\n'
-                                 '   - Click on \'Applications\' in the top navigation\n'
-                                 '   - Click on \'Register Your Application\'\n'
-                                 '   - Fill in the required details for your app\n'
-                                 '   - Set \'OAuth Redirect URLs\' to your redirect URI:\n'
-                                 '     -> Redirect URI: %s\n'
-                                 '   - Save your changes\n', server.uri)
-                    _logger.info('2. Navigate to the following URL in your web browser:\n'
-                                 '   -> Authorization URL: %s\n', auth_url)
-                    # Setup loop for dispatch.
-                    if self.loop is None:
-                        await self._setup_loop()
-                    self.dispatch('auth_url', auth_url, server.uri)
-                    code = await server.wait_for_code()
-                    access_token, refresh_token = await self.http.auth_code(code=code,
-                                                                            redirect_uri=server.uri)
-                    self.dispatch('auth', access_token, refresh_token)
-            else:
-                raise TypeError('Missing Client Secret, Unable to authorize.')
-        await self.connect(access_token=access_token, refresh_token=refresh_token, reconnect=reconnect)
+        if isinstance(self, Client) and access_token is None:
+            if refresh_token and not self.client_secret:
+                raise TypeError('Missing client secret.')
 
-    def run(self, access_token: str = MISSING, *, refresh_token: str = MISSING,
-            port: int = 3000, force_verify: bool = True, reconnect: bool = True,
-            scopes: HttpTypes.Scopes = MISSING, log_level: int = logging.INFO) -> None:
+            if not refresh_token:
+                raise TypeError('Missing client access token or refresh token.')
+        await self.authorize(access_token, refresh_token)
+        await self.connect(reconnect=reconnect)
+
+    def run(self,
+            access_token: Optional[str] = None,
+            refresh_token: Optional[str] = None,
+            *,
+            reconnect: bool = True,
+            log_handler: Optional[logging.Handler] = None,
+            log_level: Optional[int] = None,
+            root_logger: bool = False) -> None:
         """
-        Run the client and handle the event loop.
+        Start the client and run it until interrupted.
 
         !!! danger
             This function must be the last function to call as it blocks
             the execution of anything after it.
 
+        This method sets up logging, initializes the client, and starts the main
+        asynchronous process. The client will run and handle events until the
+        process is interrupted (e.g., by a KeyboardInterrupt). The logging setup
+        is customizable via parameters.
+
         Parameters
         ----------
-        access_token: str
-            The user's access token. If not provided, a web server will be opened for manual authorization.
-        refresh_token: str
-            A token used for obtaining new access tokens without requiring user re-authorization.
-            Requires the app's client secret.
-        port: int
-            The port for the Twitch CLI websocket and the authorization web server.
-        force_verify: bool
-            Force the user to re-authorize if True.
-        scopes: List
-            A list of scopes required by the Twitch API to support your app's functionality.
-
-            If `token` is `MISSING`, the user will manually authenticate using these scopes,
-            If not provided, the default value will be all available scopes.
+        access_token: Optional[str]
+            The OAuth2 access token used for authentication. If None, the client
+            will need to obtain it from another source.
+        refresh_token: Optional[str]
+            The OAuth2 refresh token used to obtain a new access token if needed.
+            If None, the client will need to obtain it from another source.
         reconnect: bool
-            Whether to attempt reconnecting on internet or Twitch failures.
-        log_level: int
-            The log level for the library's logger. Can be one of the following:
-
-            - logging.ERROR (40): For critical errors.
-            - logging.WARNING (30): For non-critical warnings.
-            - logging.INFO (20): For general information.
-            - logging.DEBUG (10): For detailed debugging information.
+            Indicates whether to attempt reconnection if the WebSocket connection is lost.
+        log_handler: Optional[logging.Handler]
+            A logging handler to be used for logging output. If None, a default handler will be set up.
+        log_level: Optional[int]
+            The logging level to be used. If None, a default level will be used.
+        root_logger: bool
+            If True, the logging configuration will apply to the root logger. Otherwise, it applies to a new logger.
         """
+        if log_handler is None:
+            utils.setup_logging(handler=log_handler, level=log_level, root=root_logger)
 
-        async def starter():
+        async def runner() -> None:
+            """
+            Inner function to run the main process asynchronously.
+            """
             async with self:
-                await self.start(access_token=access_token, refresh_token=refresh_token,
-                                 scopes=scopes, port=port, force_verify=force_verify,
-                                 reconnect=reconnect, log_level=log_level)
+                await self.start(access_token, refresh_token, reconnect=reconnect)
 
         try:
-            asyncio.run(starter())
+            asyncio.run(runner())
         except KeyboardInterrupt:
             return
 
-    @overload
-    async def get_user(self, name: str) -> User:
-        ...
-
-    @overload
-    async def get_user(self, *, id: str) -> User:
-        ...
-
-    async def get_user(self, name: str = EXCLUSIVE, id: str = EXCLUSIVE) -> User:
+    async def get_user(self, name: str) -> Optional[User]:
         """
-        Retrieve user information.
+        Retrieve a user by their login name.
 
         Parameters
         ----------
         name: str
-            The user's name.
-        id: str
-            The user's ID.
+            The login name of the user to retrieve.
+
+        Returns
+        -------
+        Optional[User]
+            The User object if found; otherwise, None.
+        """
+        data: List[User] = await self._connection.get_users(user_logins=[name])
+        return data[0] if len(data) != 0 else None
+
+    async def get_user_by_id(self, __id: str, /) -> User:
+        """
+        Retrieve a user by their ID.
+
+        ???+ note
+            This method directly creates a User object with the provided ID, making it faster
+            as it avoids an additional API request to retrieve the user ID.
+
+        Parameters
+        ----------
+        __id: str
+            The ID of the user to retrieve.
 
         Returns
         -------
         User
-            An object representing user information.
+            The User object initialized with the given ID.
         """
-        data = await self._connection.get_user_info(name=name, user_id=id)
-        return data
+        return User(state=self._connection, user_id=__id)
 
-    async def get_channel(self, user: Union[str, BaseUser]) -> UserChannel:
+    async def get_users(self,
+                        names: Optional[List[str]] = None,
+                        ids: Optional[List[str]] = None) -> List[User]:
         """
-        Retrieve a user's channel information.
+        Retrieve multiple users by their names or IDs.
+
+        ???+ note
+            Using IDs is efficient as it avoids extra requests. If names are provided,
+            it makes a single request to fetch all users by name.
 
         Parameters
         ----------
-        user: Union[str, BaseUser]
-            The user or user's name.
+        names: Optional[List[str]]
+            A list of user login names to retrieve.
+        ids: Optional[List[str]]
+            A list of user IDs to retrieve.
 
         Returns
         -------
-        UserChannel
-            An object representing the user's channel.
+        List[User]
+            A list of User objects corresponding to the provided names or IDs.
         """
-        data = await self._connection.get_channel(user)
-
+        data: List[User] = await self._connection.get_users(ids, names)
         return data
 
-    async def get_category(self, name: str) -> Category:
+    async def get_users_chat_color(self, __users: List[User], /) -> List[chat.UserChatColor]:
         """
-        Retrieve category information by name.
+        Retrieve chat color information for a list of users.
+
+        Parameters
+        ----------
+        __users: List[User]
+            A list of User objects for which to retrieve chat color settings.
+
+        Returns
+        -------
+        List[chat.UserChatColor]
+            A list of dictionaries where each dictionary contains users chat color settings.
+        """
+        data: List[chat.UserChatColor] = await self._connection.get_users_chat_color(__users)
+        return data
+
+    @overload
+    async def get_team(self, name: str) -> channels.Team:
+        ...
+
+    @overload
+    async def get_team(self, name: str) -> None:
+        ...
+
+    async def get_team(self, name: str) -> Optional[channels.Team]:
+        """
+        Retrieve a team by its name.
 
         Parameters
         ----------
         name: str
-            The name of the category to retrieve.
+            The name of the team to retrieve.
 
         Returns
         -------
-        Category
-            An object representing the category information.
+        Optional[channels.Team]
+            A dictionary representing the team's information, or None if not found.
         """
-        data = await self._connection.get_category(name)
+        data: Optional[channels.Team] = await self._connection.get_team_info(team_name=name)
         return data
 
-    async def get_global_emotes(self) -> List[Emote]:
-        """
-        Retrieve global emotes available on Twitch.
+    @overload
+    async def get_team_by_id(self, __id: str, /) -> channels.Team:
+        ...
 
-        Returns
-        -------
-        List[Emote]
-            A list of Emote objects representing global emotes.
-        """
-        data = await self._connection.get_global_emotes()
-        return data
+    @overload
+    async def get_team_by_id(self, __id: str, /) -> None:
+        ...
 
-    async def get_global_badges(self) -> List[Badge]:
+    async def get_team_by_id(self, __id: str, /) -> Optional[channels.Team]:
         """
-        Retrieve global badges available on Twitch.
-
-        Returns
-        -------
-        List[Badge]
-            A list of Badge objects representing global badges.
-        """
-        data = await self._connection.get_global_badges()
-        return data
-
-    async def fetch_streams(
-            self,
-            users: List[Union[str, BaseUser]] = MISSING,
-            categories: List[Union[str, Category]] = MISSING,
-            stream_type: Literal['all', 'live'] = 'all',
-            languages: List[str] = MISSING,
-            limit: int = 4
-    ) -> AsyncGenerator[List[Stream]]:
-        """
-        Fetch a list of live or all streams based on specified criteria.
+        Retrieve a team by its ID.
 
         Parameters
         ----------
-        users: List[Union[str, BaseUser]]
-            A list of users or their usernames for filtering streams.
-        categories: List[Union[str, Category]]
-            A list of categories or their names for filtering streams.
+        __id: str
+            The ID of the team to retrieve.
+
+        Returns
+        -------
+        Optional[channels.Team]
+            A dictionary representing the team's information, or None if not found.
+        """
+        data: Optional[channels.Team] = await self._connection.get_team_info(team_id=__id)
+        return data
+
+    async def get_global_emotes(self) -> Tuple[List[chat.Emote], str]:
+        """
+        Retrieve global emotes and the template URL.
+
+        Returns
+        -------
+        Tuple[List[chat.Emote], str]
+            A tuple containing a list of dictionaries representing global emotes and a template URL string.
+        """
+        data: Tuple[List[chat.Emote], str] = await self._connection.get_global_emotes()
+        return data
+
+    async def get_emote_sets(self, emote_set_ids: List[str]) -> Tuple[List[chat.Emote], str]:
+        """
+        Retrieve emotes for specific emote sets.
+
+        Parameters
+        ----------
+        emote_set_ids: List[str]
+            A list of emote set IDs to retrieve emotes for.
+
+        Returns
+        -------
+        Tuple[List[chat.Emote], str]
+            A tuple containing a list of dictionaries representing emotes and a template URL string.
+        """
+        data: Tuple[List[chat.Emote], str] = await self._connection.get_emote_sets(emote_set_ids)
+        return data
+
+    async def get_global_chat_badges(self) -> List[chat.Badge]:
+        """
+        Retrieve global chat badges.
+
+        Returns
+        -------
+        List[chat.Badge]
+            A list of dictionaries representing global chat badges.
+        """
+        data: List[chat.Badge] = await self._connection.get_global_chat_badges()
+        return data
+
+    async def fetch_channels_search(self,
+                                    query: str,
+                                    live_only: bool = False,
+                                    first: int = 100) -> AsyncGenerator[List[search.ChannelSearch], None]:
+        """
+        Search for channels.
+
+        Parameters
+        ----------
+        query: str
+            The search query.
+        live_only: bool
+            Whether to return only live channels, by default False.
+        first: int
+            The maximum number of results to retrieve, by default 100.
+
+        Yields
+        ------
+        AsyncGenerator[List[search.ChannelSearch], None]
+            A list of dictionaries representing channels matching the search query.
+        """
+        async for result in self._connection.fetch_channels_search(query, live_only, first):
+            yield result
+
+    async def fetch_streams(self,
+                            user_logins: Optional[List[str]] = None,
+                            user_ids: Optional[List[str]] = None,
+                            category_ids: Optional[List[str]] = None,
+                            stream_type: Literal['all', 'live'] = 'all',
+                            language: Optional[str] = None,
+                            first: int = 100) -> AsyncGenerator[List[streams.StreamInfo], None]:
+        """
+        Fetch streams based on various filters.
+
+        Parameters
+        ----------
+        user_logins: Optional[List[str]]
+            A list of user logins to filter streams by, by default None.
+        user_ids: Optional[List[str]]
+            A list of user IDs to filter streams by, by default None.
+        category_ids: Optional[List[str]]
+            A list of category IDs to filter streams by, by default None.
         stream_type: Literal['all', 'live']
-            The type of streams to fetch: 'all' (default) for all streams or 'live' for live streams only.
-        languages: List[str]
-            A list of language codes for filtering streams by language.
-        limit: optional
-            The maximum number of streams to fetch.
+            The type of streams to retrieve, by default 'all'.
+        language: Optional[str]
+            The language to filter streams by, by default None.
+        first: int
+            The maximum number of results to retrieve, by default 100.
 
         Yields
         ------
-        AsyncGenerator[List[Stream]]
-            An asynchronous generator that yields lists of Stream objects matching the specified criteria.
+        AsyncGenerator[List[streams.Stream], None]
+            A list of dictionaries representing streams matching the filters.
         """
-        async for streams in self._connection.fetch_streams(
-                limit=limit,
-                users=users,
-                categories=categories,
-                stream_type=stream_type,
-                languages=languages):
-            yield streams
+        async for result in self._connection.fetch_streams(user_logins,
+                                                           user_ids,
+                                                           category_ids,
+                                                           stream_type,
+                                                           language,
+                                                           first):
+            yield result
 
-    @overload
-    def fetch_videos(self, videos: List[Union[Video, Clip]],
-                     period: Literal['all', 'day', 'month', 'week'] = 'all',
-                     videos_type: Literal['all', 'archive', 'highlight', 'upload'] = 'all',
-                     sort: Literal['time', 'trending', 'views'] = 'time',
-                     language: str = MISSING,
-                     limit: int = 4) -> AsyncGenerator[List[Video]]:
-        ...
-
-    @overload
-    def fetch_videos(self, category: Union[str, Category],
-                     period: Literal['all', 'day', 'month', 'week'] = 'all',
-                     videos_type: Literal['all', 'archive', 'highlight', 'upload'] = 'all',
-                     sort: Literal['time', 'trending', 'views'] = 'time',
-                     language: str = MISSING,
-                     limit: int = 4) -> AsyncGenerator[List[Video]]:
-        ...
-
-    async def fetch_videos(self, videos: List[Union[str, Video, Clip]] = EXCLUSIVE,
-                           category: Union[str, Category] = EXCLUSIVE,
-                           period: Literal['all', 'day', 'month', 'week'] = 'all',
-                           sort: Literal['time', 'trending', 'views'] = 'time',
-                           videos_type: Literal['all', 'archive', 'highlight', 'upload'] = 'all',
-                           language: str = MISSING,
-                           limit: int = 4
-                           ) -> AsyncGenerator[List[Video]]:
-
+    async def fetch_videos_by_ids(self,
+                                  video_ids: List[str],
+                                  language: Optional[str] = None,
+                                  period: Optional[Literal['all', 'day', 'month', 'week']] = None,
+                                  sort: Optional[Literal['time', 'trending', 'views']] = None,
+                                  video_type: Optional[Literal['all', 'archive', 'highlight', 'upload']] = None,
+                                  first: Optional[int] = 100) -> AsyncGenerator[List[channels.Video], None]:
         """
-        Fetch videos based on specified criteria.
-
-        ???+ Warning
-            You must choose either `videos` (list of videos) or `category` (a single category)
-            as they are mutually exclusive.
+        Fetch videos by their IDs.
 
         Parameters
         ----------
-        videos: List[Union[Video, Clip]]
-            A list of Video or Clip objects or their IDs for filtering videos.
-        category: Union[str, Category]
-            A category or its name for filtering videos.
-        sort: Literal['time', 'trending', 'views']
-            The sorting order for fetched videos.
-        period: Literal['all', 'day', 'month', 'week']
-            The time period for filtering videos.
-        videos_type: Literal['all', 'archive', 'highlight', 'upload']
-            The type of videos to fetch.
-        language: str
-            The language code for filtering videos by language.
-        limit: int
-            The maximum number of videos to fetch per batch.
+        video_ids: List[str]
+            A list of video IDs to retrieve.
+        language: Optional[str]
+            The language to filter videos by, by default None.
+        period: Optional[Literal['all', 'day', 'month', 'week']]
+            The period to filter videos by, by default None.
+        sort: Optional[Literal['time', 'trending', 'views']]
+            The sorting order for the videos, by default None.
+        video_type: Optional[Literal['all', 'archive', 'highlight', 'upload']]
+            The type of videos to retrieve, by default None.
+        first: Optional[int]
+            The maximum number of results to retrieve, by default 100.
 
         Yields
         ------
-        AsyncGenerator[List[Video]]
-            An asynchronous generator that yields lists of Video objects matching the specified criteria.
+        AsyncGenerator[List[channels.Video], None]
+            A list of dictionaries representing videos matching the filters.
         """
-        async for videos in self._connection.fetch_videos(
-                videos=videos,
-                category=category,
-                period=period,
-                language=language,
-                sort=sort,
-                videos_type=videos_type,
-                limit=limit):
-            yield videos
+        async for result in self._connection.fetch_videos(None,
+                                                          video_ids,
+                                                          language,
+                                                          period,
+                                                          sort,
+                                                          video_type,
+                                                          first):
+            yield result
 
-    @overload
-    def fetch_clips(self, clips: List[Clip],
-                    started_at: datetime = MISSING,
-                    ended_at: datetime = MISSING,
-                    featured: bool = False,
-                    limit: int = 4) -> AsyncGenerator[List[Clip]]:
-        ...
-
-    @overload
-    def fetch_clips(self, category: Union[str, Category],
-                    started_at: datetime = MISSING,
-                    ended_at: datetime = MISSING,
-                    featured: bool = False,
-                    limit: int = 4) -> AsyncGenerator[List[Clip]]:
-        ...
-
-    async def fetch_clips(self, clips: List[Union[str, Clip]] = EXCLUSIVE,
-                          category: Union[str, Category] = EXCLUSIVE,
-                          started_at: datetime = MISSING, ended_at: datetime = MISSING,
-                          featured: bool = MISSING,
-                          limit: int = 4) -> AsyncGenerator[List[Clip]]:
-
+    async def fetch_videos_by_category(self,
+                                       category_id: str,
+                                       language: Optional[str] = None,
+                                       period: Optional[Literal['all', 'day', 'month', 'week']] = None,
+                                       sort: Optional[Literal['time', 'trending', 'views']] = None,
+                                       video_type: Optional[Literal['all', 'archive', 'highlight', 'upload']] = None,
+                                       first: Optional[int] = 100) -> AsyncGenerator[List[channels.Video], None]:
         """
-        Fetch clips based on specified criteria.
-
-        ???+ Warning
-            You must choose either `clips` (list of clips) or
-            `category` (a single category) as they are mutually exclusive.
+        Fetch videos by category ID.
 
         Parameters
         ----------
-        clips: List[Clip]
-            A list of Clip objects or their IDs for filtering clips.
-        category: Union[str, Category]
-            A category or its name for filtering clips.
-        started_at: datetime
-            The starting date and time for filtering clips.
-        ended_at: datetime
-            The ending date and time for filtering clips.
-        featured: bool
-            Include only featured clips if True, or non-featured clips if False.
-            If not specified, all clips are returned.
-        limit: int
-            The maximum number of clips to fetch per batch.
+        category_id: str
+            The ID of the category to retrieve videos from.
+        language: Optional[str]
+            The language to filter videos by, by default None.
+        period: Optional[Literal['all', 'day', 'month', 'week']]
+            The period to filter videos by, by default None.
+        sort: Optional[Literal['time', 'trending', 'views']]
+            The sorting order for the videos, by default None.
+        video_type: Optional[Literal['all', 'archive', 'highlight', 'upload']]
+            The type of videos to retrieve, by default None.
+        first: Optional[int]
+            The maximum number of results to retrieve, by default 100.
 
         Yields
         ------
-        AsyncGenerator[List[Clip]]
-            An asynchronous generator that yields lists of Clip objects matching the specified criteria.
+        AsyncGenerator[List[channels.Video], None]
+            A list of dictionaries representing videos matching the filters.
         """
-        async for clips in self._connection.fetch_clips(
-                clips=clips,
-                category=category,
-                started_at=started_at,
-                ended_at=ended_at,
-                featured=featured,
-                limit=limit):
-            yield clips
+        async for result in self._connection.fetch_videos(category_id,
+                                                          None,
+                                                          language,
+                                                          period,
+                                                          sort,
+                                                          video_type,
+                                                          first):
+            yield result
+
+    async def fetch_clips_by_ids(self,
+                                 clip_ids: List[str],
+                                 started_at: Optional[datetime.datetime] = None,
+                                 ended_at: Optional[datetime.datetime] = None,
+                                 is_featured: Optional[bool] = None,
+                                 first: int = 100) -> AsyncGenerator[List[channels.Clip], None]:
+        """
+        Fetch clips by their IDs.
+
+        Parameters
+        ----------
+        clip_ids: List[str]
+            A list of clip IDs to retrieve.
+        started_at: Optional[datetime.datetime]
+            The start time to filter clips by, by default None.
+        ended_at: Optional[datetime.datetime]
+            The end time to filter clips by, by default None.
+        is_featured: Optional[bool]
+            Whether to retrieve only featured clips, by default None.
+        first: int
+            The maximum number of results to retrieve, by default 100.
+
+        Yields
+        ------
+        AsyncGenerator[List[channels.Clip], None]
+            A list of dictionaries representing clips matching the filters.
+        """
+        async for result in self._connection.fetch_clips(None,
+                                                         clip_ids,
+                                                         started_at,
+                                                         ended_at,
+                                                         is_featured,
+                                                         first):
+            yield result
+
+    async def fetch_clips_by_category(self,
+                                      category_id: str,
+                                      started_at: Optional[datetime.datetime] = None,
+                                      ended_at: Optional[datetime.datetime] = None,
+                                      is_featured: Optional[bool] = None,
+                                      first: int = 100) -> AsyncGenerator[List[channels.Clip], None]:
+        """
+        Fetch clips by category ID.
+
+        Parameters
+        ----------
+        category_id: str
+            The ID of the category to retrieve clips from.
+        started_at: Optional[datetime.datetime]
+            The start time to filter clips by, by default None.
+        ended_at: Optional[datetime.datetime]
+            The end time to filter clips by, by default None.
+        is_featured: Optional[bool]
+            Whether to retrieve only featured clips, by default None.
+        first: int
+            The maximum number of results to retrieve, by default 100.
+
+        Yields
+        ------
+        AsyncGenerator[List[channels.Clip], None]
+            A list of dictionaries representing clips matching the filters.
+        """
+        async for result in self._connection.fetch_clips(category_id,
+                                                         None,
+                                                         started_at,
+                                                         ended_at,
+                                                         is_featured,
+                                                         first):
+            yield result
+
+    async def get_content_classification_labels(self, locale: streams.Locale = 'en-US') -> List[streams.CCLInfo]:
+        """
+        Retrieve content classification labels.
+
+        Parameters
+        ----------
+        locale: streams.Locale
+            The locale to retrieve labels for, by default 'en-US'.
+
+        Returns
+        -------
+        List[streams.CCLInfo]
+            A list of dictionaries representing content classification labels.
+        """
+        data: List[streams.CCLInfo] = await self._connection.get_content_classification_labels(locale)
+        return data
+
+    async def get_global_cheermotes(self) -> List[bits.Cheermote]:
+        """
+        Retrieve global cheermotes.
+
+        Returns
+        -------
+        List[bits.Cheermote]
+            A list of dictionaries representing global cheermotes.
+        """
+        data: List[bits.Cheermote] = await self._connection.get_global_cheermotes()
+        return data
+
+    async def fetch_top_categories(self, first: int = 100) -> AsyncGenerator[List[search.Game], None]:
+        """
+        Fetch the top categories on Twitch.
+
+        Parameters
+        ----------
+        first: int
+            The maximum number of results to retrieve, by default 100.
+
+        Yields
+        ------
+        AsyncGenerator[List[search.Game], None]
+            A list of dictionaries representing the top categories.
+        """
+        async for result in self._connection.fetch_top_games(first):
+            yield result
+
+    async def get_categories(self,
+                             names: Optional[List[str]] = None,
+                             ids: Optional[List[str]] = None,
+                             igdb_ids: Optional[List[str]] = None) -> List[search.Game]:
+        """
+        Retrieve game categories by name, ID, or IGDB ID.
+
+        Parameters
+        ----------
+        names: Optional[List[str]]
+            A list of game names to filter by, by default None.
+        ids: Optional[List[str]]
+            A list of game IDs to filter by, by default None.
+        igdb_ids: Optional[List[str]]
+            A list of IGDB IDs to filter by, by default None.
+
+        Returns
+        -------
+        List[search.Game]
+            A list of dictionaries representing game categories.
+        """
+        data: List[search.Game] = await self._connection.get_games(game_names=names, game_ids=ids, igdb_ids=igdb_ids)
+        return data
+
+    async def fetch_categories_search(self, query: str,
+                                      first: int = 100) -> AsyncGenerator[List[search.CategorySearch], None]:
+        """
+        Search for categories by a query string.
+
+        Parameters
+        ----------
+        query: str
+            The search query.
+        first: int
+            The maximum number of results to retrieve, by default 100.
+
+        Yields
+        ------
+        AsyncGenerator[List[search.CategorySearch], None]
+            A list of dictionaries representing categories matching the search query.
+        """
+        async for result in self._connection.fetch_categories_search(query, first):
+            yield result
+
+    async def fetch_extension_analytics(self,
+                                        extension_id: Optional[str] = None,
+                                        analytics_type: Literal['overview_v2'] = 'overview_v2',
+                                        started_at: Optional[datetime.datetime] = None,
+                                        ended_at: Optional[datetime.datetime] = None,
+                                        first: int = 100) -> AsyncGenerator[List[analytics.Extension], None]:
+        """
+        Fetch analytics data for extensions.
+
+        Parameters
+        ----------
+        extension_id: Optional[str]
+            The ID of the extension to filter by, by default None.
+        analytics_type: Literal['overview_v2']
+            The type of analytics data to retrieve, by default 'overview_v2'.
+        started_at: Optional[datetime.datetime]
+            The start time to filter analytics by, by default None.
+        ended_at: Optional[datetime.datetime]
+            The end time to filter analytics by, by default None.
+        first: int
+            The maximum number of results to retrieve, by default 100.
+
+        Yields
+        ------
+        AsyncGenerator[List[analytics.Extension], None]
+            A list of dictionaries representing extension analytics data.
+        """
+        async for result in self._connection.fetch_extension_analytics(extension_id,
+                                                                       analytics_type,
+                                                                       started_at,
+                                                                       ended_at,
+                                                                       first):
+            yield result
+
+    async def fetch_game_analytics(self,
+                                   game_id: Optional[str] = None,
+                                   analytics_type: Literal['overview_v2'] = 'overview_v2',
+                                   started_at: Optional[datetime.datetime] = None,
+                                   ended_at: Optional[datetime.datetime] = None,
+                                   first: int = 100) -> AsyncGenerator[List[analytics.Game], None]:
+        """
+        Fetch analytics data for games.
+
+        Parameters
+        ----------
+        game_id: Optional[str]
+            The ID of the game to filter by, by default None.
+        analytics_type: Literal['overview_v2']
+            The type of analytics data to retrieve, by default 'overview_v2'.
+        started_at: Optional[datetime.datetime]
+            The start time to filter analytics by, by default None.
+        ended_at: Optional[datetime.datetime]
+            The end time to filter analytics by, by default None.
+        first: int
+            The maximum number of results to retrieve, by default 100.
+
+        Yields
+        ------
+        AsyncGenerator[List[analytics.Game], None]
+            A list of dictionaries representing game analytics data.
+        """
+        async for result in self._connection.fetch_game_analytics(game_id,
+                                                                  analytics_type,
+                                                                  started_at,
+                                                                  ended_at,
+                                                                  first):
+            yield result
