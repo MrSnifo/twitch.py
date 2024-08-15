@@ -22,8 +22,13 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-from typing import TypedDict, List, Literal, NotRequired, Optional
+from __future__ import annotations
+
 from .users import SpecificUser, Broadcaster
+from typing import TypedDict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import List, Literal, NotRequired, Optional
 
 
 # HypeTrain

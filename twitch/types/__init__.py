@@ -7,9 +7,13 @@ Typing for Twitch.
 :license: MIT, see LICENSE for more details.
 """
 
-from typing import TypedDict, TypeVar
+from __future__ import annotations
 
-T = TypeVar('T')
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from typing import TypeVar
+    T = TypeVar('T')
 
 
 # Most of the data in the Helix API is wrapped with the 'data' keyword.

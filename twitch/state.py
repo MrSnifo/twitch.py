@@ -168,7 +168,7 @@ class ConnectionState:
                             team_name: Optional[str] = None,
                             team_id: Optional[str] = None) -> Optional[channels.Team]:
         data: Data[List[channels.Team]] = await self.http.get_team_info(team_name, team_id)
-        return data['data'][0] if len(data['data']) != 0 else None
+        return data['data'][0]
 
     async def get_global_emotes(self) -> Tuple[List[chat.Emote], str]:
         data: Edata[List[chat.Emote]] = await self.http.get_global_emotes()

@@ -1,4 +1,5 @@
 from twitch.ext.oauth import DeviceAuthFlow, Scopes
+from twitch.types import eventsub
 from twitch import Client
 
 client = Client(client_id='YOUR_CLIENT_ID')
@@ -7,7 +8,7 @@ client = Client(client_id='YOUR_CLIENT_ID')
 # This is required for obtaining user-specific access tokens.
 DeviceAuthFlow(
     client=client,
-    scopes=[Scopes.USER_READ_EMAIL]
+    scopes=[Scopes.USER_READ_EMAIL, Scopes.USER_READ_CHAT, Scopes.USER_WRITE_CHAT]
 )
 
 
@@ -34,6 +35,14 @@ async def on_ready():
     """
     print('PogU')
 
+
+@client.event
+async def on_chat_message(data: eventsub.chat.MessageEvent):
+    """
+    Handles chat messages and responds to giveaway commands.
+    """
+    if data['message']['text'].startswith('!ping'):
+        await client.channel.chat.send_message('Pong', data['message_id'])
 
 # Start the client and begin processing events.
 # This method should be called to start the event loop and handle incoming events.

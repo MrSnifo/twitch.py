@@ -22,8 +22,13 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-from typing import TypedDict, List, Optional, Literal, NotRequired
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TypedDict
 from .users import SpecificUser
+
+if TYPE_CHECKING:
+    from typing import List, Optional, Literal, NotRequired
 
 
 class EmoteImages(TypedDict):

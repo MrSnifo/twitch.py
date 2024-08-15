@@ -22,8 +22,13 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
+from __future__ import annotations
+
 from .users import SpecificBroadcaster, Broadcaster, SpecificUser
-from typing import TypedDict, List, Literal
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from typing import List, Literal
 
 
 class DonationAmount(TypedDict):

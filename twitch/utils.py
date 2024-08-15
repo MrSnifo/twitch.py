@@ -77,6 +77,8 @@ def convert_rfc3339(timestamp: Optional[str]) -> Optional[datetime]:
     """
     Convert RFC3339 timestamp string to a datetime object (UTC +0).
     """
+    if timestamp.endswith('Z'):
+        timestamp = timestamp[:-1] + '+00:00'
     return None if (not timestamp) else datetime.datetime.fromisoformat(timestamp)
 
 
