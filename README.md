@@ -31,7 +31,7 @@ client = Client(client_id='YOUR_CLIENT_ID')
 
 @client.event
 async def on_ready():
-    print('Client is ready.')
+    print('PogU.')
 
 @client.event
 async def on_follow(data: eventsub.channels.FollowEvent):
@@ -57,9 +57,6 @@ DeviceAuthFlow(
 
 @client.event
 async def on_code(code: str):
-    """
-    Handles the device authorization code event.
-    """
     print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
 
 @client.event
