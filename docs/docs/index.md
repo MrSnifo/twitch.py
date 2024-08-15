@@ -1,77 +1,19 @@
 # Twitchify
 
-[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
-[![Python versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
+Twitchify is a Python library designed to streamline Twitch API interactions by integrating Twitch's WebSocket EventSub and Helix API. It offers real-time event notifications and easy access to Twitch functionality with a focus on simplicity and efficiency.
 
-Twitchify is your streamlined solution for interacting with the Twitch API.
-It provides a straightforward way to handle real-time events and access Twitch's
-Helix API-all from a single client. With Twitchify, you can easily manage and
-interact with multiple channels using just one user access token.
+## Features
 
-## Quick Start
+- **Real-Time Notifications**: Receive Twitch event notifications instantly through WebSocket EventSub.
+- **Comprehensive Helix API Support**: Utilize the Helix API with a user access token to access a wide range of Twitch features.
+- **Type Hinting**: Benefit from built-in type hinting for clearer, more maintainable code.
 
-### Installation
+## Why Twitchify?
 
-Get Twitchify up and running with:
+Twitchify is crafted with user convenience in mind, making it easy to set up and manage Twitch events. The library simplifies the development process by seamlessly integrating event handling and API access into a single, user-friendly framework.
 
-```shell
-# Windows
-py -3 -m pip install -U twitchify
-
-# Linux/macOS
-python3 -m pip install -U twitchify
-```
-
-### Basic Example
-
-Start coding with ease:
-
-```python
-from twitch.types import eventsub
-from twitch import Client
-
-client = Client(client_id='YOUR_CLIENT_ID')
-
-@client.event
-async def on_ready():
-    print('Client is ready.')
-
-@client.event
-async def on_follow(data: eventsub.channels.FollowEvent):
-    await client.channel.chat.send_message(f'{data["user_name"]} just followed!')
-
-client.run('YOUR_USER_ACCESS_TOKEN')
-```
-
-## OAuth Authentication
-
-Setting up OAuth is a breeze-just add a single line and let Twitchify handle the rest.
-It’s almost like magic!
-
-```python
-from twitch.ext.oauth import DeviceAuthFlow, Scopes
-from twitch import Client
-
-client = Client(client_id='YOUR_CLIENT_ID')
-
-DeviceAuthFlow(
-    client=client,
-    scopes=[Scopes.USER_READ_EMAIL]
-)
-
-@client.event
-async def on_auth(access_token: str, refresh_token: str):
-    print(f'Token: {access_token}')
-
-client.run()
-```
-
-## Learn More
-
-Explore the [Documentation](https://twitchify.readthedocs.io/en/latest/) for more details and advanced features.
+Developers can quickly create and manage Twitch apps with Twitchify, enjoying both real-time event notifications and easy API integration.
 
 ## Need Help?
 
-Join the [Twitch API Discord](https://discord.gg/8NXaEyV) and mention @Snifo for support.
-
-Pogu ^^
+For assistance, feel free to mention @Snifo in the #general-python channel on the [Twitch API Discord](https://discord.gg/8NXaEyV).
