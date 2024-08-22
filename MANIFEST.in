@@ -1,4 +1,4 @@
+include twitch/py.typed
 include README.md
 include LICENSE
 include requirements.txt
-
