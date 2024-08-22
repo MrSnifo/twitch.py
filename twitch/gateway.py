@@ -26,18 +26,15 @@ from __future__ import annotations
 
 from .errors import ConnectionClosed
 from json import JSONDecodeError
-from .errors import Forbidden
 import aiohttp
 import asyncio
 import json
-import yarl
-
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Optional, Set, ClassVar, Any, Self, Dict
-    from .client import Client
     from .state import ConnectionState
+    from .client import Client
 
 
 import logging
@@ -59,8 +56,7 @@ class ReconnectWebSocket(Exception):
 
 class EventSubWebSocket:
     """Represents Twitch EventSub WebSocket."""
-
-    DEFAULT_GATEWAY: ClassVar[yarl.URL] = yarl.URL('wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=30')
+    DEFAULT_GATEWAY: ClassVar[str] = 'wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds=30'
     SESSION_WELCOME: ClassVar[str] = 'session_welcome'
     SESSION_KEEPALIVE: ClassVar[str] = 'session_keepalive'
     SESSION_RECONNECT: ClassVar[str] = 'session_reconnect'
@@ -77,6 +73,7 @@ class EventSubWebSocket:
         self.session_id: Optional[str] = None
         self._subscriptions_task: Optional[asyncio.Task] = None
         self._state: ConnectionState = state
+        self._timeout: Optional[int] = None
 
     async def close(self, code: int = 3000) -> None:
         """Close the WebSocket connection."""
@@ -124,7 +121,8 @@ class EventSubWebSocket:
     async def poll_handle_dispatch(self) -> None:
         """Polls for a DISPATCH event and manages the gateway loop."""
         try:
-            msg = await self.socket.receive(timeout=60)
+            # 5 seconds incase something went wrong.
+            msg = await self.socket.receive(timeout=(self._timeout or 30) + 5)
             if msg.type is aiohttp.WSMsgType.TEXT:
                 await self.received_message(data=msg.data)
             elif msg.type is aiohttp.WSMsgType.ERROR:
@@ -141,6 +139,7 @@ class EventSubWebSocket:
         """Handle received message."""
         try:
             data = json.loads(data)
+            await self._state.socket_raw_receive(data=data)
         except (UnicodeDecodeError, JSONDecodeError) as error:
             _logger.exception('Failed to parse response as JSON: %s. Response: %s', error)
             return
@@ -150,6 +149,7 @@ class EventSubWebSocket:
                 _session = data['payload']['session']
                 _logger.debug('Connected to WebSocket. Session ID: %s', _session['id'])
                 self.session_id = _session['id']
+                self._timeout = _session['keepalive_timeout_seconds']
                 return
             if metadata['message_type'] == self.SESSION_KEEPALIVE:
                 _logger.debug('Received a keepalive message. The WebSocket connection is healthy.')

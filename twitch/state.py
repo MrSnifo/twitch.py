@@ -26,11 +26,11 @@ from __future__ import annotations
 
 from .utils import datetime_to_str
 from .user import User, ClientUser
-from .errors import Forbidden
 import datetime
 import asyncio
 
 from typing import TYPE_CHECKING, overload
+
 if TYPE_CHECKING:
     from .types import Data, TTMData, users, Edata, chat, channels, search, PData, streams, bits, analytics, eventsub
     from typing import List, Tuple, Literal, Callable, Any, Optional, Dict, AsyncGenerator
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .http import HTTPClient
 
 import logging
+
 _logger = logging.getLogger(__name__)
 
 __all__ = ('ConnectionState',)
@@ -77,6 +78,9 @@ class ConnectionState:
     def ws_disconnect(self) -> None:
         self.ready.clear()
         self.__dispatch('disconnect')
+
+    async def socket_raw_receive(self, data: Any):
+        self.__dispatch('socket_raw_receive', data)
 
     async def create_subscription(self,
                                   user_id: str,

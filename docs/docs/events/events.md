@@ -40,6 +40,17 @@ ___
   
 ---
 
+- `on_socket_raw_receive`
+    - **Description**: Triggered when th client receives a raw message from the WebSocket.
+    - **Usage**:
+    ```python
+    @client.event
+    async def on_socket_raw_receive(data: Any) -> None:
+        ...
+    ```
+  
+---
+
 - `on_error`
     - **Description**: Handles errors that occur during event dispatch. This method logs any exceptions that
 crop up while processing an event.
@@ -50,6 +61,7 @@ crop up while processing an event.
     async def on_error(event_name: str, error: Exception, *args: Any, **kwargs: Any) -> None:
         ...
     ```
+  
 
 ## Chat Events
 ___
