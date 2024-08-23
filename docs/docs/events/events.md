@@ -506,11 +506,11 @@ ___
         ...
     ```
 
-## Points Events
+## Channel Points Events
 ___
 
 - `on_points_automatic_reward_redemption_add`
-    - **Description**: Triggered when an automatic reward redemption is added.
+    - **Description**: Triggered when a viewer has redeemed an automatic channel points reward on the specified channel.
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
@@ -525,7 +525,7 @@ ___
 ---
 
 - `on_points_reward_add`
-    - **Description**: Triggered when a reward is added.
+    - **Description**: Triggered when a custom channel points reward has been created.
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
@@ -540,7 +540,7 @@ ___
 ---
 
 - `on_points_reward_update`
-    - **Description**: Triggered when a reward is updated.
+    - **Description**: Triggered when a custom channel points reward has been updated.
     - **Possible Scopes**: 
          - `channel:read:redemptions`
          - `channel:manage:redemptions`
@@ -557,7 +557,7 @@ ___
 ---
 
 - `on_points_reward_remove`
-    - **Description**: Triggered when a reward is removed.
+    - **Description**: Triggered when a custom channel points reward has been removed.
     - **Possible Scopes**: 
          - `channel:read:redemptions`
          - `channel:manage:redemptions`
@@ -574,7 +574,7 @@ ___
 ---
 
 - `on_points_reward_redemption_add`
-    - **Description**: Triggered when a reward redemption is added.
+    - **Description**: Triggered when a viewer has redeemed a custom channel points reward.
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
@@ -591,7 +591,7 @@ ___
 ---
 
 - `on_points_reward_redemption_update`
-    - **Description**: Triggered when a reward redemption is updated.
+    - **Description**: Triggered when a redemption of a channel points custom reward has been updated.
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
