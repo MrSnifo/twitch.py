@@ -9,7 +9,7 @@ async def on_ready():
     """
     Handles the client ready event.
     """
-    print('PogU')  # Client is live and ready to farm PogChamps.
+    print('PogU')
 
 
 @client.event
