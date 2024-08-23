@@ -8,7 +8,7 @@ Real-time Twitch Event Handling and Helix API Integration in Python
 """
 
 __title__ = 'Twitchify'
-__version__ = '3.0.3'
+__version__ = '3.0.4'
 __license__ = 'MIT License'
 __author__ = 'Snifo'
 __email__ = 'Snifo@mail.com'
