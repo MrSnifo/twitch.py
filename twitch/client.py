@@ -33,7 +33,7 @@ import datetime
 import asyncio
 import aiohttp
 
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Optional, Type, Self, Callable, Any, List, Tuple, Dict, AsyncGenerator, Literal
     from .types import chat, channels, search, streams, bits, analytics
