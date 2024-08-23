@@ -506,7 +506,7 @@ ___
         ...
     ```
 
-## Channel Points Events
+## Points Reward Events
 ___
 
 - `on_points_automatic_reward_redemption_add`
