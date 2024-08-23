@@ -1,17 +1,11 @@
 # Twitchify
 
-[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
+[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)  
 [![Python Versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
 
-**Twitchify** is a streamlined Python library that bridges real-time Twitch event handling via WebSocket EventSub and API interaction through the Helix API. It simplifies Twitch app development by combining powerful features with ease of use.
+**Twitchify** is a Python library designed for seamless Twitch event handling via WebSocket EventSub and API integration through the Helix API. It simplifies building Twitch apps by combining both real-time event notifications and API functionality into a single, user-friendly package.
 
-## Quick Start
-
-For detailed instructions and documentation, visit the [Twitchify Documentation](https://twitchify.readthedocs.io/en/latest/).
-
-Need help or want to join the community? Join the [Twitchify Discord server](https://discord.gg/UFTkgnse7d).
-
-### Installation
+## Installation
 
 Install Twitchify using pip:
 
@@ -23,9 +17,9 @@ py -3 -m pip install -U twitchify
 python3 -m pip install -U twitchify
 ```
 
-### Basic Example
+## Quick Start
 
-Here’s a simple example to get started with Twitchify:
+Here’s a simple example to get you started with Twitchify:
 
 ```python
 from twitch import Client
@@ -44,9 +38,9 @@ async def on_follow(data: eventsub.channels.FollowEvent):
 client.run('YOUR_USER_ACCESS_TOKEN')
 ```
 
-### OAuth Authentication
+## OAuth Authentication
 
-Easily authenticate with Twitch using the Device Flow authentication method:
+Authenticate easily with Twitch using the Device Flow authentication method:
 
 ```python
 from twitch import Client
@@ -69,3 +63,10 @@ async def on_auth(access_token: str, refresh_token: str):
 
 client.run()
 ```
+
+## Documentation and Support
+
+For more detailed instructions,
+visit the [Twitchify Documentation](https://twitchify.readthedocs.io/en/latest/).
+
+Need help or want to join the community? Join the [Discord server](https://discord.gg/UFTkgnse7d).
