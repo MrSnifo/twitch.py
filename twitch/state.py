@@ -30,7 +30,6 @@ import datetime
 import asyncio
 
 from typing import TYPE_CHECKING, overload
-
 if TYPE_CHECKING:
     from .types import Data, TTMData, users, Edata, chat, channels, search, PData, streams, bits, analytics, eventsub
     from typing import List, Tuple, Literal, Callable, Any, Optional, Dict, AsyncGenerator
@@ -38,7 +37,6 @@ if TYPE_CHECKING:
     from .http import HTTPClient
 
 import logging
-
 _logger = logging.getLogger(__name__)
 
 __all__ = ('ConnectionState',)

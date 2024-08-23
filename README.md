@@ -1,52 +1,56 @@
 # Twitchify
 
 [![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)
-[![Python versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
+[![Python Versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
 
-Twitchify is a Python library designed for seamless Twitch API interactions. It integrates real-time event handling with Twitch’s Helix API, offering a streamlined and efficient approach to managing Twitch functionality.
+**Twitchify** is a streamlined Python library that bridges real-time Twitch event handling via WebSocket EventSub and API interaction through the Helix API. It simplifies Twitch app development by combining powerful features with ease of use.
 
 ## Quick Start
 
+For detailed instructions and documentation, visit the [Twitchify Documentation](https://twitchify.readthedocs.io/en/latest/).
+
+Need help or want to join the community? Join the [Twitchify Discord server](https://discord.gg/UFTkgnse7d).
+
 ### Installation
 
-Install Twitchify using the following commands:
+Install Twitchify using pip:
 
-```shell
-# Windows
+```bash
+# On Windows
 py -3 -m pip install -U twitchify
 
-# Linux/macOS
+# On Linux/macOS
 python3 -m pip install -U twitchify
 ```
 
 ### Basic Example
 
-Here’s a quick example to get you started:
+Here’s a simple example to get started with Twitchify:
 
 ```python
-from twitch.types import eventsub
 from twitch import Client
+from twitch.types import eventsub
 
 client = Client(client_id='YOUR_CLIENT_ID')
 
 @client.event
 async def on_ready():
-    print('PogU.')
+    print('Client is ready!')
 
 @client.event
 async def on_follow(data: eventsub.channels.FollowEvent):
-    await client.channel.chat.send_message(f'{data["user_name"]} just followed!')
+    await client.channel.chat.send_message(f'{data["user_name"]} just followed the channel!')
 
 client.run('YOUR_USER_ACCESS_TOKEN')
 ```
 
-## OAuth Authentication
+### OAuth Authentication
 
-Authenticate easily using Device Flow:
+Easily authenticate with Twitch using the Device Flow authentication method:
 
 ```python
-from twitch.ext.oauth import DeviceAuthFlow, Scopes
 from twitch import Client
+from twitch.ext.oauth import DeviceAuthFlow, Scopes
 
 client = Client(client_id='YOUR_CLIENT_ID')
 
@@ -57,19 +61,11 @@ DeviceAuthFlow(
 
 @client.event
 async def on_code(code: str):
-    print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
+    print(f'Go to https://www.twitch.tv/activate and enter this code: {code}')
 
 @client.event
 async def on_auth(access_token: str, refresh_token: str):
-    print(f'Token: {access_token}')
+    print(f'Access Token: {access_token}')
 
 client.run()
 ```
-
-## Learn More
-
-For detailed documentation, visit our [Documentation](https://twitchify.readthedocs.io/en/latest/).
-
-## Need Help?
-
-For support, join the [Twitch API Discord](https://discord.gg/8NXaEyV) and mention @Snifo.
