@@ -533,7 +533,7 @@ class Client:
         data: List[User] = await self._connection.get_users(user_logins=[name])
         return data[0] if len(data) != 0 else None
 
-    async def get_user_by_id(self, __id: str, /) -> User:
+    def get_user_by_id(self, __id: str, /) -> User:
         """
         Retrieve a user by their ID.
 
