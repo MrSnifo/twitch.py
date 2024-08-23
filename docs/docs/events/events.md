@@ -510,7 +510,7 @@ ___
 ___
 
 - `on_points_automatic_reward_redemption_add`
-    - **Description**: Triggered when a viewer has redeemed an automatic channel points reward on the specified channel.
+    - **Description**: Triggered when a viewer has redeemed an automatic channel points reward.
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
