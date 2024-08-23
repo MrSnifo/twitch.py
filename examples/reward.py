@@ -29,7 +29,6 @@ async def on_points_reward_redemption_add(data: eventsub.interaction.RewardRedem
 
         # Poof! Someone wants to disappear like a magician.
         if data['reward']['title'] == 'vanish':
-
             await client.channel.ban(user, duration=10)
 
 client.run('YOUR_USER_ACCESS_TOKEN')
