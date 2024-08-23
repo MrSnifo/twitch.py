@@ -4,7 +4,7 @@ from twitch import Client
 import asyncio
 
 
-class GiveawaysBot(Client):
+class Twitch(Client):
     def __init__(self, client_id: str, **options):
         super().__init__(client_id, **options)
         self.auth_flow = DeviceAuthFlow(
@@ -17,7 +17,7 @@ class GiveawaysBot(Client):
         """
         Notify when the bot is ready.
         """
-        print('Bot is ready!')
+        print('Client is ready!')
 
     async def on_follow(self, data: eventsub.channels.FollowEvent):
         """
@@ -53,5 +53,5 @@ class GiveawaysBot(Client):
 
 
 # Initialize and run the bot
-bot = GiveawaysBot(client_id='YOUR_CLIENT_ID')
+bot = Twitch(client_id='YOUR_CLIENT_ID')
 asyncio.run(bot.run_bot())
