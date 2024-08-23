@@ -1,7 +1,6 @@
 # Twitchify
 
-[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify)  
-[![Python Versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
+[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify) [![Python Versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
 
 **Twitchify** is a Python library designed for seamless Twitch event handling via WebSocket EventSub and API integration through the Helix API. It simplifies building Twitch apps by combining both real-time event notifications and API functionality into a single, user-friendly package.
 
