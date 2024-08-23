@@ -28,6 +28,7 @@ from .utils import datetime_to_str
 from .user import User, ClientUser
 import datetime
 import asyncio
+import weakref
 
 from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
@@ -48,7 +49,7 @@ class ConnectionState:
     """
 
     __slots__ = ('http', 'user', 'is_live', '__dispatch', '__custom_dispatch', '_events', 'ready', 'total_cost',
-                 'max_total_cost')
+                 'max_total_cost', '_users')
 
     def __init__(self, dispatcher: Callable[..., Any], custom_dispatch: Callable[..., Any], http: HTTPClient) -> None:
         self.http: HTTPClient = http
@@ -58,9 +59,11 @@ class ConnectionState:
         self.__custom_dispatch: Callable[..., Any] = custom_dispatch
         self._events: Dict[str, Any] = {}
         self.ready: Optional[asyncio.Event] = None
-        # Subscription cost
+        # Subscription cost.
         self.total_cost: Optional[int] = None
         self.max_total_cost: Optional[int] = None
+        # Caching.
+        self._users: weakref.WeakValueDictionary[str, User] = weakref.WeakValueDictionary()
 
     def clear(self) -> None:
         if self.ready is not None:
@@ -68,6 +71,7 @@ class ConnectionState:
         self.user = None
         self.is_live = None
         self._events.clear()
+        self._users.clear()
 
     def state_ready(self) -> None:
         self.ready.set()
@@ -137,18 +141,27 @@ class ConnectionState:
         data: Optional[streams.StreamInfo] = await self.user.channel.stream.get_live()
         self.is_live = True if data is not None else False
 
+    def get_user(self, __id: str, /) -> User:
+        try:
+            return self._users[__id]
+        except KeyError:
+            print('Created')
+            user = User(state=self, user_id=__id)
+            self._users[__id] = user
+            return user
+
     async def get_users(self,
                         user_ids: Optional[List[str]] = None,
                         user_logins: Optional[List[str]] = None) -> List[User]:
-        ids = []
+        _users = []
         if user_ids is not None:
-            ids = [User(state=self, user_id=i) for i in user_ids]
+            _users = [self.get_user(user_id) for user_id in user_ids]
 
         if user_logins is not None and len(user_logins) >= 1:
             data: Data[List[users.User]] = await self.http.get_users(user_logins=user_logins)
-            return [User(state=self, user_id=u['id']) for u in data['data']] + ids
+            return [self.get_user(user['id']) for user in data['data']] + _users
 
-        return ids
+        return _users
 
     async def get_users_chat_color(self, __users: List[User], /) -> List[chat.UserChatColor]:
         data: Data[List[chat.UserChatColor]] = await self.http.get_user_chat_color([u.id for u in __users])

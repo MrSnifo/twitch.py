@@ -107,7 +107,7 @@ class User(BaseUser):
     id: str
         The unique identifier for the user.
     """
-    __slots__ = ('_state',)
+    __slots__ = ('_state', '__weakref__')
 
     def __init__(self, *, state: ConnectionState, user_id: str) -> None:
         super().__init__(user_id=user_id)

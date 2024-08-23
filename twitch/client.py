@@ -551,7 +551,7 @@ class Client:
         User
             The User object initialized with the given ID.
         """
-        return User(state=self._connection, user_id=__id)
+        return self._connection.get_user(__id)
 
     async def get_users(self,
                         names: Optional[List[str]] = None,
