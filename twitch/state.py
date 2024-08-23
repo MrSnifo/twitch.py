@@ -27,8 +27,8 @@ from __future__ import annotations
 from .utils import datetime_to_str
 from .user import User, ClientUser
 import datetime
-import asyncio
 import weakref
+import asyncio
 
 from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
@@ -145,7 +145,6 @@ class ConnectionState:
         try:
             return self._users[__id]
         except KeyError:
-            print('Created')
             user = User(state=self, user_id=__id)
             self._users[__id] = user
             return user

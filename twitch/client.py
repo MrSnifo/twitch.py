@@ -27,8 +27,8 @@ from __future__ import annotations
 from .gateway import EventSubWebSocket, ReconnectWebSocket
 from .errors import HTTPException, ConnectionClosed
 from .state import ConnectionState
+from .utils import setup_logging
 from .http import HTTPClient
-from . import utils
 import datetime
 import asyncio
 import aiohttp
@@ -502,7 +502,7 @@ class Client:
             If True, the logging configuration will apply to the root logger. Otherwise, it applies to a new logger.
         """
         if log_handler is None:
-            utils.setup_logging(handler=log_handler, level=log_level, root=root_logger)
+            setup_logging(handler=log_handler, level=log_level, root=root_logger)
 
         async def runner() -> None:
             """
