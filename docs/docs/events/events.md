@@ -806,34 +806,6 @@ ___
         ...
     ```
 
-## Drops Events
-___
-
-- `on_drop_entitlement_grant`
-    - **Description**: Triggered when a drop entitlement grant event occurs.
-    - **Scope**: `Associated with the access token`
-    - **Custom event requirements**:
-         - `organization_id`
-    - **Custom event options**:
-         - `category_id`
-         - `campaign_id`
-    - **Data Type**: [`DropEntitlementGrantEvent`][twitch.types.eventsub.activity.DropEntitlementGrantEvent]
-    - **Usage**:
-    ```python
-    @client.event
-    async def on_ready():
-        organization = {
-            'organization_id': 'organization_id'
-        }
-        await client.add_custom_event('on_drop_entitlement_grant',
-                                      client.user,
-                                      on_drop_entitlement_grant,
-                                      options=organization)
-    
-    async def on_drop_entitlement_grant(data: eventsub.activity.DropEntitlementGrantEvent) -> None:
-        ...
-    ```
-
 ## Goal Events
 ___
 

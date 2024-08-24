@@ -523,11 +523,6 @@ class HTTPClient:
                 'version': '1',
                 'condition': {'client': None, 'user': 'broadcaster_user_id'}
             },
-            'drop_entitlement_grant': {
-                'name': 'drop.entitlement.grant',
-                'version': '1',
-                'condition': {'client': None, 'user': None}
-            },
             'goal_begin': {
                 'name': 'channel.goal.begin',
                 'version': '1',
@@ -653,7 +648,6 @@ class HTTPClient:
                 'session_id': session_id
             }
         }
-
         return self.request(route=route, json=body)
 
     def delete_subscription(self, subscription_id: str) -> Response[None]:
