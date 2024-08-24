@@ -175,60 +175,6 @@ class CharityCampaignStopEvent(Broadcaster):
     stopped_at: str
 
 
-class EntitlementData(TypedDict):
-    """
-    Represents data associated with a Twitch entitlement.
-
-    Attributes
-    ----------
-    organization_id: str
-        The ID of the organization associated with the entitlement.
-    category_id: str
-        The ID of the category associated with the entitlement.
-    category_name: str
-        The name of the category associated with the entitlement.
-    campaign_id: str
-        The ID of the campaign associated with the entitlement.
-    user_id: str
-        The ID of the user associated with the entitlement.
-    user_name: str
-        The display name of the user associated with the entitlement.
-    user_login: str
-        The login name of the user associated with the entitlement.
-    entitlement_id: str
-        The unique identifier for the entitlement.
-    benefit_id: str
-        The ID of the benefit associated with the entitlement.
-    created_at: str
-        The timestamp when the entitlement was created.
-    """
-    organization_id: str
-    category_id: str
-    category_name: str
-    campaign_id: str
-    user_id: str
-    user_name: str
-    user_login: str
-    entitlement_id: str
-    benefit_id: str
-    created_at: str
-
-
-class DropEntitlementGrantEvent(TypedDict):
-    """
-    Represents an event where drop entitlements are granted to users.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier for the drop entitlement grant event.
-    data: List[EntitlementData]
-        A list of entitlements granted to users during the event.
-    """
-    id: str
-    data: List[EntitlementData]
-
-
 class GoalsEvent(SpecificBroadcaster):
     """
     Represents a goal event during a Twitch stream.

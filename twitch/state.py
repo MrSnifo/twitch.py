@@ -564,9 +564,6 @@ class ConnectionState:
     def parse_channel_charity_campaign_stop(self, data: eventsub.activity.CharityCampaignStopEvent) -> None:
         self.__dispatch('charity_campaign_stop', data)
 
-    def parse_drop_entitlement_grant(self, data: eventsub.activity.DropEntitlementGrantEvent) -> None:
-        self.__dispatch('drop_entitlement_grant', data)
-
     def parse_channel_goal_begin(self, data: eventsub.activity.GoalsEvent) -> None:
         self.__dispatch('goal_begin', data)
 
