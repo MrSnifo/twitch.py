@@ -83,6 +83,9 @@ class ConnectionState:
         self._events.clear()
         self._users.clear()
 
+    def ws_connect(self) -> None:
+        self.__dispatch('connect')
+
     def state_ready(self) -> None:
         self.ready.set()
         self.__dispatch('ready')

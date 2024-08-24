@@ -105,7 +105,7 @@ class EventSubWebSocket:
         """Initialize websocket connection."""
         gateway = gateway or cls.DEFAULT_GATEWAY
         socket = await client.http.ws_connect(url=gateway, reconnect=reconnect)
-        client.dispatch('connect')
+        state.ws_connect()
         ws: Self = cls(socket, state, loop=client.loop)
         # Waits for welcome message.
         await ws.poll_handle_dispatch()
