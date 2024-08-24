@@ -43,13 +43,14 @@ Authenticate easily with Twitch using the Device Flow authentication method:
 
 ```python
 from twitch import Client
+from twitch.types import eventsub
 from twitch.ext.oauth import DeviceAuthFlow, Scopes
 
 client = Client(client_id='YOUR_CLIENT_ID')
 
 DeviceAuthFlow(
     client=client,
-    scopes=[Scopes.USER_READ_FOLLOWS]
+    scopes=[Scopes.CHANNEL_READ_SUBSCRIPTIONS]
 )
 
 @client.event
@@ -59,6 +60,10 @@ async def on_code(code: str):
 @client.event
 async def on_auth(access_token: str, refresh_token: str):
     print(f'Access Token: {access_token}')
+    
+@client.event
+async def on_subscribe(data: eventsub.channels.SubscribeEvent):
+    await client.channel.chat.send_message(f'{data["user_name"]} just Subscribed!')
 
 client.run()
 ```
