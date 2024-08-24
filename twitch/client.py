@@ -67,18 +67,32 @@ class Client:
             Flag indicating if CLI mode is enabled. Default is False.
         - 'cli_port': int
             The port number used for CLI mode. Default is 8080.
+        - 'socket_debug': bool
+            Flag indicating if raw WebSocket messages should be dispatched for debugging purposes.
+            If enabled, raw WebSocket messages are dispatched to the debug dispatcher. Default is False.
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
         cli: bool = options.get('cli', False)
         cli_port: int = options.get('cli_port', 8080)
+        _socket_debug: bool = options.get('socket_debug', False)
+
         self.client_id: str = client_id
         self.client_secret: str = client_secret
-        self.http: HTTPClient = HTTPClient(client_id, client_secret, loop=self.loop, cli=cli, cli_port=cli_port)
-        self._connection: ConnectionState = ConnectionState(dispatcher=self.dispatch,
-                                                            custom_dispatch=self.custom_dispatch,
-                                                            http=self.http)
+
+        self.http: HTTPClient = HTTPClient(client_id, client_secret,
+                                           loop=self.loop,
+                                           cli=cli,
+                                           cli_port=cli_port)
+
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self._connection: ConnectionState = ConnectionState(
+            dispatcher=self.dispatch,
+            custom_dispatch=self.custom_dispatch,
+            http=self.http,
+            socket_debug=_socket_debug
+        )
+
         self._closing_task: Optional[asyncio.Task] = None
         self.ws: Optional[EventSubWebSocket] = None
 
@@ -203,7 +217,10 @@ class Client:
         traceback: Optional[TracebackType]
             The traceback object, if any.
         """
-        await self.http.close()
+        if self._closing_task:
+            await self._closing_task
+        else:
+            await self.close()
 
     async def wait_until_ready(self) -> None:
         """
