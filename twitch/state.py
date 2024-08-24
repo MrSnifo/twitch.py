@@ -47,7 +47,6 @@ class ConnectionState:
     """
     Represents the state of the connection.
     """
-
     __slots__ = ('http', 'user', 'is_live', '__dispatch', '__custom_dispatch', '_events', 'ready', 'total_cost',
                  'max_total_cost', '_users', '_socket_debug')
 
@@ -56,32 +55,25 @@ class ConnectionState:
                  custom_dispatch: Callable[..., Any],
                  http: HTTPClient,
                  socket_debug: bool) -> None:
-        # HTTP Client
         self.http: HTTPClient = http
-        # User and Live Status
         self.user: Optional[ClientUser] = None
         self.is_live: Optional[bool] = None
-        # Dispatchers
         self.__dispatch: Callable[..., Any] = dispatcher
         self.__custom_dispatch: Callable[..., Any] = custom_dispatch
-        # Events
         self._events: Dict[str, Any] = {}
-        # Readiness and Debugging
         self.ready: Optional[asyncio.Event] = None
         self._socket_debug: bool = socket_debug
-        # Subscription Costs
         self.total_cost: Optional[int] = None
         self.max_total_cost: Optional[int] = None
-        # Caching
         self._users: weakref.WeakValueDictionary[str, User] = weakref.WeakValueDictionary()
 
     def clear(self) -> None:
         if self.ready is not None:
             self.ready.clear()
-        self.user = None
-        self.is_live = None
-        self._events.clear()
-        self._users.clear()
+        self.user: Optional[ClientUser] = None
+        self.is_live: Optional[bool] = None
+        self._events: Dict[str, Any] = {}
+        self._users: weakref.WeakValueDictionary[str, User] = weakref.WeakValueDictionary()
 
     def ws_connect(self) -> None:
         self.__dispatch('connect')
