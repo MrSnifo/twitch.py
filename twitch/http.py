@@ -86,12 +86,16 @@ class HTTPClient:
                  client_secret: Optional[str],
                  *,
                  loop: Optional[asyncio.AbstractEventLoop] = None,
+                 proxy: Optional[str] = None,
+                 proxy_auth: Optional[aiohttp.BasicAuth] = None,
                  cli: bool = False,
                  cli_port: int = 8080) -> None:
         # Debugging mode.
         self.cli: bool = cli
         self.cli_port: int = cli_port
-        # HTTP session related.
+        # HTTP
+        self.proxy: Optional[str] = proxy
+        self.proxy_auth: Optional[aiohttp.BasicAuth] = proxy_auth
         self.__session: Optional[aiohttp.ClientSession] = None
         self.user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
         # Twitch API authentication credentials.
@@ -129,6 +133,8 @@ class HTTPClient:
         kwargs = {
             'max_msg_size': 0,
             'timeout': 30.0,
+            'proxy_auth': self.proxy_auth,
+            'proxy': self.proxy,
             'autoclose': False,
             'headers': {
                 'User-Agent': self.user_agent,
@@ -152,7 +158,15 @@ class HTTPClient:
                 kwargs['json'] = kwargs.pop('json')
             kwargs['headers'] = headers
 
+        # Headers.
         kwargs['headers']['User-Agent'] = self.user_agent
+
+        # Proxy support.
+        if self.proxy is not None:
+            kwargs['proxy'] = self.proxy
+        if self.proxy_auth is not None:
+            kwargs['proxy_auth'] = self.proxy_auth
+
         for attempt in range(3):
             try:
                 async with self.__session.request(method, url, **kwargs) as response:

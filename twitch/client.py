@@ -70,29 +70,36 @@ class Client:
         - 'socket_debug': bool
             Flag indicating if raw WebSocket messages should be dispatched for debugging purposes.
             If enabled, raw WebSocket messages are dispatched to the debug dispatcher. Default is False.
+        - 'proxy': Optional[str]
+            The proxy URL to use for HTTP requests. Default is None.
+        - 'proxy_auth': Optional[aiohttp.BasicAuth]
+            Authentication details for the proxy, if required. Default is None.
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:
         cli: bool = options.get('cli', False)
         cli_port: int = options.get('cli_port', 8080)
         _socket_debug: bool = options.get('socket_debug', False)
+        proxy: Optional[str] = options.pop('proxy', None)
+        proxy_auth: Optional[aiohttp.BasicAuth] = options.pop('proxy_auth', None)
 
         self.client_id: str = client_id
         self.client_secret: str = client_secret
 
+        self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.http: HTTPClient = HTTPClient(client_id, client_secret,
                                            loop=self.loop,
+                                           proxy=proxy,
+                                           proxy_auth=proxy_auth,
                                            cli=cli,
                                            cli_port=cli_port)
 
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
         self._connection: ConnectionState = ConnectionState(
             dispatcher=self.dispatch,
             custom_dispatch=self.custom_dispatch,
             http=self.http,
             socket_debug=_socket_debug
         )
-
         self._closing_task: Optional[asyncio.Task] = None
         self.ws: Optional[EventSubWebSocket] = None
 
