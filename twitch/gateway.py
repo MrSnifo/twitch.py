@@ -164,7 +164,7 @@ class EventSubWebSocket:
                 self._state.parse(data=data['payload'])
                 return
 
-            elif metadata['message_type'] == self.REVOCATION:
+            if metadata['message_type'] == self.REVOCATION:
                 _logger.warning(
                     'Subscription Revoked: ID %s, Type "%s", Status "%s"',
                     data['payload']['subscription']['id'],
