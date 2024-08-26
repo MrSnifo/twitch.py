@@ -29,17 +29,20 @@ class Twitch(Client):
         """
         Custom method to manage device authentication flow.
         """
-        # Retrieve device code and display the verification URL
-        user_code, device_code, expires_in, interval = await self.auth_flow.get_device_code()
-        print(f'Verification URI: https://www.twitch.tv/activate?device-code={device_code}')
+        with self.auth_flow:
+            # Retrieve device code and display the verification URL
+            user_code, device_code, expires_in, interval = await self.auth_flow.get_device_code()
+            print(f'Verification URI: https://www.twitch.tv/activate?device-code={device_code}')
 
-        # Poll for the authorization and handle token retrieval
-        try:
-            access_token, refresh_token = await self.auth_flow.poll_for_authorization(device_code, expires_in, interval)
-            print(f'Access Token: {access_token}\nRefresh Token: {refresh_token}')
-        except Exception as e:
-            print(f'Failed to authorize: {e}')
-            return
+            # Poll for the authorization and handle token retrieval
+            try:
+                access_token, refresh_token = await self.auth_flow.poll_for_authorization(device_code,
+                                                                                          expires_in,
+                                                                                          interval)
+                print(f'Access Token: {access_token}\nRefresh Token: {refresh_token}')
+            except Exception as e:
+                print(f'Failed to authorize: {e}')
+                return
 
         # Start the client with the obtained tokens
         async with self:
