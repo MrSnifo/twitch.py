@@ -38,7 +38,6 @@ __all__ = ('TwitchException',
            'TwitchServerError',
            'Forbidden',
            'NotFound',
-           'InvalidData',
            'AuthFailure',
            'ConnectionClosed',
            'UnregisteredUser')
@@ -86,11 +85,6 @@ class Forbidden(HTTPException):
 
 class NotFound(HTTPException):
     """Exception raised when status code 404 occurs."""
-    pass
-
-
-class InvalidData(ClientException):
-    """Exception raised when encountering unknown or invalid data from Twitch."""
     pass
 
 

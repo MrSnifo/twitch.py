@@ -2,8 +2,11 @@
 icon: fontawesome/solid/xmarks-lines
 ---
 
-## ::: twitch.errors.TwitchException
+# Exceptions
 ___
+
+## ::: twitch.errors.TwitchException
+---
 ## ::: twitch.errors.ClientException
 ---
 ## ::: twitch.errors.HTTPException
@@ -14,7 +17,7 @@ ___
 ---
 ## ::: twitch.errors.NotFound
 ---
-## ::: twitch.errors.InvalidData
+## ::: twitch.errors.UnregisteredUser
 ---
 ## ::: twitch.errors.AuthFailure
 ---
