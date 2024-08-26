@@ -171,3 +171,4 @@ class EventSubWebSocket:
                     data['payload']['subscription']['type'],
                     data['payload']['subscription']['status'],
                 )
+                return

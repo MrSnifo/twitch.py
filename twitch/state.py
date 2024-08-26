@@ -39,7 +39,6 @@ if TYPE_CHECKING:
     from .http import HTTPClient
 
 import logging
-
 _logger = logging.getLogger(__name__)
 
 __all__ = ('ConnectionState',)

@@ -42,7 +42,6 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 import logging
-
 _logger = logging.getLogger(__name__)
 
 __all__ = ('Client',)
