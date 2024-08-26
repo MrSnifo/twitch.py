@@ -1,5 +1,7 @@
 ---
 icon: fontawesome/solid/bug
+hide:
+  - toc
 ---
 
 # Debugging
@@ -38,8 +40,10 @@ You should see output similar to:
 Update your Twitchify client code to connect to the local WebSocket server. Here is an example configuration:
 
 ```python
+from twitch.types import eventsub
 from logging import DEBUG
 from twitch import Client
+
 
 # Initialize Twitch client with CLI support
 client = Client(client_id='YOUR_CLIENT_ID', cli=True, cli_port=8080)
@@ -47,6 +51,10 @@ client = Client(client_id='YOUR_CLIENT_ID', cli=True, cli_port=8080)
 @client.event
 async def on_ready():
     print('Ready with total cost events %s' % client.total_subscription_cost)
+    
+@client.event
+async def on_ban(data: eventsub.moderation.BanEvent):
+ print(data)
 
 # Start the client and begin processing events.
 client.run('YOUR_USER_ACCESS_TOKEN', log_level=DEBUG)
@@ -54,7 +62,8 @@ client.run('YOUR_USER_ACCESS_TOKEN', log_level=DEBUG)
 
 ### Forwarding Mock Events
 
-To forward mock events to your client, use the `twitch event trigger` command with the `--transport=websocket` flag. For example, to trigger a channel ban event:
+To forward mock events to your client, use the `twitch event trigger` command with the `--transport=websocket` flag.
+For example, to trigger a channel ban event:
 
 ```bash
 twitch event trigger channel.ban --transport=websocket

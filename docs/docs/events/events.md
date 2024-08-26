@@ -986,31 +986,4 @@ ___
     async def on_chat_user_message_update(data: eventsub.users.MessageUpdateEvent):
         ...
     ```
-
-## Authorization Events
-___
-
-- `on_user_authorization_grant`
-    - **Description**: Triggered when a user grants authorization to the application.
-    - **Scope**: `Associated with the access token`
-    - **Data Type**: [`AuthorizationGrantEvent`][twitch.types.eventsub.users.AuthorizationGrantEvent]
-    - **Usage**:
-    ```python
-    @client.event
-    async def on_user_authorization_grant(data: eventsub.users.AuthorizationGrantEvent):
-        ...
-    ```
-  
----
-
-- `on_user_authorization_revoke`
-    - **Description**: Triggered when a user revokes authorization from the application.
-    - **Scope**: `Associated with the access token`
-    - **Data Type**: [`AuthorizationRevokeEvent`][twitch.types.eventsub.users.AuthorizationRevokeEvent]
-    - **Usage**:
-    ```python
-    @client.event
-    async def on_user_authorization_revoke(data: eventsub.users.AuthorizationRevokeEvent):
-        ...
-    ```
   

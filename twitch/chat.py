@@ -25,24 +25,26 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from typing import Optional, Literal, List, Dict, Any, AsyncGenerator, Tuple
     from .types import Data, TData, Edata, chat, users, bits, moderation, PData
     from .state import ConnectionState
     from .user import User
 
-__all__ = ('Chat', 'ClientChat')
+__all__ = ('Chat', 'BroadcasterChat')
 
 
 class Chat:
     """
-    Represents a Twitch channel chat.
+    Represents a channel chat.
     """
-    __slots__ = ('_state', '_b_id')
+    __slots__ = ('_state', '_user_id', '_auth_user_id')
 
-    def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
+    def __init__(self, user_id: str, auth_user_id: str, *, state: ConnectionState) -> None:
         self._state: ConnectionState = state
-        self._b_id: str = broadcaster_id
+        self._user_id: str = user_id
+        self._auth_user_id: str = auth_user_id
 
     async def get_settings(self) -> chat.Settings:
         """
@@ -61,7 +63,8 @@ class Chat:
         chat.Settings
             A dictionary containing chat settings for the broadcaster.
         """
-        data: Data[List[chat.Settings]] = await self._state.http.get_chat_settings(self._b_id, self._state.user.id)
+        data: Data[List[chat.Settings]] = await self._state.http.get_chat_settings(self._user_id,
+                                                                                   self._auth_user_id)
         return data['data'][0]
 
     async def update_settings(self,
@@ -119,7 +122,8 @@ class Chat:
             'subscriber_mode': subscriber_mode,
             'unique_chat_mode': unique_chat_mode
         }
-        data: Data[List[chat.Settings]] = await self._state.http.update_chat_settings(self._b_id, self._state.user.id,
+        data: Data[List[chat.Settings]] = await self._state.http.update_chat_settings(self._user_id,
+                                                                                      self._auth_user_id,
                                                                                       **kwargs)
         return data['data'][0]
 
@@ -136,7 +140,8 @@ class Chat:
         int
             The total number of chatters.
         """
-        data: TData[List[users.SpecificUser]] = await self._state.http.get_chatters(self._b_id, self._state.user.id,
+        data: TData[List[users.SpecificUser]] = await self._state.http.get_chatters(self._user_id,
+                                                                                    self._auth_user_id,
                                                                                     first=1)
         return data['total']
 
@@ -159,8 +164,8 @@ class Chat:
             A list of dictionaries representing chatters.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._b_id,
-            'moderator_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
+            'moderator_id': self._auth_user_id,
             'first': first,
             'after': None
         }
@@ -185,7 +190,7 @@ class Chat:
             A tuple where the first element is a list of dictionaries representing emotes,
             and the second element is a string representing the template.
         """
-        data: Edata[List[chat.Emote]] = await self._state.http.get_channel_emotes(self._b_id)
+        data: Edata[List[chat.Emote]] = await self._state.http.get_channel_emotes(self._auth_user_id, self._user_id)
         return data['data'], data['template']
 
     async def get_cheermotes(self) -> List[bits.Cheermote]:
@@ -197,7 +202,7 @@ class Chat:
         List[bits.Cheermote]
             A list of dictionaries representing cheermotes.
         """
-        data: Data[List[bits.Cheermote]] = await self._state.http.get_cheermotes(self._b_id)
+        data: Data[List[bits.Cheermote]] = await self._state.http.get_cheermotes(self._auth_user_id, self._user_id)
         return data['data']
 
     async def get_badges(self) -> List[chat.Badge]:
@@ -209,7 +214,7 @@ class Chat:
         List[chat.Badge]
             A list of dictionaries representing chat badges.
         """
-        data: Data[List[chat.Badge]] = await self._state.http.get_channel_chat_badges(self._b_id)
+        data: Data[List[chat.Badge]] = await self._state.http.get_channel_chat_badges(self._auth_user_id, self._user_id)
         return data['data']
 
     async def send_shoutout(self, user: User) -> None:
@@ -225,7 +230,7 @@ class Chat:
         user: User
             The user to send a shoutout to.
         """
-        await self._state.http.send_a_shoutout(self._b_id, self._state.user.id, to_broadcaster_id=user.id)
+        await self._state.http.send_a_shoutout(self._user_id, self._auth_user_id, to_broadcaster_id=user.id)
 
     async def send_announcement(self,
                                 message: str,
@@ -245,7 +250,7 @@ class Chat:
         color: Literal['blue', 'green', 'orange', 'purple', 'primary']
             The color of the announcement message.
         """
-        await self._state.http.send_chat_announcement(self._b_id, self._state.user.id, message=message, color=color)
+        await self._state.http.send_chat_announcement(self._user_id, self._auth_user_id, message=message, color=color)
 
     async def warn_user(self, user: User, reason: str) -> None:
         """
@@ -262,7 +267,7 @@ class Chat:
         reason: str
             The reason for the warning.
         """
-        await self._state.http.warn_chat_user(self._b_id, self._state.user.id, user_id=user.id, reason=reason)
+        await self._state.http.warn_chat_user(self._user_id, self._auth_user_id, user_id=user.id, reason=reason)
 
     async def send_message(self, text: str, reply_message_id: Optional[str] = None) -> chat.SendMessageStatus:
         """
@@ -289,8 +294,8 @@ class Chat:
             A dictionary containing the status of the user sent message.
         """
         data: Data[List[chat.SendMessageStatus]] = await self._state.http.send_chat_message(
-            self._b_id,
-            self._state.user.id,
+            self._user_id,
+            self._auth_user_id,
             text=text,
             reply_parent_message_id=reply_message_id)
         return data['data'][0]
@@ -308,7 +313,7 @@ class Chat:
         msg_id: str
             The ID of the message to delete.
         """
-        await self._state.http.delete_chat_messages(self._b_id, self._state.user.id, message_id=msg_id)
+        await self._state.http.delete_chat_messages(self._user_id, self._auth_user_id, message_id=msg_id)
 
     async def clear_chat(self) -> None:
         """
@@ -318,7 +323,7 @@ class Chat:
         | -------------------------------- | --------------------------------------------------------------------|
         | `moderator:manage:chat_messages` | Delete chat messages in channels where you have the moderator role. |
         """
-        await self._state.http.delete_chat_messages(self._b_id, self._state.user.id)
+        await self._state.http.delete_chat_messages(self._user_id, self._auth_user_id)
 
     async def get_shieldmode(self) -> moderation.ShieldModeStatus:
         """
@@ -336,8 +341,8 @@ class Chat:
             A dictionary representing the shield mode status.
         """
         data: Data[List[moderation.ShieldModeStatus]] = await self._state.http.get_shield_mode_status(
-            self._b_id,
-            self._state.user.id)
+            self._user_id,
+            self._auth_user_id)
         return data['data'][0]
 
     async def update_shieldmode(self, activate: bool) -> moderation.ShieldModeStatus:
@@ -359,8 +364,8 @@ class Chat:
             A dictionary representing the updated shield mode status.
         """
         data: Data[List[moderation.ShieldModeStatus]] = await self._state.http.update_shield_mode_status(
-            self._b_id,
-            self._state.user.id,
+            self._user_id,
+            self._auth_user_id,
             is_active=activate)
         return data['data'][0]
 
@@ -378,8 +383,8 @@ class Chat:
         moderation.AutoModSettings
             A dictionary representing the AutoMod settings.
         """
-        data: Data[List[moderation.AutoModSettings]] = await self._state.http.get_automod_settings(self._b_id,
-                                                                                                   self._state.user.id)
+        data: Data[List[moderation.AutoModSettings]] = await self._state.http.get_automod_settings(self._user_id,
+                                                                                                   self._auth_user_id)
         return data['data'][0]
 
     async def update_automod_settings(self,
@@ -433,8 +438,8 @@ class Chat:
             'swearing': swearing
         }
         data: Data[List[moderation.AutoModSettings]] = await self._state.http.update_automod_settings(
-            self._b_id,
-            self._state.user.id,
+            self._user_id,
+            self._auth_user_id,
             **kwargs)
         return data['data'][0]
 
@@ -457,8 +462,8 @@ class Chat:
             A dictionary representing the updated AutoMod settings.
         """
         data: Data[List[moderation.AutoModSettings]] = await self._state.http.update_automod_settings(
-            self._b_id,
-            self._state.user.id,
+            self._user_id,
+            self._auth_user_id,
             overall_level=overall_level)
         return data['data'][0]
 
@@ -478,7 +483,7 @@ class Chat:
         action: Literal['allow', 'deny']
             The action to perform on the held message; either 'allow' or 'deny'.
         """
-        await self._state.http.manage_held_automod_messages(self._state.user.id, message_id, action)
+        await self._state.http.manage_held_automod_messages(self._auth_user_id, message_id, action)
 
     async def fetch_blocked_terms(self, first: int = 100) -> AsyncGenerator[List[moderation.BlockedTerm], None]:
         """
@@ -500,8 +505,8 @@ class Chat:
             A list of dictionaries, each representing a blocked term.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._b_id,
-            'moderator_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
+            'moderator_id': self._auth_user_id,
             'first': first,
             'after': None
         }
@@ -530,8 +535,8 @@ class Chat:
         moderation.BlockedTerm
             A dictionary representing the blocked term that was added.
         """
-        data: Data[List[moderation.BlockedTerm]] = await self._state.http.add_blocked_term(self._b_id,
-                                                                                           self._state.user.id,
+        data: Data[List[moderation.BlockedTerm]] = await self._state.http.add_blocked_term(self._user_id,
+                                                                                           self._auth_user_id,
                                                                                            text=text)
         return data['data'][0]
 
@@ -548,18 +553,17 @@ class Chat:
         term_id: str
             The ID of the blocked term to be removed.
         """
-        await self._state.http.remove_blocked_term(self._b_id, self._state.user.id, term_id=term_id)
+        await self._state.http.remove_blocked_term(self._user_id, self._auth_user_id, term_id=term_id)
 
 
-class ClientChat(Chat):
+class BroadcasterChat(Chat):
     """
-    Represents a client-specific channel chat.
+    Represents a Broadcaster channel chat.
     """
     __slots__ = ()
 
-    def __init__(self, state: ConnectionState) -> None:
-        super().__init__(state, state.user.id)
-        self._state: ConnectionState = state
+    def __init__(self, user_id: str, *, state: ConnectionState) -> None:
+        super().__init__(user_id, user_id, state=state)
 
     async def automod_check_messages(self, messages: List[str]) -> List[moderation.AutoModMessageStatus]:
         """

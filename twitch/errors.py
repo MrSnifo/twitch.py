@@ -25,6 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from typing import Dict, Optional, Any, Union
     from aiohttp import ClientWebSocketResponse
@@ -39,7 +40,8 @@ __all__ = ('TwitchException',
            'NotFound',
            'InvalidData',
            'AuthFailure',
-           'ConnectionClosed')
+           'ConnectionClosed',
+           'UnregisteredUser')
 
 
 class TwitchException(Exception):
@@ -94,6 +96,11 @@ class InvalidData(ClientException):
 
 class AuthFailure(ClientException):
     """Exception raised when authentication fails, typically due to invalid credentials."""
+    pass
+
+
+class UnregisteredUser(ClientException):
+    """Exception raised when the user is UnregisteredUse."""
     pass
 
 

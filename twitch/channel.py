@@ -25,10 +25,9 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .utils import datetime_to_str, convert_rfc3339
-from .stream import Stream, ClientStream
-from .chat import Chat, ClientChat
-
+from .stream import Stream, BroadcasterStream
 from typing import overload, TYPE_CHECKING
+from .chat import Chat, BroadcasterChat
 
 if TYPE_CHECKING:
     from .types import (Data, PData, TData, channels, moderation, streams, users, TPData, activity, DTData, bits,
@@ -38,19 +37,20 @@ if TYPE_CHECKING:
     from .user import User
     import datetime
 
-__all__ = ('Channel', 'ClientChannel')
+__all__ = ('Channel', 'BroadcasterChannel', 'ClientChannel')
 
 
 class Channel:
     """
-    Represents a Twitch channel.
+    Represents a channel.
     """
 
-    __slots__ = ('_state', '_b_id')
+    __slots__ = ('_state', '_user_id', '_auth_user_id')
 
-    def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
+    def __init__(self, user_id: str, auth_user_id: str, *, state: ConnectionState) -> None:
         self._state: ConnectionState = state
-        self._b_id: str = broadcaster_id
+        self._user_id: str = user_id
+        self._auth_user_id: str = auth_user_id
 
     @property
     def chat(self) -> Chat:
@@ -62,7 +62,7 @@ class Channel:
         Chat
             The `Chat` object representing the chat functionality for the channel.
         """
-        return Chat(state=self._state, broadcaster_id=self._b_id)
+        return Chat(self._user_id, self._auth_user_id, state=self._state)
 
     @property
     def stream(self) -> Stream:
@@ -74,7 +74,7 @@ class Channel:
         Stream
             The `Stream` object representing the streaming functionality for the channel.
         """
-        return Stream(state=self._state, broadcaster_id=self._b_id)
+        return Stream(self._user_id, self._auth_user_id, state=self._state)
 
     async def get_info(self) -> channels.ChannelInfo:
         """
@@ -85,7 +85,8 @@ class Channel:
         channels.ChannelInfo
             A dictionary containing the channel's information, including details such as title, description, and more.
         """
-        data: Data[List[channels.ChannelInfo]] = await self._state.http.get_channel_information([self._b_id])
+        data: Data[List[channels.ChannelInfo]] = await self._state.http.get_channel_information(
+            self._auth_user_id, [self._user_id])
         return data['data'][0]
 
     async def get_teams(self) -> List[channels.ChannelTeam]:
@@ -97,7 +98,8 @@ class Channel:
         List[dict]
             A list of dictionaries representing the teams that the channel is part of.
         """
-        data: Data[List[channels.ChannelTeam]] = await self._state.http.get_channel_teams(broadcaster_id=self._b_id)
+        data: Data[List[channels.ChannelTeam]] = await self._state.http.get_channel_teams(self._auth_user_id,
+                                                                                          broadcaster_id=self._user_id)
         return data['data']
 
     async def get_total_followers(self) -> int:
@@ -113,8 +115,10 @@ class Channel:
         int
             The total count of followers for the channel.
         """
-        data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(broadcaster_id=self._b_id,
-                                                                                            first=1)
+        data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(
+            self._auth_user_id,
+            broadcaster_id=self._user_id,
+            first=1)
         return data['total']
 
     @overload
@@ -143,7 +147,9 @@ class Channel:
         Optional[channels.Follower]
             A dictionary representing the follower if the user is a follower, otherwise `None`.
         """
-        data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(self._b_id, user_id=user.id)
+        data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(self._auth_user_id,
+                                                                                            self._user_id,
+                                                                                            user_id=user.id)
         return data['data'][0] if len(data['data']) != 0 else None
 
     async def fetch_followers(self, *, first: int = 100) -> AsyncGenerator[List[channels.Follower], None]:
@@ -165,12 +171,13 @@ class Channel:
             A generator yielding lists of dictionaries representing followers.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._b_id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
         while True:
-            data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(**kwargs)
+            data: TData[List[channels.Follower]] = await self._state.http.get_channel_followers(self._auth_user_id,
+                                                                                                **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -196,7 +203,8 @@ class Channel:
             A list of dictionaries representing the banned users.
         """
         data: PData[List[moderation.BannedUser]] = await self._state.http.get_banned_users(
-            self._b_id,
+            self._auth_user_id,
+            self._user_id,
             user_ids=[user.id for user in __users])
         return data['data']
 
@@ -220,12 +228,13 @@ class Channel:
             A generator yielding lists of dictionaries representing banned users.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._b_id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
         while True:
-            data: PData[List[moderation.BannedUser]] = await self._state.http.get_banned_users(**kwargs)
+            data: PData[List[moderation.BannedUser]] = await self._state.http.get_banned_users(self._auth_user_id,
+                                                                                               **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -248,7 +257,7 @@ class Channel:
         reason: Optional[str]
             The reason for banning the user.
         """
-        await self._state.http.ban_user(self._b_id, self._state.user.id, user.id, duration=duration, reason=reason)
+        await self._state.http.ban_user(self._user_id, self._auth_user_id, user.id, duration=duration, reason=reason)
 
     async def unban(self, user: User) -> None:
         """
@@ -263,7 +272,7 @@ class Channel:
         user: User
             The user to be unbanned.
         """
-        await self._state.http.unban_user(self._b_id, self._state.user.id, user.id)
+        await self._state.http.unban_user(self._user_id, self._auth_user_id, user.id)
 
     @overload
     async def check_unban_request(self,
@@ -306,8 +315,8 @@ class Channel:
         Optional[moderation.UnBanRequest]
             A dictionary containing the details of the unban request if it exists; otherwise, None.
         """
-        data: PData[List[moderation.UnBanRequest]] = await self._state.http.get_unban_requests(self._b_id,
-                                                                                               self._state.user.id,
+        data: PData[List[moderation.UnBanRequest]] = await self._state.http.get_unban_requests(self._user_id,
+                                                                                               self._auth_user_id,
                                                                                                status=status,
                                                                                                user_id=user.id)
         return data['data'][0] if len(data['data']) != 0 else None
@@ -337,8 +346,8 @@ class Channel:
             A generator yielding lists of dictionaries representing unban requests.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._b_id,
-            'moderator_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
+            'moderator_id': self._auth_user_id,
             'status': status.lower(),
             'first': first,
             'after': None
@@ -376,8 +385,8 @@ class Channel:
             A dictionary containing the details of the resolved unban request.
         """
         data: Data[List[moderation.UnBanRequest]] = await self._state.http.resolve_unban_requests(
-            self._b_id,
-            self._state.user.id,
+            self._user_id,
+            self._auth_user_id,
             unban_request_id=request_id,
             status=status,
             resolution_text=resolution_text)
@@ -403,12 +412,13 @@ class Channel:
             A generator yielding lists of dictionaries representing stream markers.
         """
         kwargs: Dict[str, Any] = {
-            'user_id': self._b_id,
+            'user_id': self._user_id,
             'first': first,
             'after': None
         }
         while True:
-            data: PData[List[streams.StreamMarker]] = await self._state.http.get_stream_markers(**kwargs)
+            data: PData[List[streams.StreamMarker]] = await self._state.http.get_stream_markers(self._auth_user_id,
+                                                                                                **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -443,7 +453,8 @@ class Channel:
             'after': None
         }
         while True:
-            data: PData[List[streams.StreamMarker]] = await self._state.http.get_stream_markers(**kwargs)
+            data: PData[List[streams.StreamMarker]] = await self._state.http.get_stream_markers(self._auth_user_id,
+                                                                                                **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -477,7 +488,7 @@ class Channel:
             A generator yielding lists of dictionaries representing videos.
         """
         kwargs: Dict[str, Any] = {
-            'user_id': self._b_id,
+            'user_id': self._user_id,
             'language': language,
             'period': period,
             'sort': sort,
@@ -486,7 +497,7 @@ class Channel:
             'after': None
         }
         while True:
-            data: PData[List[channels.Video]] = await self._state.http.get_videos(**kwargs)
+            data: PData[List[channels.Video]] = await self._state.http.get_videos(self._auth_user_id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -518,7 +529,7 @@ class Channel:
             A generator yielding lists of dictionaries representing clips.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._b_id,
+            'broadcaster_id': self._user_id,
             'started_at': datetime_to_str(started_at),
             'ended_at': datetime_to_str(ended_at),
             'is_featured': is_featured,
@@ -526,69 +537,46 @@ class Channel:
             'after': None
         }
         while True:
-            data: PData[List[channels.Clip]] = await self._state.http.get_clips(**kwargs)
+            data: PData[List[channels.Clip]] = await self._state.http.get_clips(self._auth_user_id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
                 break
 
 
-class ClientChannel(Channel):
+class BroadcasterChannel(Channel):
     """
-    Represents a client-specific channel.
-
-    !!! Danger
-        The attributes are read-only.
-        These attributes are automatically updated via EventSub whenever channel information changes.
-
-    Attributes
-    ----------
-    title: str
-        The title of the channel.
-    language: str
-        The language of the broadcaster's content.
-    category_id: str
-        The ID of the category (game) associated with the channel.
-    category_name: str
-        The name of the category (game) associated with the channel.
-    ccl: List[channels.CCL]
-        A list of content classification labels associated with the channel.
+    Represents a broadcaster channel.
     """
 
-    __slots__ = ('title', 'language', 'category_id', 'category_name', 'ccl')
+    __slots__ = ()
 
-    def __init__(self, state: ConnectionState, data: channels.ChannelInfo) -> None:
-        super().__init__(state, state.user.id)
-        self._state: ConnectionState = state
-        self.title: str = data['title']
-        self.language: str = data['broadcaster_language']
-        self.category_id: str = data['game_id']
-        self.category_name: str = data['game_name']
-        self.ccl: List[channels.CCL] = data['content_classification_labels']
+    def __init__(self, user_id: str, *, state: ConnectionState) -> None:
+        super().__init__(user_id, user_id, state=state)
 
     @property
-    def chat(self) -> ClientChat:
+    def chat(self) -> BroadcasterChat:
         """
-        Get the chat functionality associated with client user channel.
+        Get the chat functionality associated with broadcaster channel.
 
         Returns
         -------
-        ClientChat
-            The `ClientChat` object representing the chat functionality for the channel.
+        BroadcasterChat
+            The `BroadcasterChat` object representing the chat functionality for the channel.
         """
-        return ClientChat(state=self._state)
+        return BroadcasterChat(self._user_id, state=self._state)
 
     @property
-    def stream(self) -> ClientStream:
+    def stream(self) -> BroadcasterStream:
         """
-        Get the streaming functionality associated with client user channel.
+        Get the streaming functionality associated with broadcaster channel.
 
         Returns
         -------
-        ClientStream
-            The `ClientStream` object representing the streaming functionality for the channel.
+        BroadcasterStream
+            The `BroadcasterStream` object representing the streaming functionality for the channel.
         """
-        return ClientStream(state=self._state)
+        return BroadcasterStream(self._user_id, state=self._state)
 
     async def get_extensions(self) -> List[channels.Extension]:
         """
@@ -604,7 +592,7 @@ class ClientChannel(Channel):
         List[channels.Extension]
             A list of dictionaries representing the user's extensions.
         """
-        data: Data[List[channels.Extension]] = await self._state.http.get_user_extensions()
+        data: Data[List[channels.Extension]] = await self._state.http.get_user_extensions(self._user_id)
         return data['data']
 
     async def get_active_extensions(self) -> channels.ActiveExtensions:
@@ -622,7 +610,7 @@ class ClientChannel(Channel):
         channels.ActiveExtensions
             A dictionary representing the currently active extensions.
         """
-        data: Data[channels.ActiveExtensions] = await self._state.http.get_user_active_extensions()
+        data: Data[channels.ActiveExtensions] = await self._state.http.get_user_active_extensions(self._user_id)
         return data['data']
 
     @overload
@@ -691,7 +679,9 @@ class ClientChannel(Channel):
         channels.ActiveExtensions
             A dictionary representing the updated active extensions.
         """
-        data: Data[channels.ActiveExtensions] = await self._state.http.update_user_extensions(key=key, **kwargs)
+        data: Data[channels.ActiveExtensions] = await self._state.http.update_user_extensions(self._user_id,
+                                                                                              key=key,
+                                                                                              **kwargs)
         return data['data']
 
     async def update(self,
@@ -726,7 +716,7 @@ class ClientChannel(Channel):
         is_branded_content: Optional[bool]
             Whether the content is branded.
         """
-        await self._state.http.modify_channel_information(self._state.user.id, category_id, broadcaster_language,
+        await self._state.http.modify_channel_information(self._user_id, category_id, broadcaster_language,
                                                           title, delay, tags, content_classification_labels,
                                                           is_branded_content)
 
@@ -749,7 +739,7 @@ class ClientChannel(Channel):
         List[users.SpecificUser]
             A list of dictionaries representing the specific moderators for the channel.
         """
-        data: PData[List[users.SpecificUser]] = await self._state.http.get_moderators(self._state.user.id,
+        data: PData[List[users.SpecificUser]] = await self._state.http.get_moderators(self._user_id,
                                                                                       user_ids=[u.id for u in __users],
                                                                                       first=100)
         return data['data']
@@ -774,7 +764,7 @@ class ClientChannel(Channel):
             An async generator yielding lists of dictionaries representing the moderators for the channel.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
@@ -798,7 +788,7 @@ class ClientChannel(Channel):
         user: User
             The `User` object representing the user to be added as a moderator.
         """
-        await self._state.http.add_channel_moderator(self._state.user.id, user.id)
+        await self._state.http.add_channel_moderator(self._user_id, user.id)
 
     async def remove_moderator(self, user: User) -> None:
         """
@@ -814,7 +804,7 @@ class ClientChannel(Channel):
         user: User
             The `User` object representing the user to be removed as a moderator.
         """
-        await self._state.http.remove_channel_moderator(self._state.user.id, user.id)
+        await self._state.http.remove_channel_moderator(self._user_id, user.id)
 
     async def get_editors(self) -> List[channels.Editor]:
         """
@@ -829,7 +819,7 @@ class ClientChannel(Channel):
         List[channels.Editor]
             A list of dictionaries representing the editors of the channel.
         """
-        data: Data[List[channels.Editor]] = await self._state.http.get_channel_editors(self._state.user.id)
+        data: Data[List[channels.Editor]] = await self._state.http.get_channel_editors(self._user_id)
         return data['data']
 
     async def get_vips(self, __users: List[User], /) -> List[users.SpecificUser]:
@@ -851,7 +841,7 @@ class ClientChannel(Channel):
         List[users.SpecificUser]
             A list of dictionaries representing the specific VIPs in the channel.
         """
-        data: PData[List[users.SpecificUser]] = await self._state.http.get_vips(self._state.user.id,
+        data: PData[List[users.SpecificUser]] = await self._state.http.get_vips(self._user_id,
                                                                                 user_ids=[u.id for u in __users],
                                                                                 first=100)
         return data['data']
@@ -876,7 +866,7 @@ class ClientChannel(Channel):
             An async generator yielding lists of dictionaries representing the VIPs for the channel.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
@@ -900,7 +890,7 @@ class ClientChannel(Channel):
         user: User
             The user to be added as a VIP.
         """
-        await self._state.http.add_channel_vip(self._state.user.id, user.id)
+        await self._state.http.add_channel_vip(self._user_id, user.id)
 
     async def remove_vip(self, user: User) -> None:
         """
@@ -915,7 +905,7 @@ class ClientChannel(Channel):
         user: User
             The user whose VIP status should be removed.
         """
-        await self._state.http.remove_channel_vip(self._state.user.id, user.id)
+        await self._state.http.remove_channel_vip(self._user_id, user.id)
 
     async def get_total_subscriptions(self) -> int:
         """
@@ -930,7 +920,7 @@ class ClientChannel(Channel):
         int
             The total number of subscriptions for the broadcaster.
         """
-        data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(self._b_id,
+        data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(self._user_id,
                                                                                                          first=1)
         return data['total']
 
@@ -947,7 +937,7 @@ class ClientChannel(Channel):
         int
             The total subscription points for the broadcaster.
         """
-        data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(self._b_id,
+        data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(self._user_id,
                                                                                                          first=1)
         return data['points']
 
@@ -970,7 +960,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the subscription details of the specified users.
         """
         data: TPData[List[channels.Subscription]] = await self._state.http.get_broadcaster_subscriptions(
-            self._b_id,
+            self._user_id,
             user_ids=[u.id for u in __users],
             first=100)
         return data['data']
@@ -994,7 +984,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the subscriptions for each page.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
@@ -1026,7 +1016,7 @@ class ClientChannel(Channel):
         Optional[activity.Goal]
             A dictionary representing the current creator goal, or None if no goals are active.
         """
-        data: Data[List[activity.Goal]] = await self._state.http.get_creator_goals(self._state.user.id)
+        data: Data[List[activity.Goal]] = await self._state.http.get_creator_goals(self._user_id)
         return data['data'][0] if len(data['data']) != 0 else None
 
     async def get_bits_leaderboard(self,
@@ -1063,7 +1053,7 @@ class ClientChannel(Channel):
             'started_at': convert_rfc3339(started_at),
             'user_id': user.id if user is not None else None
         }
-        data: DTData[List[bits.Leaderboard]] = await self._state.http.get_bits_leaderboard(**kwargs)
+        data: DTData[List[bits.Leaderboard]] = await self._state.http.get_bits_leaderboard(self._user_id, **kwargs)
         return data['data']
 
     @overload
@@ -1087,7 +1077,7 @@ class ClientChannel(Channel):
         Optional[activity.Charity]
             A dictionary representing the current charity campaign, or None if no campaign is active.
         """
-        data: Data[List[activity.Charity]] = await self._state.http.get_charity_campaign(self._state.user.id)
+        data: Data[List[activity.Charity]] = await self._state.http.get_charity_campaign(self._user_id)
         return data['data'][0] if len(data['data']) != 0 else None
 
     async def fetch_charity_donations(self, first: int = 100) -> AsyncGenerator[List[activity.CharityDonation], None]:
@@ -1109,7 +1099,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the charity donations for each page.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
@@ -1140,7 +1130,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the Hype Train events for each page.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
@@ -1175,7 +1165,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the custom rewards.
         """
         data: Data[List[interaction.Reward]] = await self._state.http.get_custom_reward(
-            self._state.user.id,
+            self._user_id,
             reward_ids,
             only_manageable_rewards)
         return data['data']
@@ -1236,7 +1226,7 @@ class ClientChannel(Channel):
             A dictionary representing the created reward.
         """
         data: Data[List[interaction.Reward]] = await self._state.http.create_custom_rewards(
-            self._state.user.id,
+            self._user_id,
             title,
             cost,
             is_enabled,
@@ -1311,7 +1301,7 @@ class ClientChannel(Channel):
             A dictionary representing the updated reward.
         """
         data: Data[List[interaction.Reward]] = await self._state.http.update_custom_reward(
-            self._state.user.id,
+            self._user_id,
             reward_id,
             title,
             cost,
@@ -1341,7 +1331,7 @@ class ClientChannel(Channel):
         reward_id: str
             The ID of the reward to delete.
         """
-        await self._state.http.delete_custom_reward(self._state.user.id, reward_id)
+        await self._state.http.delete_custom_reward(self._user_id, reward_id)
 
     async def get_reward_redemptions(self,
                                      reward_id: str,
@@ -1371,7 +1361,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the redemptions.
         """
         data: PData[List[interaction.RewardRedemption]] = await self._state.http.get_custom_reward_redemption(
-            self._state.user.id,
+            self._user_id,
             reward_id,
             redemptions_ids,
             sort=sort,
@@ -1409,7 +1399,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the redemptions for each page.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'reward_id': reward_id,
             'status': status,
             'sort': sort,
@@ -1452,7 +1442,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the updated redemptions.
         """
         data: Data[List[interaction.RewardRedemption]] = await self._state.http.update_redemption_status(
-            self._state.user.id,
+            self._user_id,
             reward_id,
             redemptions_ids,
             status=status)
@@ -1478,7 +1468,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the predictions.
         """
         data: PData[List[interaction.Prediction]] = await self._state.http.get_predictions(
-            self._state.user.id,
+            self._user_id,
             prediction_ids,
             first=25
         )
@@ -1504,7 +1494,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the predictions for each page.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
@@ -1540,7 +1530,7 @@ class ClientChannel(Channel):
         interaction.Prediction
             A dictionary representing the created prediction.
         """
-        data: Data[List[interaction.Prediction]] = await self._state.http.create_prediction(self._state.user.id,
+        data: Data[List[interaction.Prediction]] = await self._state.http.create_prediction(self._user_id,
                                                                                             title,
                                                                                             outcomes,
                                                                                             window)
@@ -1587,7 +1577,7 @@ class ClientChannel(Channel):
         interaction.Prediction
             A dictionary representing the updated prediction.
         """
-        data: Data[List[interaction.Prediction]] = await self._state.http.end_prediction(self._state.user.id,
+        data: Data[List[interaction.Prediction]] = await self._state.http.end_prediction(self._user_id,
                                                                                          prediction_id,
                                                                                          status,
                                                                                          winning_outcome_id)
@@ -1612,7 +1602,7 @@ class ClientChannel(Channel):
         List[interaction.Poll]
             A list of dictionaries representing the polls.
         """
-        data: PData[List[interaction.Poll]] = await self._state.http.get_polls(self._state.user.id,
+        data: PData[List[interaction.Poll]] = await self._state.http.get_polls(self._user_id,
                                                                                poll_ids,
                                                                                first=20)
         return data['data']
@@ -1637,7 +1627,7 @@ class ClientChannel(Channel):
             A list of dictionaries representing the polls for each page.
         """
         kwargs: Dict[str, Any] = {
-            'broadcaster_id': self._state.user.id,
+            'broadcaster_id': self._user_id,
             'first': first,
             'after': None
         }
@@ -1679,7 +1669,7 @@ class ClientChannel(Channel):
         interaction.Poll
             A dictionary representing the created poll.
         """
-        data: Data[List[interaction.Poll]] = await self._state.http.create_poll(self._state.user.id,
+        data: Data[List[interaction.Poll]] = await self._state.http.create_poll(self._user_id,
                                                                                 title,
                                                                                 choices,
                                                                                 duration,
@@ -1707,7 +1697,7 @@ class ClientChannel(Channel):
         interaction.Poll
             A dictionary representing the updated poll.
         """
-        data: Data[List[interaction.Poll]] = await self._state.http.end_poll(self._state.user.id, poll_id, status)
+        data: Data[List[interaction.Poll]] = await self._state.http.end_poll(self._user_id, poll_id, status)
         return data['data'][0]
 
     async def delete_videos(self, video_ids: List[str]) -> List[str]:
@@ -1728,5 +1718,39 @@ class ClientChannel(Channel):
         List[str]
             A list of IDs of the deleted videos.
         """
-        data: Data[List[str]] = await self._state.http.delete_videos(video_ids)
+        data: Data[List[str]] = await self._state.http.delete_videos(self._user_id, video_ids)
         return data['data']
+
+
+class ClientChannel(BroadcasterChannel):
+    """
+    Represents a client-user channel.
+
+    !!! Danger
+        The attributes are read-only.
+        These attributes are automatically updated via EventSub whenever channel information changes.
+
+    Attributes
+    ----------
+    title: str
+        The title of the channel.
+    language: str
+        The language of the broadcaster's content.
+    category_id: str
+        The ID of the category (game) associated with the channel.
+    category_name: str
+        The name of the category (game) associated with the channel.
+    ccl: List[channels.CCL]
+        A list of content classification labels associated with the channel.
+    """
+
+    __slots__ = ('title', 'language', 'category_id', 'category_name', 'ccl')
+
+    def __init__(self, user_id: str, /, state: ConnectionState, data: channels.ChannelInfo) -> None:
+        super().__init__(user_id, state=state)
+        self._state: ConnectionState = state
+        self.title: str = data['title']
+        self.language: str = data['broadcaster_language']
+        self.category_id: str = data['game_id']
+        self.category_name: str = data['game_name']
+        self.ccl: List[channels.CCL] = data['content_classification_labels']

@@ -24,23 +24,22 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from .channel import Channel, ClientChannel
+from .channel import Channel, BroadcasterChannel, ClientChannel
+from typing import TYPE_CHECKING, overload
 from .utils import convert_rfc3339
 from datetime import datetime
 
-from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
     from .types import users, PData, chat, Data, PEdata, activity, channels, streams, TData
     from typing import Optional, Dict, Any, Tuple, List, AsyncGenerator, Literal, Union
     from .state import ConnectionState
 
-
-__all__ = ('User', 'ClientUser')
+__all__ = ('User', 'Broadcaster', 'ClientUser')
 
 
 class BaseUser:
     """
-    A base class representing a Twitch user.
+    Represents base class of user.
 
     Attributes
     ----------
@@ -100,18 +99,19 @@ class BaseUser:
 
 class User(BaseUser):
     """
-    A Twitch user with additional functionality.
+    Represents a user with additional functionality.
 
     Attributes
     ----------
     id: str
         The unique identifier for the user.
     """
-    __slots__ = ('_state', '__weakref__')
+    __slots__ = ('_state',  '_auth_user_id', '__weakref__')
 
-    def __init__(self, *, state: ConnectionState, user_id: str) -> None:
+    def __init__(self, user_id: str, auth_user_id: str, *, state: ConnectionState) -> None:
         super().__init__(user_id=user_id)
         self._state: ConnectionState = state
+        self._auth_user_id: str = auth_user_id
 
     @property
     def channel(self) -> Channel:
@@ -123,7 +123,7 @@ class User(BaseUser):
         Channel
             The channel object representing the user's channel.
         """
-        return Channel(state=self._state, broadcaster_id=self.id)
+        return Channel(self.id, self._auth_user_id, state=self._state)
 
     async def get_info(self) -> users.User:
         """
@@ -134,7 +134,8 @@ class User(BaseUser):
         users.User
             A dictionary containing the user's information.
         """
-        data: Data[List[users.User]] = await self._state.http.get_users(user_ids=[self.id])
+        data: Data[List[users.User]] = await self._state.http.get_users(self._auth_user_id,
+                                                                        user_ids=[self.id])
         return data['data'][0]
 
     async def get_chat_color(self) -> str:
@@ -146,58 +147,36 @@ class User(BaseUser):
         str
             The hexadecimal color code representing the user's chat color.
         """
-        data: Data[List[chat.UserChatColor]] = await self._state.http.get_user_chat_color(user_ids=[self.id])
+        data: Data[List[chat.UserChatColor]] = await self._state.http.get_user_chat_color(self._auth_user_id,
+                                                                                          user_ids=[self.id])
         return data['data'][0]['color']
 
 
-class ClientUser(User):
+class Broadcaster(User):
     """
-    Represents a user associated with the client.
-
-    !!! Danger
-        The attributes are read-only.
-        These attributes are automatically updated via EventSub whenever user information changes.
+    Represents a broadcaster.
 
     Attributes
     ----------
     id: str
-        The unique identifier for the user.
-    name: str
-        The login name of the user.
-    display_name: str
-        The display name of the user.
-    description: str
-        A brief description or bio of the user.
-    email: Optional[str]
-        The email address of the user, if available and accessible. Requires `user:read:email` scope.
-    joined_at: datetime
-        The date and time when the user joined Twitch.
+        The unique identifier for the broadcaster.
     """
+    __slots__ = ()
 
-    __slots__ = ('_channel_data', 'name', 'display_name', 'description', 'joined_at', 'email')
-
-    def __init__(self, *, state: ConnectionState, user_data: users.User, channel_data: channels.ChannelInfo) -> None:
-        super().__init__(state=state, user_id=user_data['id'])
-        self._state: ConnectionState = state
-        self._channel_data: channels.ChannelInfo = channel_data
-        self.name: str = user_data['login']
-        self.display_name: str = user_data['display_name']
-        self.description: str = user_data['description']
-        self.joined_at: datetime = convert_rfc3339(user_data['created_at'])
-        # Requires user:read:email scope
-        self.email: Optional[str] = user_data.get('email') or None
+    def __init__(self, user_id: str, *, state: ConnectionState) -> None:
+        super().__init__(user_id, user_id, state=state)
 
     @property
-    def channel(self) -> ClientChannel:
+    def channel(self) -> BroadcasterChannel:
         """
-        Retrieve the channel of the current user associated with the client.
+        Retrieve the broadcaster channel.
 
         Returns
         -------
-        Optional[ClientChannel]
+        Optional[BroadcasterChannel]
             The channel of the current user.
         """
-        return ClientChannel(state=self._state, data=self._channel_data)
+        return BroadcasterChannel(self.id, state=self._state)
 
     async def fetch_emotes(self, user: Optional[User] = None) -> AsyncGenerator[Tuple[List[chat.Emote], str], None]:
         """
@@ -210,7 +189,7 @@ class ClientUser(User):
         Parameters
         ----------
         user: Optional[User]
-            The user whose emotes to retrieve. If None, retrieves emotes for the client user.
+            The user whose emotes to retrieve. If None, retrieves emotes for the broadcaster.
 
         Yields
         ------
@@ -289,31 +268,10 @@ class ClientUser(User):
             A list of `activity.EntitlementsUpdate` dictionaries representing the updated entitlements.
         """
         data: Data[List[activity.EntitlementsUpdate]] = await self._state.http.update_drops_entitlements(
+            self.id,
             entitlement_ids,
             fulfillment_status)
         return data['data']
-
-    async def update(self, description: Optional[str]) -> users.User:
-        """
-        Update the user's profile information.
-
-        | Scopes      | Description           |
-        | ----------- | ----------------------|
-        | `user:edit` | Manage a user object. |
-
-        Parameters
-        ----------
-        description: Optional[str]
-            The new description to set for the user, by default None.
-
-        Returns
-        -------
-        users.User
-            The updated `users.User` object with the new description.
-        """
-        data: Data[List[users.User]] = await self._state.http.update_user(description)
-        self.description = data['data'][0]['description']
-        return data['data'][0]
 
     async def update_chat_color(self, color: Union[str, chat.UserChatColors]) -> None:
         """
@@ -331,7 +289,7 @@ class ClientUser(User):
         color: Union[str, chat.UserChatColors]
             The new color to set for the user's chat messages. Can be a color code or a predefined color.
         """
-        await self._state.http.update_user_chat_color(self._state.user.id, color)
+        await self._state.http.update_user_chat_color(self.id, color)
 
     async def block(self,
                     user: User,
@@ -353,7 +311,7 @@ class ClientUser(User):
         reason: Literal['harassment', 'spam', 'other']
             The reason for blocking the user, by default None.
         """
-        await self._state.http.block_user(user.id, source_context, reason)
+        await self._state.http.block_user(self.id, user.id, source_context, reason)
 
     async def unblock(self, user: User) -> None:
         """
@@ -368,11 +326,11 @@ class ClientUser(User):
         user: User
             The user to unblock.
         """
-        await self._state.http.unblock_user(user.id)
+        await self._state.http.unblock_user(self.id, user.id)
 
     async def fetch_blocked_users(self, first: int = 100) -> AsyncGenerator[List[users.SpecificUser], None]:
         """
-        Fetch the list of users blocked by the client user.
+        Fetch the list of users blocked by the broadcaster.
 
         | Scopes                    | Description                    |
         | ------------------------- | -------------------------------|
@@ -430,7 +388,7 @@ class ClientUser(User):
 
     async def check_followed(self, user: User) -> Optional[channels.Follows]:
         """
-        Check if the client user is following a specified user.
+        Check if the broadcaster is following a specified user.
 
         | Scopes              | Description                               |
         | ------------------- | ------------------------------------------|
@@ -444,7 +402,7 @@ class ClientUser(User):
         Returns
         -------
         Optional[channels.Follows]
-            A dictionary if the client user follows the specified user; otherwise, None.
+            A dictionary if the broadcaster follows the specified user; otherwise, None.
         """
         data: TData[List[channels.Follows]] = await self._state.http.get_followed_channels(self.id,
                                                                                            broadcaster_id=user.id)
@@ -452,7 +410,7 @@ class ClientUser(User):
 
     async def get_total_followed(self) -> int:
         """
-        Retrieve the total number of channels followed by the client user.
+        Retrieve the total number of channels followed by the broadcaster.
 
         | Scopes              | Description                               |
         | ------------------- | ------------------------------------------|
@@ -461,14 +419,14 @@ class ClientUser(User):
         Returns
         -------
         int
-            The total number of channels followed by the client user.
+            The total number of channels followed by the broadcaster.
         """
         data: TData[List[channels.Follows]] = await self._state.http.get_followed_channels(self.id, first=1)
         return data['total']
 
     async def fetch_followed(self, first: int = 100) -> AsyncGenerator[List[channels.Follows], None]:
         """
-        Fetch the list of channels followed by the client user.
+        Fetch the list of channels followed by the broadcaster.
 
         | Scopes              | Description                               |
         | ------------------- | ------------------------------------------|
@@ -496,38 +454,9 @@ class ClientUser(User):
             if not kwargs['after']:
                 break
 
-    @overload
-    async def check_followed_streaming(self, user: User) -> streams.StreamInfo:
-        ...
-
-    @overload
-    async def check_followed_streaming(self, user: User) -> None:
-        ...
-
-    async def check_followed_streaming(self, user: User) -> Optional[streams.StreamInfo]:
-        """
-        Check if a specified user is currently streaming.
-
-        | Scopes              | Description                               |
-        | ------------------- | ------------------------------------------|
-        | `user:read:follows` | View the list of channels a user follows. |
-
-        Parameters
-        ----------
-        user: User
-            The user to check for live-streaming status.
-
-        Returns
-        -------
-        Optional[streams.StreamInfo]
-            A dictionary if they are currently streaming; otherwise, None.
-        """
-        data: PData[List[streams.StreamInfo]] = await self._state.http.get_followed_streams(user.id, first=1)
-        return data['data'][0] if len(data['data']) != 0 else None
-
     async def fetch_followed_streaming(self, first: int = 100) -> AsyncGenerator[List[streams.StreamInfo], None]:
         """
-        Fetch the list of currently streaming channels followed by the client user.
+        Fetch the list of currently streaming channels followed by the broadcaster.
 
         | Scopes              | Description                               |
         | ------------------- | ------------------------------------------|
@@ -565,7 +494,7 @@ class ClientUser(User):
 
     async def check_user_subscription(self, user: User) -> Optional[channels.SubscriptionCheck]:
         """
-        Check if the client user is subscribed to the specified user.
+        Check if the broadcaster is subscribed to the specified user.
 
         | Scopes                    | Description                                                    |
         | ------------------------- | ---------------------------------------------------------------|
@@ -579,14 +508,14 @@ class ClientUser(User):
         Returns
         -------
         Optional[channels.SubscriptionCheck]
-            A dictionary representing if the client user is subscribed to the specified user; otherwise, None.
+            A dictionary representing if the broadcaster is subscribed to the specified user; otherwise, None.
         """
         data: Data[List[channels.SubscriptionCheck]] = await self._state.http.check_user_subscription(self.id, user.id)
         return data['data'][0] if len(data['data']) != 0 else None
 
     async def fetch_moderated_channels(self, first: int = 100) -> AsyncGenerator[List[users.Broadcaster], None]:
         """
-        Fetch the list of channels moderated by the client user.
+        Fetch the list of channels moderated by the broadcaster.
 
         | Scopes                         | Description                                                 |
         | ------------------------------ | ------------------------------------------------------------|
@@ -600,7 +529,7 @@ class ClientUser(User):
         Yields
         ------
         AsyncGenerator[List[users.Broadcaster], None]
-            A list of dictionaries representing the channels moderated by the client user.
+            A list of dictionaries representing the channels moderated by the broadcaster.
         """
         kwargs: Dict[str, Any] = {
             'user_id': self.id,
@@ -613,3 +542,79 @@ class ClientUser(User):
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
                 break
+
+
+class ClientUser(Broadcaster):
+    """
+    Represents a user associated with the client.
+
+    !!! Danger
+        The attributes are read-only.
+        These attributes are automatically updated via EventSub whenever user information changes.
+
+    Attributes
+    ----------
+    id: str
+        The unique identifier for the user.
+    name: str
+        The login name of the user.
+    display_name: str
+        The display name of the user.
+    description: str
+        A brief description or bio of the user.
+    email: Optional[str]
+        The email address of the user, if available and accessible. Requires `user:read:email` scope.
+    joined_at: datetime
+        The date and time when the user joined Twitch.
+    """
+
+    __slots__ = ('_channel_data', 'name', 'display_name', 'description', 'joined_at', 'email')
+
+    def __init__(self,
+                 *,
+                 state: ConnectionState,
+                 user_data: users.User,
+                 channel_data: channels.ChannelInfo,
+                 ) -> None:
+        super().__init__(user_data['id'], state=state)
+        self._channel_data: channels.ChannelInfo = channel_data
+        self.name: str = user_data['login']
+        self.display_name: str = user_data['display_name']
+        self.description: str = user_data['description']
+        self.joined_at: datetime = convert_rfc3339(user_data['created_at'])
+        # Requires user:read:email scope
+        self.email: Optional[str] = user_data.get('email') or None
+
+    @property
+    def channel(self) -> ClientChannel:
+        """
+        Retrieve the client-user channel.
+
+        Returns
+        -------
+        Optional[broadcasterChannel]
+            The channel of the current user.
+        """
+        return ClientChannel(self.id, state=self._state, data=self._channel_data)
+
+    async def update(self, description: Optional[str]) -> users.User:
+        """
+        Update the user's profile information.
+
+        | Scopes      | Description           |
+        | ----------- | ----------------------|
+        | `user:edit` | Manage a user object. |
+
+        Parameters
+        ----------
+        description: Optional[str]
+            The new description to set for the user, by default None.
+
+        Returns
+        -------
+        users.User
+            The updated `users.User` object with the new description.
+        """
+        data: Data[List[users.User]] = await self._state.http.update_user(self.id, description)
+        self.description = data['data'][0]['description']
+        return data['data'][0]

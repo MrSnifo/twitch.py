@@ -24,11 +24,11 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 import datetime
 import logging
 import json
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, Union, Dict, Optional
     import aiohttp

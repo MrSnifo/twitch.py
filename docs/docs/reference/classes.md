@@ -6,12 +6,15 @@ icon: simple/databricks
 ___
 ### ::: twitch.user.User
 ---
+### ::: twitch.user.Broadcaster
+---
 ### ::: twitch.user.ClientUser
-
 
 ## Channel
 ___
 ### ::: twitch.channel.Channel
+---
+### ::: twitch.channel.BroadcasterChannel
 ---
 ### ::: twitch.channel.ClientChannel
 
@@ -20,14 +23,14 @@ ___
 ___
 ### ::: twitch.chat.Chat
 ---
-### ::: twitch.chat.ClientChat
+### ::: twitch.chat.BroadcasterChat
 
 
 ## Stream
 ___
 ### ::: twitch.stream.Stream
 ---
-### ::: twitch.stream.ClientStream
+### ::: twitch.stream.BroadcasterStream
 
 
 ## Utils

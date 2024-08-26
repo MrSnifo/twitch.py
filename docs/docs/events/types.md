@@ -32,10 +32,6 @@ ___
 #### ::: twitch.types.eventsub.users.Fragment
 ---
 #### ::: twitch.types.eventsub.users.Message
----
-### ::: twitch.types.eventsub.users.AuthorizationGrantEvent
----
-### ::: twitch.types.eventsub.users.AuthorizationRevokeEvent
 
 
 ## Channels
@@ -262,9 +258,5 @@ ___
 ### ::: twitch.types.eventsub.activity.CharityCampaignStopEvent
 ---
 #### ::: twitch.types.eventsub.activity.DonationAmount
----
-### ::: twitch.types.eventsub.activity.DropEntitlementGrantEvent
----
-#### ::: twitch.types.eventsub.activity.EntitlementData
 ---
 ### ::: twitch.types.eventsub.activity.GoalsEvent

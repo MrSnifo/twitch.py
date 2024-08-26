@@ -1,3 +1,9 @@
+---
+icon: material/twitch
+hide:
+  - toc
+---
+
 # Twitchify
 
 Twitchify is a Python library designed to streamline Twitch API interactions by integrating Twitch's WebSocket EventSub and Helix API. It offers real-time event notifications and easy access to Twitch functionality with a focus on simplicity and efficiency.

@@ -25,12 +25,12 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .errors import ConnectionClosed
+from typing import TYPE_CHECKING
 from json import JSONDecodeError
 import aiohttp
 import asyncio
 import json
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Optional, Set, ClassVar, Any, Self, Dict
     from .state import ConnectionState

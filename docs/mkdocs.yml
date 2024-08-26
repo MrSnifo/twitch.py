@@ -33,18 +33,19 @@ theme:
         icon: material/eye-outline
         name: Switch to light mode
   features:
+    - navigation.path
     - navigation.tabs
     - navigation.prune
     - navigation.tracking
     - content.code.copy
-    - toc.integrate
-    - navigation.path
+    - content.tabs.link
 
 nav:
   - Getting started:
       - 'index.md'
       - Setup: 'setup.md'
       - Quickstart: 'quickstart.md'
+      - Questions: 'questions.md'
   - Reference:
       - Client: 'reference/client.md'
       - Classes: 'reference/classes.md'
@@ -56,8 +57,15 @@ nav:
       - Events: 'events/events.md'
       - Types: 'events/types.md'
   - Extension:
-      - Oauth: 'ext/oauth/index.md'
-
+      - Bot:
+          - 'ext/bot/index.md'
+          - Bot: 'ext/bot/bot.md'
+          - Events: 'ext/bot/events.md'
+      - Oauth:
+          - 'ext/oauth/index.md'
+          - Oauth: 'ext/oauth/oauth.md'
+          - Events: 'ext/oauth/events.md'
+          - Enums: 'ext/oauth/enums.md'
 markdown_extensions:
   - def_list
   - admonition
@@ -70,6 +78,8 @@ markdown_extensions:
   - pymdownx.snippets
   - md_in_html
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
   - pymdownx.details
   - codehilite
   - toc:
@@ -83,10 +93,12 @@ plugins:
       enable_inventory: true
       handlers:
         python:
+
           import:
             - https://docs.python.org/3/objects.inv
-          paths: [..]
+          paths: [.., ../twitch/ext]
           options:
+            inherited_members: true
             show_source: false
             show_root_toc_entry: true
             show_root_heading: true

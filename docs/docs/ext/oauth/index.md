@@ -1,4 +1,10 @@
-# OAuth
+---
+icon: material/information-slab-circle
+hide:
+  - toc
+---
+
+# Introduction
 
 ## Overview
 
@@ -57,105 +63,109 @@ Revoke an access token or refresh token.
 await auth.revoke_token('your_token')
 ```
 
-## Simple Example
+## Examples
 
-Here's a basic example demonstrating how to use `DeviceAuthFlow` to authenticate and start the Twitch client.
+=== "Basic"
 
-```python
-from twitch.ext.oauth import DeviceAuthFlow, Scopes
-from twitch import Client
+    Here's a basic example demonstrating how to use `DeviceAuthFlow` to authenticate and start the Twitch client.
+    from twitch.ext.oauth import DeviceAuthFlow, Scopes
+    from twitch import Client
 
-client = Client(client_id='YOUR_CLIENT_ID')
-
-DeviceAuthFlow(
-    client=client,
-    scopes=[Scopes.USER_READ_EMAIL]
-)
-
-@client.event
-async def on_code(code: str):
-    """
-    Handles the device authorization code event.
-    """
-    print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
-
-@client.event
-async def on_auth(access_token: str, refresh_token: str):
-    """
-    Handles the authentication event.
-    """
-    print(f'access_token={access_token}\nrefresh_token={refresh_token}')
-
-@client.event
-async def on_ready():
-    """
-    Handles the client ready event.
-    """
-    print('PogU')
-
-# Start the client and begin processing events.
-client.run()
-```
-
-## Advanced Example
-
-This advanced example provides greater control over the `DeviceAuthFlow` process,
-including custom handling for device code retrieval and token management.
-
-```python
-from twitch.ext.oauth import DeviceAuthFlow, Scopes
-from twitch.types import eventsub
-from twitch import Client
-import asyncio
-
-class GiveawaysBot(Client):
-    def __init__(self, client_id: str, **options):
-        super().__init__(client_id, **options)
-        self.auth_flow = DeviceAuthFlow(
-            self,
-            scopes=[Scopes.USER_READ_EMAIL, Scopes.MODERATOR_READ_FOLLOWERS],
-            wrap_run=False
-        )
-
-    async def on_ready(self):
+    ```python
+    from twitch.ext.oauth import DeviceAuthFlow, Scopes
+    from twitch import Client
+    
+    client = Client(client_id='YOUR_CLIENT_ID')
+    
+    DeviceAuthFlow(
+        client=client,
+        scopes=[Scopes.USER_READ_EMAIL]
+    )
+    
+    @client.event
+    async def on_code(code: str):
         """
-        Notify when the bot is ready.
+        Handles the device authorization code event.
         """
-        print('Bot is ready!')
+        print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
+    
+    @client.event
+    async def on_auth(access_token: str, refresh_token: str):
+        """
+        Handles the authentication event.
+        """
+        print(f'access_token={access_token}\nrefresh_token={refresh_token}')
+    
+    @client.event
+    async def on_ready():
+        """
+        Handles the client ready event.
+        """
+        print('PogU')
+    
+    # Start the client and begin processing events.
+    client.run()
+    ```
 
-    async def on_follow(self, data: eventsub.channels.FollowEvent):
-        """
-        Handle new follower events.
-        """
-        await self.channel.chat.send_message(f'{data["user_name"]} has followed the channel!')
+=== "Advanced"
 
-    async def custom_auth_flow(self):
-        """
-        Custom method to manage device authentication flow.
-        """
-        # Retrieve device code and display the verification URL
-        user_code, device_code, expires_in, interval = await self.auth_flow.get_device_code()
-        print(f'Verification URI: https://www.twitch.tv/activate?device-code={device_code}')
-        
-        # Poll for the authorization and handle token retrieval
-        try:
-            access_token, refresh_token = await self.auth_flow.poll_for_authorization(device_code, expires_in, interval)
-            print(f'Access Token: {access_token}\nRefresh Token: {refresh_token}')
-        except Exception as e:
-            print(f'Failed to authorize: {e}')
-            return
-        
-        # Start the client with the obtained tokens
-        async with self:
-            await self.start(access_token, refresh_token)
+    This advanced example provides greater control over the `DeviceAuthFlow` process,
+    including custom handling for device code retrieval and token management.
 
-    async def run_bot(self):
-        """
-        Run the bot with full control over device authentication and event handling.
-        """
-        await self.custom_auth_flow()
-
-# Initialize and run the bot
-bot = GiveawaysBot(client_id='YOUR_CLIENT_ID')
-asyncio.run(bot.run_bot())
-```
+    ```python
+    from twitch.ext.oauth import DeviceAuthFlow, Scopes
+    from twitch.types import eventsub
+    from twitch import Client
+    import asyncio
+    
+    class GiveawaysBot(Client):
+        def __init__(self, client_id: str, **options):
+            super().__init__(client_id, **options)
+            self.auth_flow = DeviceAuthFlow(
+                self,
+                scopes=[Scopes.USER_READ_EMAIL, Scopes.MODERATOR_READ_FOLLOWERS],
+                wrap_run=False
+            )
+    
+        async def on_ready(self):
+            """
+            Notify when the bot is ready.
+            """
+            print('Bot is ready!')
+    
+        async def on_follow(self, data: eventsub.channels.FollowEvent):
+            """
+            Handle new follower events.
+            """
+            await self.channel.chat.send_message(f'{data["user_name"]} has followed the channel!')
+    
+        async def custom_auth_flow(self):
+            """
+            Custom method to manage device authentication flow.
+            """
+            # Retrieve device code and display the verification URL
+            user_code, device_code, expires_in, interval = await self.auth_flow.get_device_code()
+            print(f'Verification URI: https://www.twitch.tv/activate?device-code={device_code}')
+            
+            # Poll for the authorization and handle token retrieval
+            try:
+                access_token, refresh_token = await self.auth_flow.poll_for_authorization(device_code, expires_in, interval)
+                print(f'Access Token: {access_token}\nRefresh Token: {refresh_token}')
+            except Exception as e:
+                print(f'Failed to authorize: {e}')
+                return
+            
+            # Start the client with the obtained tokens
+            async with self:
+                await self.start(access_token, refresh_token)
+    
+        async def run_bot(self):
+            """
+            Run the bot with full control over device authentication and event handling.
+            """
+            await self.custom_auth_flow()
+    
+    # Initialize and run the bot
+    bot = GiveawaysBot(client_id='YOUR_CLIENT_ID')
+    asyncio.run(bot.run_bot())
+    ```

@@ -25,14 +25,15 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from twitch import Client, utils
+from typing import TYPE_CHECKING
 from .http import HTTPClient
 from .enums import Scopes
 import asyncio
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Optional, Type, Self, List, Union
+    from typing import Optional, Type, Self, List, Union, Tuple
     from types import TracebackType
+    from twitch.types import users
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ __all__ = ('DeviceAuthFlow',)
 
 class DeviceAuthFlow:
     """
-    A class to handle the device authentication flow for the Twitch API.
+    A class to handle the device authentication flow.
 
     Parameters
     ----------
@@ -50,6 +51,8 @@ class DeviceAuthFlow:
         The Twitch client instance.
     scopes: List[Union[str, Scope]]
         List of scopes for the authentication.
+    dispatch: bool
+        If True, Will automatically trigger relevant events such as `on_code` and `on_auth`.
     wrap_run: bool
         If True, automatically assigns the `run` method to the client's `run` attribute.
 
@@ -72,23 +75,25 @@ class DeviceAuthFlow:
     # ........ do weird stuff here *-*.
 
     # Must be called at the end.
-    client.run(log_level=10)
+    client.run(l)
     ```
     """
 
-    __slots__ = ('_client', 'wrap_run', '_http', 'scopes')
+    __slots__ = ('_client', '_wrap_run', '_http', 'scopes', '_dispatch')
 
     def __init__(self,
                  client: Client,
                  *,
                  scopes: List[Union[str, Scopes]],
+                 dispatch: bool = True,
                  wrap_run: bool = True
                  ) -> None:
         self._client: Client = client
-        self.wrap_run: bool = wrap_run
+        self._dispatch: bool = dispatch
+        self._wrap_run: bool = wrap_run
         self._http: HTTPClient = HTTPClient(self._client.client_id)
-        if self.wrap_run:
-            self._client.run = self.run  # type: ignore
+        if self._wrap_run:
+            self._client.run = self._run  # type: ignore
         self.scopes: List[str] = [scope.value if isinstance(scope, Scopes) else scope for scope in scopes]
 
     async def __aenter__(self) -> Self:
@@ -105,25 +110,32 @@ class DeviceAuthFlow:
         """
         await self.close()
 
-    async def ensure_event_loops(self, *args, **kwargs):
-        if self._http.loop is None:
-            loop = asyncio.get_running_loop()
-            self._http.loop = loop
-            self._client.loop = loop  # Client side.
-            self._client.http.loop = loop
+    def initiate_event_loop(self):
+        if self._http.loop is not None:
+            return
 
-    async def get_device_code(self) -> tuple[str, str, int, int]:
+        if self._client.loop is not None:
+            loop = self._client.loop
+        else:
+            loop = asyncio.get_running_loop()
+
+        self._http.loop = loop
+        self._client.loop = loop
+        self._client.http.loop = loop
+
+    async def get_device_code(self) -> Tuple[str, str, int, int]:
         """
         Initiates the device authorization flow and retrieves the device code.
 
         Returns
         -------
-        tuple
+        Tuple
             A tuple containing the user code, device code, expiration time, and polling interval.
         """
-        await self.ensure_event_loops()
-        data = await self._http.start_device_auth_flow(scopes=self.scopes)
-        self._client.dispatch('code', data['user_code'])
+        self.initiate_event_loop()
+        data: users.DeviceAuthFlow = await self._http.start_device_auth_flow(scopes=self.scopes)
+        if self._dispatch:
+            self._client.dispatch('code', data['user_code'])
         return data['user_code'], data['device_code'], data['expires_in'], data['interval']
 
     async def revoke_token(self, token: str) -> None:
@@ -135,7 +147,7 @@ class DeviceAuthFlow:
         token: str
             The token to revoke (access token or refresh token).
         """
-        await self.ensure_event_loops()
+        self.initiate_event_loop()
         await self._http.revoke_token(token=token)
 
     async def poll_for_authorization(self, device_code: str, expires_in: int, interval: int) -> tuple[str, str]:
@@ -156,9 +168,12 @@ class DeviceAuthFlow:
         tuple
             A tuple containing the access token and refresh token.
         """
-        await self.ensure_event_loops()
-        data = await self._http.poll_for_token(device_code, expires_in=expires_in, interval=interval)
-        self._client.dispatch('auth', data['access_token'], data['refresh_token'])
+        self.initiate_event_loop()
+        data: users.OAuthRefreshToken = await self._http.poll_for_token(device_code,
+                                                                        expires_in=expires_in,
+                                                                        interval=interval)
+        if self._dispatch:
+            self._client.dispatch('auth', data['access_token'], data['refresh_token'])
         return data['access_token'], data['refresh_token']
 
     async def close(self):
@@ -167,12 +182,12 @@ class DeviceAuthFlow:
         """
         await self._http.close()
 
-    def run(self,
-            *,
-            reconnect: bool = True,
-            log_handler: Optional[logging.Handler] = None,
-            log_level: Optional[int] = None,
-            root_logger: bool = False):
+    def _run(self,
+             *,
+             reconnect: bool = True,
+             log_handler: Optional[logging.Handler] = None,
+             log_level: Optional[int] = None,
+             root_logger: bool = False):
         """
         Run the client with the authentication flow and handle the event loop.
 

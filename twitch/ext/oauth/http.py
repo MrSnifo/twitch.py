@@ -25,12 +25,12 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from twitch import __version__, __github__, errors, utils
+from typing import TYPE_CHECKING
 import aiohttp
 import asyncio
 import socket
 import time
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, List, Optional, ClassVar
     from twitch.types import users
@@ -56,7 +56,7 @@ class HTTPClient:
         """
         Closes the underlying session if it exists.
         """
-        if self.__session:
+        if self.__session is not None and not self.__session.closed:
             await self.__session.close()
 
     async def clear_session(self) -> None:

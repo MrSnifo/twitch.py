@@ -24,29 +24,30 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, overload
 from .utils import datetime_to_str
 import datetime
 
-from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
     from typing import Optional, List, AsyncGenerator, Dict, Any, Literal
     from .types import Data, PData, channels, streams
     from .state import ConnectionState
     from .user import User
 
-__all__ = ('Stream', 'ClientStream')
+__all__ = ('Stream', 'BroadcasterStream')
 
 
 class Stream:
     """
-    Represents a Twitch channel stream.
+    Represents a channel stream.
     """
 
-    __slots__ = ('_state', '_b_id')
+    __slots__ = ('_state', '_user_id', '_auth_user_id')
 
-    def __init__(self, state: ConnectionState, broadcaster_id: str) -> None:
+    def __init__(self, user_id: str, auth_user_id: str, *, state: ConnectionState) -> None:
         self._state: ConnectionState = state
-        self._b_id: str = broadcaster_id
+        self._user_id: str = user_id
+        self._auth_user_id: str = auth_user_id
 
     @overload
     async def get_live(self) -> streams.StreamInfo:
@@ -65,7 +66,8 @@ class Stream:
         Optional[streams.StreamInfo]
             A dictionary representing the live stream information if the broadcaster is live; otherwise, None.
         """
-        data: PData[List[streams.StreamInfo]] = await self._state.http.get_streams(user_ids=[self._b_id])
+        data: PData[List[streams.StreamInfo]] = await self._state.http.get_streams(self._auth_user_id,
+                                                                                   user_ids=[self._user_id])
         return data['data'][0] if len(data['data']) != 0 else None
 
     async def create_marker(self, description: Optional[str] = None) -> streams.StreamMarkerInfo:
@@ -86,7 +88,8 @@ class Stream:
         streams.StreamMarkerInfo
             A dictionary representing the stream marker information.
         """
-        data: Data[List[streams.StreamMarkerInfo]] = await self._state.http.create_stream_marker(self._b_id,
+        data: Data[List[streams.StreamMarkerInfo]] = await self._state.http.create_stream_marker(self._auth_user_id,
+                                                                                                 self._user_id,
                                                                                                  description)
         return data['data'][0] if len(data['data']) != 0 else None
 
@@ -103,7 +106,9 @@ class Stream:
         user: User
             The user to whom the shoutout will be sent.
         """
-        await self._state.http.send_a_shoutout(self._b_id, self._state.user.id, to_broadcaster_id=user.id)
+        await self._state.http.send_a_shoutout(self._user_id,
+                                               self._auth_user_id,
+                                               to_broadcaster_id=user.id)
 
     async def create_clip(self, has_delay: bool = False) -> channels.ClipEdit:
         """
@@ -123,7 +128,9 @@ class Stream:
         channels.ClipEdit
             A dictionary representing the clip edit information.
         """
-        data: Data[List[channels.ClipEdit]] = await self._state.http.create_clip(self._b_id, has_delay=has_delay)
+        data: Data[List[channels.ClipEdit]] = await self._state.http.create_clip(self._auth_user_id,
+                                                                                 self._user_id,
+                                                                                 has_delay=has_delay)
         return data['data'][0]
 
     async def fetch_schedule(self,
@@ -151,11 +158,13 @@ class Stream:
         kwargs: Dict[str, Any] = {
             'segment_ids': segment_ids,
             'start_time': datetime_to_str(start_time),
-            'broadcaster_id': self._b_id,
+            'broadcaster_id': self._user_id,
             'first': first
         }
         while True:
-            data: PData[List[streams.Schedule]] = await self._state.http.get_channel_stream_schedule(**kwargs)
+            data: PData[List[streams.Schedule]] = await self._state.http.get_channel_stream_schedule(
+                self._auth_user_id,
+                **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -170,24 +179,23 @@ class Stream:
         str
             A string representing the iCalendar link for the broadcaster's stream schedule.
         """
-        data: str = await self._state.http.get_channel_icalendar(self._b_id)
+        data: str = await self._state.http.get_channel_icalendar(self._auth_user_id, self._user_id)
         return data
 
 
-class ClientStream(Stream):
+class BroadcasterStream(Stream):
     """
-    Represents a client-specific channel stream.
+    Represents a Broadcaster channel stream.
     """
 
     __slots__ = ()
 
-    def __init__(self, state: ConnectionState) -> None:
-        super().__init__(state, state.user.id)
-        self._state: ConnectionState = state
+    def __init__(self, user_id: str, *, state: ConnectionState) -> None:
+        super().__init__(user_id, user_id, state=state)
 
     async def get_key(self) -> str:
         """
-        Retrieve the stream key for the client.
+        Retrieve the stream key for the broadcaster.
 
         | Scopes                    | Description                           |
         | ------------------------- | --------------------------------------|
@@ -198,12 +206,12 @@ class ClientStream(Stream):
         str
             A string representing the stream key.
         """
-        data: Data[List[streams.StreamKey]] = await self._state.http.get_stream_key(self._state.user.id)
+        data: Data[List[streams.StreamKey]] = await self._state.http.get_stream_key(self._user_id)
         return data['data'][0]['stream_key']
 
     async def start_commercial(self, length: int = 180) -> streams.CommercialStatus:
         """
-        Start a commercial break on the client's stream.
+        Start a commercial break on the broadcaster's stream.
 
         | Scopes                    | Description                   |
         | ------------------------- | ------------------------------|
@@ -219,8 +227,7 @@ class ClientStream(Stream):
         streams.CommercialStatus
             A dictionary representing the status of the commercial break.
         """
-        data: Data[List[streams.CommercialStatus]] = await self._state.http.start_commercial(self._state.user.id,
-                                                                                             length)
+        data: Data[List[streams.CommercialStatus]] = await self._state.http.start_commercial(self._user_id, length)
         return data['data'][0]
 
     async def start_raid(self, user: User) -> streams.RaidInfo:
@@ -241,7 +248,7 @@ class ClientStream(Stream):
         streams.RaidInfo
             A dictionary representing the raid information.
         """
-        data: Data[List[streams.RaidInfo]] = await self._state.http.start_raid(self._state.user.id, user.id)
+        data: Data[List[streams.RaidInfo]] = await self._state.http.start_raid(self._user_id, user.id)
         return data['data'][0]
 
     async def cancel_raid(self) -> None:
@@ -252,11 +259,11 @@ class ClientStream(Stream):
         | ---------------------- | ------------------------------------------|
         | `channel:manage:raids` | Manage a channel raiding another channel. |
         """
-        await self._state.http.cancel_raid(self._state.user.id)
+        await self._state.http.cancel_raid(self._user_id)
 
     async def get_ad_schedule(self) -> streams.AdSchedule:
         """
-        Retrieve the advertisement schedule for the client.
+        Retrieve the advertisement schedule for the broadcaster.
 
         | Scopes             | Description                                        |
         | ------------------ | ---------------------------------------------------|
@@ -268,7 +275,7 @@ class ClientStream(Stream):
         streams.AdSchedule
             A dictionary representing the advertisement schedule.
         """
-        data: Data[List[streams.AdSchedule]] = await self._state.http.get_ad_schedule(self._state.user.id)
+        data: Data[List[streams.AdSchedule]] = await self._state.http.get_ad_schedule(self._user_id)
         return data['data'][0]
 
     async def snooze_next_ad(self) -> streams.AdSnooze:
@@ -284,7 +291,7 @@ class ClientStream(Stream):
         streams.AdSnooze
             A dictionary representing the snooze status of the next ad.
         """
-        data: Data[List[streams.AdSnooze]] = await self._state.http.snooze_next_ad(self._state.user.id)
+        data: Data[List[streams.AdSnooze]] = await self._state.http.snooze_next_ad(self._user_id)
         return data['data'][0]
 
     @overload
@@ -324,7 +331,7 @@ class ClientStream(Stream):
         timezone: Optional[str]
             The [timezone](https://nodatime.org/TimeZones) of the vacation times.
         """
-        await self._state.http.update_channel_stream_schedule(self._state.user.id, enable,
+        await self._state.http.update_channel_stream_schedule(self._user_id, enable,
                                                               datetime_to_str(vacation_start_time),
                                                               datetime_to_str(vacation_end_time),
                                                               timezone)
@@ -337,7 +344,7 @@ class ClientStream(Stream):
                                       category_id: Optional[str] = None,
                                       title: Optional[str] = None) -> streams.Schedule:
         """
-        Create a new schedule segment for the client's stream.
+        Create a new schedule segment for the broadcaster's stream.
 
         | Scopes                    | Description                         |
         | ------------------------- | ------------------------------------|
@@ -364,7 +371,7 @@ class ClientStream(Stream):
             A dictionary representing the created schedule segment.
         """
         data: Data[List[streams.Schedule]] = await self._state.http.create_channel_schedule_segment(
-            self._state.user.id,
+            self._user_id,
             datetime_to_str(start_time),
             timezone,
             duration,
@@ -382,7 +389,7 @@ class ClientStream(Stream):
                                       is_canceled: Optional[bool] = None,
                                       timezone: Optional[str] = None) -> streams.Schedule:
         """
-        Update an existing schedule segment for the client's stream.
+        Update an existing schedule segment for the broadcaster's stream.
 
         | Scopes                    | Description                         |
         | ------------------------- | ------------------------------------|
@@ -411,7 +418,7 @@ class ClientStream(Stream):
             A dictionary representing the updated schedule segment.
         """
         data: Data[List[streams.Schedule]] = await self._state.http.update_channel_schedule_segment(
-            self._state.user.id,
+            self._user_id,
             segment_id,
             start_time,
             duration,
@@ -424,7 +431,7 @@ class ClientStream(Stream):
 
     async def delete_schedule_segment(self, segment_id: str) -> None:
         """
-        Delete an existing schedule segment from the client's stream schedule.
+        Delete an existing schedule segment from the broadcaster's stream schedule.
 
         | Scopes                    | Description                         |
         | ------------------------- | ------------------------------------|
@@ -435,4 +442,4 @@ class ClientStream(Stream):
         segment_id: str
             The ID of the segment to delete.
         """
-        await self._state.http.delete_channel_schedule_segment(self._state.user.id, segment_id)
+        await self._state.http.delete_channel_schedule_segment(self._user_id, segment_id)

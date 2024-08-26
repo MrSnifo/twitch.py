@@ -27,21 +27,22 @@ from __future__ import annotations
 from .gateway import EventSubWebSocket, ReconnectWebSocket
 from .errors import HTTPException, ConnectionClosed
 from .state import ConnectionState
+from typing import TYPE_CHECKING
 from .utils import setup_logging
 from .http import HTTPClient
 import datetime
 import asyncio
 import aiohttp
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Optional, Type, Self, Callable, Any, List, Tuple, Dict, AsyncGenerator, Literal
-    from .types import chat, channels, search, streams, bits, analytics
+    from .types import chat, channels, search, streams, bits, analytics, users
+    from .user import User, ClientUser
     from .channel import ClientChannel
-    from .user import ClientUser, User
     from types import TracebackType
 
 import logging
+
 _logger = logging.getLogger(__name__)
 
 __all__ = ('Client',)
@@ -333,7 +334,8 @@ class Client:
                                user: User,
                                callback: Callable[..., Any],
                                *,
-                               options: Optional[Dict[str, Any]] = None) -> None:
+                               options: Optional[Dict[str, Any]] = None
+                               ) -> None:
         """
         Add a custom event for a user.
 
@@ -342,13 +344,13 @@ class Client:
         Parameters
         ----------
         name: str
-            The name of the [event](../events/events.md) to subscribe to.
+            The name of the event to subscribe to.
         user: User
             The user for whom the subscription is being created.
         callback: Callable[..., Any]
             The coroutine function to call when the event occurs.
         options: Optional[Dict[str, Any]]
-            Custom event condition.
+            Custom event conditions.
 
         Example
         --------
@@ -378,7 +380,8 @@ class Client:
                                                    name.replace('on_', '', 1),
                                                    self.ws.session_id,
                                                    callback=callback,
-                                                   condition_options=options)
+                                                   condition_options=options,
+                                                   user_auth=False)
 
     async def remove_custom_event(self, name: str, /, user: User) -> None:
         """
@@ -389,7 +392,7 @@ class Client:
         Parameters
         ----------
         name: str
-            The name of the [event](../events/events.md) to unsubscribe from.
+            The name of the event to unsubscribe from.
         user: User
             The user whose subscription is being removed.
         """
@@ -418,7 +421,7 @@ class Client:
         if self.loop is None:
             await self._async_loop()
         self._connection.ready = asyncio.Event()
-        data = await self.http.authorize(access_token, refresh_token)
+        data: users.OAuthToken = await self.http.initialize_authorization(access_token, refresh_token)
         await self._connection.initialize_client(user_id=data['user_id'])
 
     async def connect(self, *, reconnect: bool = True) -> None:

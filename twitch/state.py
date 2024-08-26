@@ -24,13 +24,14 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
+from .user import User, Broadcaster, ClientUser
+from typing import TYPE_CHECKING, overload
+from .errors import UnregisteredUser
 from .utils import datetime_to_str
-from .user import User, ClientUser
 import datetime
 import weakref
 import asyncio
 
-from typing import TYPE_CHECKING, overload
 if TYPE_CHECKING:
     from .types import Data, TTMData, users, Edata, chat, channels, search, PData, streams, bits, analytics, eventsub
     from typing import List, Tuple, Literal, Callable, Any, Optional, Dict, AsyncGenerator
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     from .http import HTTPClient
 
 import logging
+
 _logger = logging.getLogger(__name__)
 
 __all__ = ('ConnectionState',)
@@ -48,7 +50,7 @@ class ConnectionState:
     Represents the state of the connection.
     """
     __slots__ = ('http', 'user', 'is_live', '__dispatch', '__custom_dispatch', '_events', 'ready', 'total_cost',
-                 'max_total_cost', '_users', '_socket_debug')
+                 'max_total_cost', '_users', '_socket_debug', '_broadcasters', '_lock')
 
     def __init__(self,
                  dispatcher: Callable[..., Any],
@@ -56,39 +58,95 @@ class ConnectionState:
                  http: HTTPClient,
                  socket_debug: bool) -> None:
         self.http: HTTPClient = http
+        # Client User-related attributes
         self.user: Optional[ClientUser] = None
         self.is_live: Optional[bool] = None
+        # Callbacks for dispatching events
         self.__dispatch: Callable[..., Any] = dispatcher
         self.__custom_dispatch: Callable[..., Any] = custom_dispatch
+        # Event management
         self._events: Dict[str, Any] = {}
         self.ready: Optional[asyncio.Event] = None
-        self._socket_debug: bool = socket_debug
+        # Cost tracking
         self.total_cost: Optional[int] = None
         self.max_total_cost: Optional[int] = None
+        # User management
         self._users: weakref.WeakValueDictionary[str, User] = weakref.WeakValueDictionary()
+        self._broadcasters: Dict[str, Broadcaster] = {}
+        # Debug and synchronization
+        self._socket_debug: bool = socket_debug
+        self._lock = asyncio.Lock()
 
     def clear(self) -> None:
+        """Clears the state of the client by resetting attributes."""
         if self.ready is not None:
             self.ready.clear()
         self.user: Optional[ClientUser] = None
         self.is_live: Optional[bool] = None
         self._events: Dict[str, Any] = {}
         self._users: weakref.WeakValueDictionary[str, User] = weakref.WeakValueDictionary()
+        self._broadcasters: Dict[str, Broadcaster] = {}
 
-    def ws_connect(self) -> None:
-        self.__dispatch('connect')
+    def get_broadcasters(self) -> List[Broadcaster]:
+        """Retrieves all broadcasters"""
+        # Insure the broadcaster tokens exists.
+        for user_id, broadcaster in self._broadcasters.items():
+            if self.http.get_token(user_id):
+                continue
+            self.remove_user(user_id)
 
-    def state_ready(self) -> None:
-        self.ready.set()
-        self.__dispatch('ready')
+        return list(self._broadcasters.values())
 
-    def ws_disconnect(self) -> None:
-        self.ready.clear()
-        self.__dispatch('disconnect')
+    async def get_broadcaster(self, user_id: str) -> Broadcaster:
+        """Retrieve a broadcaster with a given user_id, ensuring the user is authorized."""
+        broadcaster = self._broadcasters.get(user_id)
+        if self.http.get_token(user_id):
+            if broadcaster is not None:
+                return broadcaster
 
-    async def socket_raw_receive(self, data: Any):
-        if self._socket_debug:
-            self.__dispatch('socket_raw_receive', data)
+        await self.remove_user(user_id)
+        raise UnregisteredUser('User %s is not registered. '
+                               'Please register the user using `register_user`.' % user_id)
+
+    def is_registered(self, user_id: str) -> bool:
+        """checks the user is registered and authorized."""
+        return self.http.get_token(user_id) is not None
+
+    async def register_user(self,
+                            access_token: Optional[str] = None,
+                            refresh_token: Optional[str] = None) -> Broadcaster:
+        """Registers a new user by initializing authorization and creating a broadcaster instance."""
+        async with self._lock:
+            data: users.OAuthToken = await self.http.initialize_authorization(access_token, refresh_token)
+            self._broadcasters[data['user_id']] = Broadcaster(data['user_id'], state=self)
+            self.user_register(self._broadcasters[data['user_id']])
+            _logger.debug('Registered successfully. Broadcaster created for user_id: %s',
+                          data['user_id'])
+
+        return self._broadcasters[data['user_id']]
+
+    async def remove_user(self, user_id: str) -> None:
+        """Removes a registered user with its token if exists."""
+        async with self._lock:
+            if self._broadcasters.get(user_id):
+                self._broadcasters.pop(user_id)
+
+            if self.is_registered(user_id):
+                self.http.remove_token(user_id)
+                _logger.debug('Unregistered successfully. Broadcaster removed for user_id: %s', user_id)
+
+    async def initialize_client(self, user_id: str) -> None:
+        """Initializes the client with user and channel information and checks if the user is live."""
+        user_data: Data[List[users.User]] = await self.http.get_users(user_id, [user_id])
+        channel_data: Data[List[channels.ChannelInfo]] = await self.http.get_channel_information(user_id,
+                                                                                                 [user_id])
+
+        self.user = ClientUser(state=self, user_data=user_data['data'][0], channel_data=channel_data['data'][0])
+        self._broadcasters[user_id] = self.user
+
+        # Checks if User is Streaming.
+        data: Optional[streams.StreamInfo] = await self.user.channel.stream.get_live()
+        self.is_live = True if data is not None else False
 
     async def create_subscription(self,
                                   user_id: str,
@@ -96,62 +154,74 @@ class ConnectionState:
                                   session_id: str,
                                   *,
                                   callback: Optional[Callable[..., Any]] = None,
-                                  condition_options: Optional[Dict[str, Any]] = None) -> None:
+                                  condition_options: Optional[Dict[str, Any]] = None,
+                                  user_auth: bool = True) -> None:
+        """Creates a subscription for the given event and user, and manages event callbacks."""
         subscription: Optional[Dict[str, Any]] = self.http.get_subscription_info(event)
         if callback is not None and subscription is None:
             raise TypeError(f'Unknown event: `on_{event}` is not a recognized event.')
 
         if subscription is not None:
-            if self._events.setdefault(user_id, {}).get(subscription['name']) is None:
-                data: TTMData[List[users.EventSubSubscription]] = await self.http.create_subscription(
-                    self.user.id,
-                    user_id,
-                    session_id,
-                    subscription_type=subscription['name'],
-                    subscription_version=subscription['version'],
-                    subscription_condition=subscription['condition'],
-                    subscription_condition_options=condition_options
-                )
-                self._events[user_id][data['data'][0]['type']] = {
-                    'id': data['data'][0]['id'],
-                    'name': event,
-                    'callbacks': [callback] if callback is not None else []
-                }
-                self.total_cost = data['total_cost']
-                self.max_total_cost = data['max_total_cost']
+            async with self._lock:
+                if self._events.setdefault(user_id, {}).get(subscription['name']) is None:
 
-                if data['total_cost'] >= 0.85 * data['max_total_cost']:
-                    _logger.warning('Total cost is getting high (%s). Consider unsubscribing from some events.',
-                                    data['total_cost'])
-            else:
-                self._events[user_id][subscription['name']]['callbacks'].append(callback)
+                    auth_user_id = self.user.id
+
+                    # Used on twitch.ext.bot.
+                    if user_auth:
+                        if self.http.get_token(user_id):
+                            auth_user_id = user_id
+                        else:
+                            raise UnregisteredUser('User %s is not registered. '
+                                                   'Please register the user using `register_user`.' % user_id)
+
+                    data: TTMData[List[users.EventSubSubscription]] = await self.http.create_subscription(
+                        auth_user_id,
+                        self.user.id,
+                        user_id,
+                        session_id,
+                        subscription_type=subscription['name'],
+                        subscription_version=subscription['version'],
+                        subscription_condition=subscription['condition'],
+                        subscription_condition_options=condition_options
+                    )
+                    self._events[user_id][data['data'][0]['type']] = {
+                        'id': data['data'][0]['id'],
+                        'name': event,
+                        'callbacks': [callback] if callback is not None else [],
+                        'auth_user_id': auth_user_id
+                    }
+                    self.total_cost = data['total_cost']
+                    self.max_total_cost = data['max_total_cost']
+
+                    if data['total_cost'] >= 0.85 * data['max_total_cost']:
+                        _logger.warning('Total cost is getting high (%s). '
+                                        'Consider unsubscribing from some events.',
+                                        data['total_cost'])
+                else:
+                    self._events[user_id][subscription['name']]['callbacks'].append(callback)
 
     async def remove_subscription(self, user_id: str, event: str) -> None:
+        """Removes a subscription for the given event and user."""
         subscription: Optional[Dict[str, str]] = self.http.get_subscription_info(event)
         if subscription is not None:
-            if self._events.setdefault(user_id, {}).get(subscription['name']) is not None:
-                await self.http.delete_subscription(self._events[user_id][subscription['name']]['id'])
-                self._events[user_id].pop(subscription['name'])
-                if self.user.id == user_id and event in ['channel_update',
-                                                         'user_update',
-                                                         'stream_online',
-                                                         'stream_offline']:
-                    _logger.warning('Default client event `%s` removed. Unexpected behavior may occur.',
-                                    event)
-
-    async def initialize_client(self, user_id: str) -> None:
-        user_data: Data[List[users.User]] = await self.http.get_users([user_id])
-        channel_data: Data[List[channels.ChannelInfo]] = await self.http.get_channel_information([user_id])
-        self.user = ClientUser(state=self, user_data=user_data['data'][0], channel_data=channel_data['data'][0])
-        # Checks if User is Streaming.
-        data: Optional[streams.StreamInfo] = await self.user.channel.stream.get_live()
-        self.is_live = True if data is not None else False
+            async with self._lock:
+                if self._events.setdefault(user_id, {}).get(subscription['name']) is not None:
+                    await self.http.delete_subscription(self._events[user_id]['auth_user_id'],
+                                                        self._events[user_id][subscription['name']]['id'])
+                    self._events[user_id].pop(subscription['name'])
+                    if self.user.id == user_id and event in ['channel_update',
+                                                             'user_update',
+                                                             'stream_online',
+                                                             'stream_offline']:
+                        _logger.warning('Default client event `%s` removed. Unexpected behavior may occur.',
+                                        event)
 
     def get_user(self, __id: str, /) -> User:
         try:
             return self._users[__id]
         except KeyError:
-            user = User(state=self, user_id=__id)
+            user = User(__id, self.user.id, state=self)
             self._users[__id] = user
             return user
 
@@ -163,13 +233,14 @@ class ConnectionState:
             _users = [self.get_user(user_id) for user_id in user_ids]
 
         if user_logins is not None and len(user_logins) >= 1:
-            data: Data[List[users.User]] = await self.http.get_users(user_logins=user_logins)
+            data: Data[List[users.User]] = await self.http.get_users(self.user.id, user_logins=user_logins)
             return [self.get_user(user['id']) for user in data['data']] + _users
 
         return _users
 
     async def get_users_chat_color(self, __users: List[User], /) -> List[chat.UserChatColor]:
-        data: Data[List[chat.UserChatColor]] = await self.http.get_user_chat_color([u.id for u in __users])
+        data: Data[List[chat.UserChatColor]] = await self.http.get_user_chat_color(self.user.id,
+                                                                                   [u.id for u in __users])
         return data['data']
 
     @overload
@@ -187,23 +258,23 @@ class ConnectionState:
     async def get_team_info(self,
                             team_name: Optional[str] = None,
                             team_id: Optional[str] = None) -> Optional[channels.Team]:
-        data: Data[List[channels.Team]] = await self.http.get_team_info(team_name, team_id)
+        data: Data[List[channels.Team]] = await self.http.get_team_info(self.user.id, team_name, team_id)
         return data['data'][0]
 
     async def get_global_emotes(self) -> Tuple[List[chat.Emote], str]:
-        data: Edata[List[chat.Emote]] = await self.http.get_global_emotes()
+        data: Edata[List[chat.Emote]] = await self.http.get_global_emotes(self.user.id)
         return data['data'], data['template']
 
     async def get_emote_sets(self, emote_set_ids: List[str]) -> Tuple[List[chat.Emote], str]:
-        data: Edata[List[chat.Emote]] = await self.http.get_emote_sets(emote_set_ids)
+        data: Edata[List[chat.Emote]] = await self.http.get_emote_sets(self.user.id, emote_set_ids)
         return data['data'], data['template']
 
     async def get_global_chat_badges(self) -> List[chat.Badge]:
-        data: Data[List[chat.Badge]] = await self.http.get_global_chat_badges()
+        data: Data[List[chat.Badge]] = await self.http.get_global_chat_badges(self.user.id)
         return data['data']
 
     async def get_global_cheermotes(self) -> List[bits.Cheermote]:
-        data: Data[List[bits.Cheermote]] = await self.http.get_cheermotes()
+        data: Data[List[bits.Cheermote]] = await self.http.get_cheermotes(self.user.id)
         return data['data']
 
     async def fetch_channels_search(self,
@@ -217,7 +288,7 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[search.ChannelSearch]] = await self.http.search_channels(**kwargs)
+            data: PData[List[search.ChannelSearch]] = await self.http.search_channels(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -240,7 +311,7 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[streams.StreamInfo]] = await self.http.get_streams(**kwargs)
+            data: PData[List[streams.StreamInfo]] = await self.http.get_streams(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -265,7 +336,7 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[channels.Video]] = await self.http.get_videos(**kwargs)
+            data: PData[List[channels.Video]] = await self.http.get_videos(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -288,14 +359,14 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[channels.Clip]] = await self.http.get_clips(**kwargs)
+            data: PData[List[channels.Clip]] = await self.http.get_clips(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
                 break
 
     async def get_content_classification_labels(self, locale: streams.Locale = 'en-US') -> List[streams.CCLInfo]:
-        data: Data[List[streams.CCLInfo]] = await self.http.get_content_classification_labels(locale)
+        data: Data[List[streams.CCLInfo]] = await self.http.get_content_classification_labels(self.user.id, locale)
         return data['data']
 
     async def fetch_top_games(self, first: int = 20) -> AsyncGenerator[List[search.Game], None]:
@@ -304,7 +375,7 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[search.Game]] = await self.http.get_top_games(**kwargs)
+            data: PData[List[search.Game]] = await self.http.get_top_games(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -319,7 +390,7 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[search.CategorySearch]] = await self.http.search_categories(**kwargs)
+            data: PData[List[search.CategorySearch]] = await self.http.search_categories(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -329,7 +400,7 @@ class ConnectionState:
                         game_ids: Optional[List[str]] = None,
                         game_names: Optional[List[str]] = None,
                         igdb_ids: Optional[List[str]] = None) -> List[search.Game]:
-        data: Data[List[search.Game]] = await self.http.get_games(game_ids, game_names, igdb_ids)
+        data: Data[List[search.Game]] = await self.http.get_games(self.user.id, game_ids, game_names, igdb_ids)
         return data['data']
 
     async def fetch_extension_analytics(self,
@@ -347,7 +418,7 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[analytics.Extension]] = await self.http.get_extension_analytics(**kwargs)
+            data: PData[List[analytics.Extension]] = await self.http.get_extension_analytics(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
@@ -368,11 +439,29 @@ class ConnectionState:
             'after': None
         }
         while True:
-            data: PData[List[analytics.Game]] = await self.http.get_game_analytics(**kwargs)
+            data: PData[List[analytics.Game]] = await self.http.get_game_analytics(self.user.id, **kwargs)
             yield data['data']
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
                 break
+
+    def ws_connect(self) -> None:
+        self.__dispatch('connect')
+
+    def state_ready(self) -> None:
+        self.ready.set()
+        self.__dispatch('ready')
+
+    def ws_disconnect(self) -> None:
+        self.ready.clear()
+        self.__dispatch('disconnect')
+
+    async def socket_raw_receive(self, data: Any):
+        if self._socket_debug:
+            self.__dispatch('socket_raw_receive', data)
+
+    def user_register(self, broadcaster: Broadcaster) -> None:
+        self.__dispatch('user_register', broadcaster)
 
     def parse(self, data: EvData[Any]) -> None:
         try:
@@ -595,12 +684,6 @@ class ConnectionState:
         self.__dispatch('stream_offline', data)
 
     # Users
-    def parse_user_authorization_grant(self, data: eventsub.users.AuthorizationGrantEvent) -> None:
-        self.__dispatch('user_authorization_grant', data)
-
-    def parse_user_authorization_revoke(self, data: eventsub.users.AuthorizationRevokeEvent) -> None:
-        self.__dispatch('user_authorization_revoke', data)
-
     def parse_user_update(self, data: eventsub.users.UserUpdateEvent) -> None:
         self.user.name = data['user_login']
         self.user.display_name = data['user_name']

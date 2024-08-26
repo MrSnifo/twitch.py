@@ -1,7 +1,9 @@
 ---
+icon: fontawesome/solid/turn-up
 hide:
   - toc
 ---
+
 
 To set up Twitchify and create an app on the Twitch Developer Console, follow these steps:
 
@@ -9,12 +11,22 @@ To set up Twitchify and create an app on the Twitch Developer Console, follow th
 
 Ensure you have `pip` installed, then run the following command in your terminal or command prompt:
 
-```shell
-pip install twitchify
+#### On Windows
+
+```bash
+py -3 -m pip install -U twitchify
 ```
 
-???+ Note
-    Cloning the repository is for beta releases and not required for regular usage.
+#### On Linux/macOS
+
+```bash
+python3 -m pip install -U twitchify
+```
+
+#### Clone
+
+!!! Info
+    Cloning the repository is for accessing beta releases.
 
 ```shell
 git clone https://github.com/MrSniFo/Twitchify
