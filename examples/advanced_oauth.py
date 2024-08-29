@@ -29,7 +29,7 @@ class Twitch(Client):
         """
         Custom method to manage device authentication flow.
         """
-        with self.auth_flow:
+        async with self.auth_flow:
             # Retrieve device code and display the verification URL
             user_code, device_code, expires_in, interval = await self.auth_flow.get_device_code()
             print(f'Verification URI: https://www.twitch.tv/activate?device-code={device_code}')
