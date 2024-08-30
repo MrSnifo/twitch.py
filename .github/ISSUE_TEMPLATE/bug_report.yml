@@ -30,16 +30,18 @@ body:
     id: logs
     attributes:
       label: "Logs"
-      description: Copy and paste relevant log output with Debug mode enabled (log level), and don't worry, your tokens are hidden.
+      description: |
+        Copy and paste relevant log output with Debug mode enabled (log level).
+        **Warning: Sensitive information or tokens are included in the logs. Clear any tokens or
+        sensitive data before submitting.**
       render: bash
     validations:
       required: false
-      
   - type: dropdown
     id: os
     attributes:
       label: "OS"
-      description: What is the impacted environment ?
+      description: What is the impacted environment?
       multiple: true
       options:
         - Windows
