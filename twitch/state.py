@@ -152,43 +152,36 @@ class ConnectionState:
                                   event: str,
                                   session_id: str,
                                   *,
-                                  callback: Optional[Callable[..., Any]] = None,
-                                  condition_options: Optional[Dict[str, Any]] = None,
-                                  user_auth: bool = True) -> None:
+                                  callbacks: Optional[List[Callable[..., Any]]] = None,
+                                  condition_options: Optional[Dict[str, Any]] = None) -> None:
         """Creates a subscription for the given event and user, and manages event callbacks."""
         subscription: Optional[Dict[str, Any]] = self.http.get_subscription_info(event)
-        if callback is not None and subscription is None:
+
+        if callbacks is not None and subscription is None:
             raise TypeError(f'Unknown event: `on_{event}` is not a recognized event.')
 
         if subscription is not None:
             async with self._lock:
                 if self._events.setdefault(user_id, {}).get(subscription['name']) is None:
-
-                    auth_user_id = self.user.id
-
-                    # Used on twitch.ext.bot.
-                    if user_auth:
-                        if self.http.get_token(user_id):
-                            auth_user_id = user_id
-                        else:
-                            raise UnregisteredUser('User %s is not registered. '
-                                                   'Please register the user using `register_user`.' % user_id)
+                    if condition_options:
+                        subscription.update(subscription['name'])
 
                     data: TTMData[List[users.EventSubSubscription]] = await self.http.create_subscription(
-                        auth_user_id,
+                        self.user.id,
                         self.user.id,
                         user_id,
                         session_id,
                         subscription_type=subscription['name'],
                         subscription_version=subscription['version'],
-                        subscription_condition=subscription['condition'],
-                        subscription_condition_options=condition_options
+                        subscription_condition=subscription['condition']
                     )
                     self._events[user_id][data['data'][0]['type']] = {
                         'id': data['data'][0]['id'],
                         'name': event,
-                        'callbacks': [callback] if callback is not None else [],
-                        'auth_user_id': auth_user_id
+                        'version': subscription['version'],
+                        'condition_options': condition_options,
+                        'callbacks': callbacks if callbacks is not None else [],
+                        'auth_user_id': self.user.id
                     }
                     self.total_cost = data['total_cost']
                     self.max_total_cost = data['max_total_cost']
@@ -198,7 +191,9 @@ class ConnectionState:
                                         'Consider unsubscribing from some events.',
                                         data['total_cost'])
                 else:
-                    self._events[user_id][subscription['name']]['callbacks'].append(callback)
+                    self._events[user_id][subscription['name']]['callbacks'] = list(dict.fromkeys(
+                        self._events[user_id][subscription['name']]['callbacks'] + callbacks
+                    ))
 
     async def remove_subscription(self, user_id: str, event: str) -> None:
         """Removes a subscription for the given event and user."""
@@ -443,6 +438,29 @@ class ConnectionState:
             kwargs['after'] = data['pagination'].get('cursor')
             if not kwargs['after']:
                 break
+
+    async def initialize_after_disconnect(self, session_id: str) -> None:
+        _logger.debug('Initiating re-subscription process after disconnection for session ID: %s',
+                      session_id)
+
+        # Keeps the client updated.
+        await self.initialize_client(self.user.id)
+
+        events = self._events.copy()
+        self._events = {}
+
+        for user_id, events in events.items():
+            for event_type, event_details in events.items():
+                try:
+                    await self.create_subscription(user_id,
+                                                   event_details['name'],
+                                                   session_id,
+                                                   callbacks=event_details['callbacks'],
+                                                   condition_options=event_details['condition_options'])
+                except Exception as exc:
+                    _logger.exception('Error processing event `on_%s`: %s',
+                                      event_details['name'],
+                                      str(exc))
 
     def ws_connect(self) -> None:
         self.__dispatch('connect')

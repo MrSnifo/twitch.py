@@ -32,7 +32,7 @@ import asyncio
 import json
 
 if TYPE_CHECKING:
-    from typing import Optional, Set, ClassVar, Any, Self, Dict
+    from typing import Optional, Set, ClassVar, Any, Self
     from .state import ConnectionState
     from .client import Client
 
@@ -85,15 +85,16 @@ class EventSubWebSocket:
     def is_open(self) -> bool:
         return not self.socket.closed
 
-    async def create_subscriptions(self, *, events: Set[str]) -> None:
-        """Create subscriptions for given events."""
-        for event in events:
-            try:
-                subscription: Optional[Dict[str, str]] = self._state.http.get_subscription_info(event)
-                if subscription is not None:
+    async def create_subscriptions(self, *, events: Set[str], initial: bool) -> None:
+        """initial subscriptions."""
+        if initial:
+            for event in events:
+                try:
                     await self._state.create_subscription(self._state.user.id, event, self.session_id)
-            except Exception as exc:
-                _logger.exception('Error processing event `on_%s`: %s', event, str(exc))
+                except Exception as exc:
+                    _logger.exception('Error processing event `on_%s`: %s', event, str(exc))
+        else:
+            await self._state.initialize_after_disconnect(self.session_id)
         self._state.state_ready()
 
     @classmethod
@@ -101,21 +102,24 @@ class EventSubWebSocket:
                                    client: Client,
                                    state: ConnectionState,
                                    gateway: Optional[str] = None,
-                                   reconnect: bool = False) -> EventSubWebSocket:
+                                   resume: bool = False,
+                                   initial: bool = False) -> EventSubWebSocket:
         """Initialize websocket connection."""
         gateway = gateway or cls.DEFAULT_GATEWAY
-        socket = await client.http.ws_connect(url=gateway, reconnect=reconnect)
+        socket = await client.http.ws_connect(url=gateway, resume=resume)
         state.ws_connect()
         ws: Self = cls(socket, state, loop=client.loop)
         # Waits for welcome message.
         await ws.poll_handle_dispatch()
-        if not reconnect:
+        if not resume:
             # Get default events.
             events = {attr.replace('on_', '', 1) for attr in dir(client) if attr.startswith('on_')}
             # Add additional default events.
             events.update({'channel_update', 'user_update', 'stream_online', 'stream_offline'})
-            task = ws.create_subscriptions(events=events)
+            task = ws.create_subscriptions(events=events, initial=initial)
             ws._subscriptions_task = ws.loop.create_task(task, name='Twitchify:Subscriptions')
+        else:
+            state.state_ready()
         return ws
 
     async def poll_handle_dispatch(self) -> None:

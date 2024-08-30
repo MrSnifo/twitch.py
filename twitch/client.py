@@ -340,6 +340,9 @@ class Client:
 
         This method registers a callback function for a custom event and user.
 
+        ???+ Warning
+             You must be at least a moderator on their channel to subscribe to events on behalf of other users.
+
         Parameters
         ----------
         name: str
@@ -378,9 +381,8 @@ class Client:
         await self._connection.create_subscription(user.id,
                                                    name.replace('on_', '', 1),
                                                    self.ws.session_id,
-                                                   callback=callback,
-                                                   condition_options=options,
-                                                   user_auth=False)
+                                                   callbacks=[callback],
+                                                   condition_options=options)
 
     async def remove_custom_event(self, name: str, /, user: User) -> None:
         """
@@ -437,25 +439,33 @@ class Client:
         reconnect: bool
             Indicates whether to attempt reconnection if the WebSocket connection is lost.
         """
-        kwargs: Dict[str, Any] = {'reconnect': False}
+        kwargs: Dict[str, Any] = {'resume': False, 'initial': True}
         while not self.is_closed():
             try:
                 websocket = EventSubWebSocket.initialize_websocket(self, self._connection, **kwargs)
                 self.ws = await asyncio.wait_for(websocket, timeout=60.0)
+                kwargs['initial'] = False
                 while True:
                     await self.ws.poll_handle_dispatch()
             except ReconnectWebSocket as exc:
                 _logger.debug('Websocket is reconnecting to %s', exc.url)
                 kwargs['gateway'] = exc.url
-                kwargs['reconnect'] = True
+                kwargs['resume'] = True
+
             except (OSError, HTTPException, ConnectionClosed, asyncio.TimeoutError, aiohttp.ClientError) as exc:
                 self._connection.ws_disconnect()
-                if not reconnect or self.is_closed():
+                if not reconnect:
                     await self.close()
+                    if isinstance(exc, ConnectionClosed) and exc.code == 1000:
+                        return
                     raise
-                _logger.exception("%s Attempting a reconnect in 8s", exc)
-                await asyncio.sleep(8)
-                kwargs = {'reconnect': False}
+
+                if self.is_closed():
+                    return
+
+                _logger.exception('Attempting a reconnect in 12s')
+                await asyncio.sleep(12)
+                kwargs['initial'] = False
                 continue
 
     async def start(self, access_token: str, refresh_token: Optional[str] = None, *, reconnect: bool = True) -> None:

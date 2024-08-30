@@ -160,7 +160,7 @@ class HTTPClient:
                          url: str,
                          *,
                          compress: int = 0,
-                         reconnect: bool = False) -> aiohttp.ClientWebSocketResponse:
+                         resume: bool = False) -> aiohttp.ClientWebSocketResponse:
         """Establishes a WebSocket connection to the specified URL with optional compression."""
         kwargs = {
             'max_msg_size': 0,
@@ -173,7 +173,7 @@ class HTTPClient:
             },
             'compress': compress,
         }
-        url: str = f'ws://localhost:{self.cli_port}/ws' if (self.cli and not reconnect) else url
+        url: str = f'ws://localhost:{self.cli_port}/ws' if (self.cli and not resume) else url
         return await self.__session.ws_connect(url, **kwargs)
 
     async def request(self, __id: Optional[str], /, route: Route, **kwargs: Any) -> Any:
@@ -290,44 +290,48 @@ class HTTPClient:
 
         while True:
             current_time = time.time()
-            for user_id, token_data in self.__tokens.items():
-                elapsed_time = int(time.time() - current_time) + self.KEEP_ALIVE_LOOP
-                self.__tokens[user_id]['validate_in'] = token_data['validate_in'] - elapsed_time
-                self.__tokens[user_id]['expire_in'] = token_data['expire_in'] - elapsed_time
+            try:
+                for user_id, token_data in self.__tokens.items():
+                    elapsed_time = int(time.time() - current_time) + self.KEEP_ALIVE_LOOP
+                    self.__tokens[user_id]['validate_in'] = token_data['validate_in'] - elapsed_time
+                    self.__tokens[user_id]['expire_in'] = token_data['expire_in'] - elapsed_time
 
-                # If token is about to expire (within 5 minutes)
-                if self.__tokens[user_id]['expire_in'] <= 300:
-                    if self.client_secret and token_data['refresh_token']:
+                    # If token is about to expire (within 5 minutes)
+                    if self.__tokens[user_id]['expire_in'] <= 300:
+                        if self.client_secret and token_data['refresh_token']:
+                            try:
+                                # Regenerate the token
+                                data: users.OAuthRefreshToken = await self.refresh_token(token_data['refresh_token'])
+                                self.__tokens[user_id].update({
+                                    'access_token': data['access_token'],
+                                    'refresh_token': data['refresh_token'],
+                                    'expire_in': data['expires_in'],
+                                    'validate_in': self.TOKEN_VALIDATE
+                                })
+                                _logger.debug('Refreshed token for user %s.', user_id)
+                            except HTTPException as exc:
+                                _logger.warning('Failed to refresh token for user %s: %s', user_id, exc.text)
+                                # Invalidate refresh token if regeneration fails
+                                self.__tokens[user_id]['refresh_token'] = None
+                        else:
+                            _logger.warning('Token for user %s is expiring soon due to missing client '
+                                            'secret or refresh token.', user_id)
+
+                    if self.__tokens[user_id]['validate_in'] <= 300:
                         try:
-                            # Regenerate the token
-                            data: users.OAuthRefreshToken = await self.refresh_token(token_data['refresh_token'])
+                            data: users.OAuthToken = await self.validate_token(self.__tokens[user_id]['access_token'])
                             self.__tokens[user_id].update({
-                                'access_token': data['access_token'],
-                                'refresh_token': data['refresh_token'],
                                 'expire_in': data['expires_in'],
-                                'validate_in': self.TOKEN_VALIDATE
+                                'validate_in': 3600  # Reset validate_in
                             })
-                            _logger.debug('Refreshed token for user %s.', user_id)
+                            _logger.debug('Revalidated token for user %s.', user_id)
                         except HTTPException as exc:
-                            _logger.warning('Failed to refresh token for user %s: %s', user_id, exc.text)
-                            # Invalidate refresh token if regeneration fails
-                            self.__tokens[user_id]['refresh_token'] = None
-                    else:
-                        _logger.warning('Token for user %s is expiring soon due to missing client '
-                                        'secret or refresh token.', user_id)
+                            _logger.warning('Failed to revalidate token for user %s: %s', user_id, exc.text)
 
-                if self.__tokens[user_id]['validate_in'] <= 300:
-                    try:
-                        data: users.OAuthToken = await self.validate_token(self.__tokens[user_id]['access_token'])
-                        self.__tokens[user_id].update({
-                            'expire_in': data['expires_in'],
-                            'validate_in': 3600  # Reset validate_in
-                        })
-                        _logger.debug('Revalidated token for user %s.', user_id)
-                    except HTTPException as exc:
-                        _logger.warning('Failed to revalidate token for user %s: %s', user_id, exc.text)
-
-            await asyncio.sleep(self.KEEP_ALIVE_LOOP)
+            except (OSError, Exception) as exc:
+                _logger.exception('Twitchify:keep_alive', exc)
+            finally:
+                await asyncio.sleep(self.KEEP_ALIVE_LOOP)
 
     @staticmethod
     def get_subscription_info(event: str) -> Optional[Dict[str, Any]]:
@@ -337,337 +341,337 @@ class HTTPClient:
             'automod_message_hold': {
                 'name': 'automod.message.hold',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'automod_message_update': {
                 'name': 'automod.message.update',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'automod_settings_update': {
                 'name': 'automod.settings.update',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'automod_terms_update': {
                 'name': 'automod.terms.update',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'channel_update': {
                 'name': 'channel.update',
                 'version': '2',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'follow': {
                 'name': 'channel.follow',
                 'version': '2',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'ad_break_begin': {
                 'name': 'channel.ad_break.begin',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'chat_clear': {
                 'name': 'channel.chat.clear',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'chat_clear_user_messages': {
                 'name': 'channel.chat.clear_user_messages',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'chat_message': {
                 'name': 'channel.chat.message',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'chat_message_delete': {
                 'name': 'channel.chat.message_delete',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'chat_notification': {
                 'name': 'channel.chat.notification',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'chat_settings_update': {
                 'name': 'channel.chat_settings.update',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'chat_user_message_hold': {
                 'name': 'channel.chat.user_message_hold',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'chat_user_message_update': {
                 'name': 'channel.chat.user_message_update',
                 'version': '1',
-                'condition': {'client': 'user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
             'subscribe': {
                 'name': 'channel.subscribe',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'subscription_end': {
                 'name': 'channel.subscription.end',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'subscription_gift': {
                 'name': 'channel.subscription.gift',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'subscription_message': {
                 'name': 'channel.subscription.message',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'cheer': {
                 'name': 'channel.cheer',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'raid': {
                 'name': 'channel.raid',
                 'version': '1',
-                'condition': {'client': None, 'user': 'to_broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'to_broadcaster_user_id'}
             },
             'ban': {
                 'name': 'channel.ban',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'unban': {
                 'name': 'channel.unban',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'unban_request_create': {
                 'name': 'channel.unban_request.create',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'unban_request_resolve': {
                 'name': 'channel.unban_request.resolve',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'moderate': {
                 'name': 'channel.moderate',
                 'version': '2',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'moderator_add': {
                 'name': 'channel.moderator.add',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'moderator_remove': {
                 'name': 'channel.moderator.remove',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'points_automatic_reward_redemption_add': {
                 'name': 'channel.channel_points_automatic_reward_redemption.add',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'points_reward_add': {
                 'name': 'channel.channel_points_custom_reward.add',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'points_reward_update': {
                 'name': 'channel.channel_points_custom_reward.update',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'points_reward_remove': {
                 'name': 'channel.channel_points_custom_reward.remove',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'points_reward_redemption_add': {
                 'name': 'channel.channel_points_custom_reward_redemption.add',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'points_reward_redemption_update': {
                 'name': 'channel.channel_points_custom_reward_redemption.update',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'poll_begin': {
                 'name': 'channel.poll.begin',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'poll_progress': {
                 'name': 'channel.poll.progress',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'poll_end': {
                 'name': 'channel.poll.end',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'prediction_begin': {
                 'name': 'channel.prediction.begin',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'prediction_progress': {
                 'name': 'channel.prediction.progress',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'prediction_lock': {
                 'name': 'channel.prediction.lock',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'prediction_end': {
                 'name': 'channel.prediction.end',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'suspicious_user_message': {
                 'name': 'channel.suspicious_user.message',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'suspicious_user_update': {
                 'name': 'channel.suspicious_user.update',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'vip_add': {
                 'name': 'channel.vip.add',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'vip_remove': {
                 'name': 'channel.vip.remove',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'warning_acknowledge': {
                 'name': 'channel.warning.acknowledge',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'warning_send': {
                 'name': 'channel.warning.send',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'charity_campaign_donate': {
                 'name': 'channel.charity_campaign.donate',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'charity_campaign_start': {
                 'name': 'channel.charity_campaign.start',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'charity_campaign_progress': {
                 'name': 'channel.charity_campaign.progress',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'charity_campaign_stop': {
                 'name': 'channel.charity_campaign.stop',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'goal_begin': {
                 'name': 'channel.goal.begin',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'goal_progress': {
                 'name': 'channel.goal.progress',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'goal_end': {
                 'name': 'channel.goal.end',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'hype_train_begin': {
                 'name': 'channel.hype_train.begin',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'hype_train_progress': {
                 'name': 'channel.hype_train.progress',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'hype_train_end': {
                 'name': 'channel.hype_train.end',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'shield_mode_begin': {
                 'name': 'channel.shield_mode.begin',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'shield_mode_end': {
                 'name': 'channel.shield_mode.end',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'shoutout_create': {
                 'name': 'channel.shoutout.create',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'shoutout_received': {
                 'name': 'channel.shoutout.receive',
                 'version': '1',
-                'condition': {'client': 'moderator_user_id', 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'stream_online': {
                 'name': 'stream.online',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'stream_offline': {
                 'name': 'stream.offline',
                 'version': '1',
-                'condition': {'client': None, 'user': 'broadcaster_user_id'}
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'user_authorization_grant': {
                 'name': 'user.authorization.grant',
                 'version': '1',
-                'condition': {'client': 'client_id', 'user': None}
+                'condition': {'broadcaster': 'broadcaster_id', 'user': None}
             },
             'user_authorization_revoke': {
                 'name': 'user.authorization.revoke',
                 'version': '1',
-                'condition': {'client': 'client_id', 'user': None}
+                'condition': {'broadcaster': 'broadcaster_id', 'user': None}
             },
             'user_update': {
                 'name': 'user.update',
                 'version': '1',
-                'condition': {'client': None, 'user': 'user_id'}
+                'condition': {'broadcaster': None, 'user': 'user_id'}
             },
             'whisper_received': {
                 'name': 'user.whisper.message',
                 'version': '1',
-                'condition': {'client': None, 'user': 'user_id'}
+                'condition': {'broadcaster': None, 'user': 'user_id'}
             }
         }
         return subscriptions.get(event)
@@ -675,14 +679,13 @@ class HTTPClient:
     def create_subscription(
             self,
             __id: str,
-            client_user_id: str,
+            broadcaster_id: str,
             user_id: str,
             session_id: str,
             *,
             subscription_type: str,
             subscription_version: str,
-            subscription_condition: Dict[str, Any],
-            subscription_condition_options: Optional[Dict[str, Any]] = None
+            subscription_condition: Dict[str, Any]
     ) -> Response[TTMData[List[users.EventSubSubscription]]]:
         """Create an EventSub Websocket Subscription."""
         route = Route('POST', 'eventsub/subscriptions')
@@ -691,18 +694,15 @@ class HTTPClient:
 
         condition = {}
 
-        # Ensure 'client' key is properly assigned
-        client_key = subscription_condition.get('client')
+        # Ensure 'broadcaster' key is properly assigned
+        client_key = subscription_condition.get('broadcaster')
         if client_key:
-            condition[client_key] = self.client_id if client_key == 'client_id' else client_user_id
+            condition[client_key] = broadcaster_id
 
         # Ensure 'user' key is properly assigned
         user_key = subscription_condition.get('user')
         if user_key:
             condition[user_key] = user_id
-
-        if subscription_condition_options:
-            condition.update(subscription_condition_options)
 
         body = {
             'type': subscription_type,

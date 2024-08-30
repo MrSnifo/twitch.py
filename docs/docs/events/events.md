@@ -428,7 +428,8 @@ ___
 ___
 
 - `on_subscribe`
-    - **Description**: Triggered when a user subscribes to the channel.
+    - **Description**: Triggers when a user transitions from not subscribed to subscribed.
+                       May also trigger on manual re-subs after a lapse but not for auto-renews.
     - **Scope**: `channel:read:subscriptions`
     - **Data Type**: [`SubscribeEvent`][twitch.types.eventsub.channels.SubscribeEvent]
     - **Usage**:

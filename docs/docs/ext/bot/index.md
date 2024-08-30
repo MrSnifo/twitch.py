@@ -13,7 +13,6 @@ hide:
 ## Features
 
 - **User Registration**: Register broadcasters with their access tokens and manage their tokens for API requests.
-- **Custom Event Subscription**: Subscribe to custom events without any cost.
 - **Broadcaster Management**: Retrieve and manage registered broadcasters within the bot's connection.
 - **Flexible Authentication**: Authenticate users using their access or refresh tokens.
   

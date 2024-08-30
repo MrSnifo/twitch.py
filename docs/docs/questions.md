@@ -41,8 +41,6 @@ Essentially, the Client is a mix of the app and its user.
 
 - **Bot**: The Bot extends the functionality of the Client. It allows you to register access tokens of different users.
 
-The tasks that can only be performed by the Client can also be done with the Bot. Additionally,
-creating custom events with the Bot **won’t incur extra costs** for registered users.
 
 ### Can You Scale Twitchify?
 Currently, scaling Twitchify directly isn't possible, but it's possible with

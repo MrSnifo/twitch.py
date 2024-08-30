@@ -25,12 +25,12 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload
-import asyncio
 import twitch
 
 if TYPE_CHECKING:
-    from typing import Optional, Callable, Any, Dict, List
     from twitch.user import User, Broadcaster
+    from typing import Optional, List
+
 
 import logging
 _logger = logging.getLogger(__name__)
@@ -66,46 +66,6 @@ class Bot(twitch.Client):
     """
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:
         super().__init__(client_id=client_id, client_secret=client_secret, **options)
-
-    async def add_custom_event(self,
-                               name: str,
-                               /,
-                               user: User,
-                               callback: Callable[..., Any],
-                               *,
-                               options: Optional[Dict[str, Any]] = None,
-                               user_auth: bool = True
-                               ) -> None:
-        """
-        Add a custom event for a user.
-
-        Registers a callback function for a custom event on behalf of the user.
-
-        Parameters
-        ----------
-        name: str
-            The name of the event to subscribe to.
-        user: User
-            The user for whom the event subscription is created.
-        callback: Callable[..., Any]
-            Coroutine function to invoke when the event occurs.
-        options: Optional[Dict[str, Any]]
-            Additional conditions for the custom event.
-        user_auth: bool
-            Determines whether to use the user's registered tokens for authentication.
-        """
-        if not asyncio.iscoroutinefunction(callback):
-            raise TypeError('The event callback must be a coroutine function')
-
-        if not name.startswith('on_'):
-            raise TypeError('Event names must begin with "on_" for recognition.')
-
-        await self._connection.create_subscription(user.id,
-                                                   name.replace('on_', '', 1),
-                                                   self.ws.session_id,
-                                                   callback=callback,
-                                                   condition_options=options,
-                                                   user_auth=user_auth)
 
     def get_broadcasters(self) -> List[Broadcaster]:
         """
