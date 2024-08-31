@@ -81,7 +81,7 @@ class Route:
 class HTTPClient:
     """Represents an asynchronous HTTP client for sending HTTP requests."""
 
-    # -300 seconds by default.
+    # Time interval (in seconds) before token validation. -300 seconds by default.
     TOKEN_VALIDATE: ClassVar[int] = 3600
 
     # Sleep for a reasonable amount of time before checking again
@@ -109,7 +109,7 @@ class HTTPClient:
 
         # HTTP session and task management
         self.__session: Optional[aiohttp.ClientSession] = None
-        self.__keep_alive: Optional[asyncio.Task] = None
+        self.__token_keep_alive_task: Optional[asyncio.Task] = None
         self.loop: asyncio.AbstractEventLoop = loop
 
         # Token storage
@@ -150,10 +150,10 @@ class HTTPClient:
         if self.__session and self.__session.closed:
             self.__session: Optional[aiohttp.ClientSession] = None
 
-        if self.__keep_alive is not None and not self.__keep_alive.done():
-            self.__keep_alive.cancel()
+        if self.__token_keep_alive_task is not None and not self.__token_keep_alive_task.done():
+            self.__token_keep_alive_task.cancel()
 
-        self.__keep_alive: Optional[asyncio.Task] = None
+        self.__token_keep_alive_task: Optional[asyncio.Task] = None
         self.__tokens: Dict[str, Dict[str, Any]] = {}
 
     async def ws_connect(self,
@@ -255,8 +255,9 @@ class HTTPClient:
                 # Update the existing token information.
                 self.add_token(data['user_id'], access_token, data['expires_in'], refresh_token)
                 # Keep the access tokens fresh.
-                if self.__keep_alive is None or self.__keep_alive.done():
-                    self.__keep_alive = self.loop.create_task(self.keep_alive(), name='Twitchify:keep_alive')
+                if self.__token_keep_alive_task is None or self.__token_keep_alive_task.done():
+                    self.__token_keep_alive_task = self.loop.create_task(self.token_keep_alive(),
+                                                                         name='Twitchify:keep_alive')
                     _logger.debug('Keep-alive task has been created.')
                 return data
 
@@ -285,14 +286,15 @@ class HTTPClient:
                                 'client_id': self.client_id}
         return self.request(None, Route('POST', 'token', oauth2=True), data=body)
 
-    async def keep_alive(self) -> None:
+    async def token_keep_alive(self) -> None:
         """Keeps the tokens alive by regenerating or revalidating when necessary."""
 
+        current_time = time.time()
+
         while True:
-            current_time = time.time()
             try:
                 for user_id, token_data in self.__tokens.items():
-                    elapsed_time = int(time.time() - current_time) + self.KEEP_ALIVE_LOOP
+                    elapsed_time = int(time.time() - current_time)
                     self.__tokens[user_id]['validate_in'] = token_data['validate_in'] - elapsed_time
                     self.__tokens[user_id]['expire_in'] = token_data['expire_in'] - elapsed_time
 
@@ -322,16 +324,23 @@ class HTTPClient:
                             data: users.OAuthToken = await self.validate_token(self.__tokens[user_id]['access_token'])
                             self.__tokens[user_id].update({
                                 'expire_in': data['expires_in'],
-                                'validate_in': 3600  # Reset validate_in
+                                'validate_in': self.TOKEN_VALIDATE
                             })
                             _logger.debug('Revalidated token for user %s.', user_id)
                         except HTTPException as exc:
                             _logger.warning('Failed to revalidate token for user %s: %s', user_id, exc.text)
 
             except (OSError, Exception) as exc:
-                _logger.exception('Twitchify:keep_alive', exc)
-            finally:
-                await asyncio.sleep(self.KEEP_ALIVE_LOOP)
+                _logger.exception('An error occurred during the token:keep-alive loop: %s.'
+                                  ' Retrying in 30 seconds.', exc)
+                # Reset timer.
+                current_time = time.time()
+                await asyncio.sleep(30)
+                continue
+
+            # Reset timer.
+            current_time = time.time()
+            await asyncio.sleep(self.KEEP_ALIVE_LOOP)
 
     @staticmethod
     def get_subscription_info(event: str) -> Optional[Dict[str, Any]]:
@@ -819,10 +828,12 @@ class HTTPClient:
             is_branded_content: is_branded_content,
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('PATCH', 'channels', broadcaster_id=broadcaster_id), data=body)
+        return self.request(broadcaster_id, Route('PATCH', 'channels', broadcaster_id=broadcaster_id),
+                            data=body)
 
     def get_channel_editors(self, broadcaster_id: str) -> Response[Data[List[channels.Editor]]]:
-        return self.request(broadcaster_id, Route('GET', 'channels/editors', broadcaster_id=broadcaster_id))
+        return self.request(broadcaster_id, Route('GET', 'channels/editors',
+                                                  broadcaster_id=broadcaster_id))
 
     def get_followed_channels(self,
                               user_id: str,
@@ -927,7 +938,8 @@ class HTTPClient:
             'first': first,
         }
 
-        return self.request(broadcaster_id, Route('GET', 'channel_points/custom_rewards/redemptions', **params))
+        return self.request(broadcaster_id, Route('GET', 'channel_points/custom_rewards/redemptions',
+                                                  **params))
 
     def update_custom_reward(self,
                              broadcaster_id: str,
@@ -968,7 +980,8 @@ class HTTPClient:
             'should_redemptions_skip_request_queue': should_redemptions_skip_request_queue
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('PATCH', 'channel_points/custom_rewards', **params), data=body)
+        return self.request(broadcaster_id, Route('PATCH', 'channel_points/custom_rewards', **params),
+                            data=body)
 
     def update_redemption_status(self,
                                  broadcaster_id: str,
@@ -987,12 +1000,14 @@ class HTTPClient:
         body: Dict[str, Any] = {
             'status': status.upper(),
         }
-        return self.request(broadcaster_id, Route('PATCH', 'channel_points/custom_rewards/redemptions', **params),
+        return self.request(broadcaster_id, Route('PATCH', 'channel_points/custom_rewards/redemptions',
+                                                  **params),
                             data=body)
 
     # Charity
     def get_charity_campaign(self, broadcaster_id: str) -> Response[Data[List[activity.Charity]]]:
-        return self.request(broadcaster_id, Route('GET', 'charity/campaigns', broadcaster_id=broadcaster_id))
+        return self.request(broadcaster_id, Route('GET', 'charity/campaigns',
+                                                  broadcaster_id=broadcaster_id))
 
     def get_charity_campaign_donations(self,
                                        broadcaster_id: str,
@@ -1152,7 +1167,8 @@ class HTTPClient:
                     *,
                     has_delay: bool = False
                     ) -> Response[Data[List[channels.ClipEdit]]]:
-        return self.request(__id, Route('POST', 'clips', broadcaster_id=broadcaster_id, has_delay=has_delay))
+        return self.request(__id, Route('POST', 'clips', broadcaster_id=broadcaster_id,
+                                        has_delay=has_delay))
 
     def get_clips(self, __id: str,
                   broadcaster_id: Optional[str] = None,

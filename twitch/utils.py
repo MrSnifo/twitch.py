@@ -28,10 +28,13 @@ from typing import TYPE_CHECKING
 import datetime
 import logging
 import json
+import time
 
 if TYPE_CHECKING:
     from typing import Any, Union, Dict, Optional
     import aiohttp
+
+__all__ = ('setup_logging', 'json_or_text', 'convert_rfc3339', 'datetime_to_str', 'ExponentialBackoff')
 
 
 def setup_logging(*,
@@ -82,8 +85,55 @@ def convert_rfc3339(timestamp: Optional[str]) -> Optional[datetime]:
     return None if (not timestamp) else datetime.datetime.fromisoformat(timestamp)
 
 
-def datetime_to_str(time: Optional[datetime]) -> Optional[str]:
+def datetime_to_str(__time: Optional[datetime], /) -> Optional[str]:
     """
     Convert local datetime object to UTC formatted RFC3339 timestamp string.
     """
-    return None if time is None else time.astimezone(datetime.timezone.utc).isoformat()
+    return None if time is None else __time.astimezone(datetime.timezone.utc).isoformat()
+
+
+class ExponentialBackoff:
+    """
+    Handles retry intervals with exponential backoff.
+
+    Parameters
+    ----------
+    base_delay: int
+        The initial delay in seconds. The delay starts at this value and increases
+        exponentially with each retry.
+    max_delay: int
+        The maximum delay between retries. The exponential increase is capped
+        at this value.
+    reset_interval: int
+        The period in seconds after which the retry count is reset if no errors occur.
+    """
+
+    __slots__ = ('base_delay', 'max_delay', 'reset_interval', 'retry_count', 'last_failure_time')
+
+    def __init__(self, base_delay: int = 1, max_delay: int = 180, reset_interval: int = 300) -> None:
+        self.base_delay: int = base_delay
+        self.max_delay: int = max_delay
+        self.reset_interval: int = reset_interval
+        self.retry_count: int = 0
+        self.last_failure_time: float = time.monotonic()
+
+    def get_delay(self) -> int:
+        """
+
+        Determine the delay before the next retry attempt.
+
+        Returns
+        -------
+        int
+            The delay in seconds before the next retry attempt.
+        """
+        current_time = time.monotonic()
+        elapsed_time = current_time - self.last_failure_time
+
+        if elapsed_time > self.reset_interval:
+            self.retry_count = 0
+
+        delay = min(self.base_delay * 2 ** self.retry_count, self.max_delay)
+        self.retry_count += 1
+        self.last_failure_time = current_time
+        return delay

@@ -25,10 +25,10 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .gateway import EventSubWebSocket, ReconnectWebSocket
+from .utils import setup_logging, ExponentialBackoff
 from .errors import HTTPException, ConnectionClosed
 from .state import ConnectionState
 from typing import TYPE_CHECKING
-from .utils import setup_logging
 from .http import HTTPClient
 import datetime
 import asyncio
@@ -440,6 +440,9 @@ class Client:
             Indicates whether to attempt reconnection if the WebSocket connection is lost.
         """
         kwargs: Dict[str, Any] = {'resume': False, 'initial': True}
+
+        backoff = ExponentialBackoff()
+
         while not self.is_closed():
             try:
                 websocket = EventSubWebSocket.initialize_websocket(self, self._connection, **kwargs)
@@ -463,8 +466,9 @@ class Client:
                 if self.is_closed():
                     return
 
-                _logger.exception('Attempting a reconnect in 12s')
-                await asyncio.sleep(12)
+                delay = backoff.get_delay()
+                _logger.exception('Attempting a reconnect in %d seconds.', delay)
+                await asyncio.sleep(delay)
                 kwargs['initial'] = False
                 continue
 
