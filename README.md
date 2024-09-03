@@ -75,6 +75,6 @@ client.run()
 ## Documentation and Support
 
 For more detailed instructions,
-visit the [twitch.py Documentation](https://twitchify.readthedocs.io/en/latest/).
+visit the [twitch.py Documentation](https://twitchpy.readthedocs.io/latest/).
 
 Need help or want to join the community? Join the [Discord server](https://discord.gg/UFTkgnse7d).

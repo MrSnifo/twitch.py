@@ -53,5 +53,5 @@ dependencies = { file = "requirements.txt" }
 
 [project.urls]
 Homepage = "https://github.com/mrsnifo/twitch.py"
-Documentation = "https://twitchify.readthedocs.io/en/latest"
+Documentation = "https://twitchpy.readthedocs.io/latest/"
 "Issue tracker" = "https://github.com/mrsnifo/twitch.py/issues"
