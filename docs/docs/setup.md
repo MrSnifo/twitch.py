@@ -4,13 +4,13 @@ hide:
   - toc
 ---
 
-
 To set up twitch.py and create an app on the Twitch Developer Console, follow these steps:
+
+### Install twitch.py
 
 !!! Warning
     If you're currently using twitchify, please note that it will soon be moved to twitch.py on PyPI.
 
-### Install twitch.py
 
 Ensure you have `pip` installed, then run the following command in your terminal or command prompt:
 

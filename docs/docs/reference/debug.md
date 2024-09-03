@@ -9,9 +9,8 @@ ___
 
 ## Overview
 
-Twitchify supports testing of EventSub events through a command-line interface ([CLI](https://dev.twitch.tv/docs/cli/))
-mock WebSocket server. This feature allows you to simulate and test EventSub events without needing to deploy a
-live Twitch application. The following guide shows you how to set up and use the CLI mock server with Twitchify.
+Testing EventSub events via the command-line interface ([CLI](https://dev.twitch.tv/docs/cli/)) mock WebSocket server lets you
+simulate and test events.
 
 ## Setup
 ___
@@ -35,9 +34,9 @@ You should see output similar to:
 2023/03/19 11:45:17 Connect to the WebSocket server at: ws://127.0.0.1:8080/ws
 ```
 
-### Connecting Twitchify to the Mock Server
+### Connecting to the Mock Server
 
-Update your Twitchify client code to connect to the local WebSocket server. Here is an example configuration:
+Update your code to connect to the local WebSocket server. Here is an example configuration:
 
 ```python
 from twitch.types import eventsub
