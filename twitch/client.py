@@ -282,7 +282,7 @@ class Client:
                 _logger.debug('Dispatching custom event %s', event)
                 wrapped = self._run_event(coro, event, *args, **kwargs)
                 # Schedule the task
-                self.loop.create_task(wrapped, name=f'Twitchify:custom:{event}')
+                self.loop.create_task(wrapped, name=f'twitch:custom:{event}')
         except AttributeError:
             pass
         except Exception as error:
@@ -297,7 +297,7 @@ class Client:
                 _logger.debug('Dispatching event %s', event)
                 wrapped = self._run_event(coro, method, *args, **kwargs)
                 # Schedule the task
-                self.loop.create_task(wrapped, name=f'Twitchify:{method}')
+                self.loop.create_task(wrapped, name=f'twitch:{method}')
         except AttributeError:
             pass
         except Exception as error:

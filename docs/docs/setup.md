@@ -5,9 +5,12 @@ hide:
 ---
 
 
-To set up Twitchify and create an app on the Twitch Developer Console, follow these steps:
+To set up twitch.py and create an app on the Twitch Developer Console, follow these steps:
 
-### Install Twitchify
+!!! Warning
+    If you're currently using twitchify, please note that it will soon be moved to twitch.py on PyPI.
+
+### Install twitch.py
 
 Ensure you have `pip` installed, then run the following command in your terminal or command prompt:
 
@@ -29,7 +32,7 @@ python3 -m pip install -U twitchify
     Cloning the repository is for accessing beta releases.
 
 ```shell
-git clone https://github.com/MrSniFo/Twitchify
+git clone https://github.com/MrSniFo/twitch.py
 ```
 
 ### Create a Twitch Account
@@ -45,4 +48,4 @@ Go to [console](https://dev.twitch.tv/console) and sign in with your Twitch acco
 - Save your changes.
 
 After creating the app on the Twitch Developer Console, you will receive a Client ID and Client Secret,
-which you will use in your Twitchify client.
+which you will use in your twitch.py client.

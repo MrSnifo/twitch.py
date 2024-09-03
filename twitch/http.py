@@ -99,7 +99,7 @@ class HTTPClient:
         # Client settings
         self.client_id: str = client_id
         self.client_secret: Optional[str] = client_secret
-        self.user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
+        self.user_agent: str = f'twitch.py/{__version__} (GitHub: {__github__})'
 
         # Debugging and proxy settings
         self.cli: bool = cli
@@ -257,7 +257,7 @@ class HTTPClient:
                 # Keep the access tokens fresh.
                 if self.__token_keep_alive_task is None or self.__token_keep_alive_task.done():
                     self.__token_keep_alive_task = self.loop.create_task(self.token_keep_alive(),
-                                                                         name='Twitchify:keep_alive')
+                                                                         name='twitch:http:token_keep_alive')
                     _logger.debug('Keep-alive task has been created.')
                 return data
 

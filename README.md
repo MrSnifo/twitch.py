@@ -1,13 +1,16 @@
-# Twitchify
+# twitch.py
 
-[![PyPI Version](https://img.shields.io/pypi/v/twitchify)](https://pypi.org/project/twitchify) [![Python Versions](https://img.shields.io/pypi/pyversions/twitchify)](https://pypi.org/project/twitchify)
+[![PyPI Version](https://img.shields.io/pypi/v/twitch.py)](https://pypi.org/project/twitch.py) [![Python Versions](https://img.shields.io/pypi/pyversions/twitch.py)](https://pypi.org/project/twitch.py)
 
 A Python wrapper for Twitch It handles real-time events via WebSocket EventSub and integrates with the Helix API,
 all designed for easy asynchronous use.
 
 ## Installation
 
-Install Twitchify using pip:
+> [!WARNING]  
+> If you're currently using twitchify, please note that it will soon be moved to twitch.py on PyPI.
+
+Install twitch.py using pip:
 
 ```bash
 # On Windows
@@ -19,7 +22,7 @@ python3 -m pip install -U twitchify
 
 ## Quick Start
 
-Here’s a simple example to get you started with Twitchify:
+Here’s a simple example to get you started with twitch.py:
 
 ```python
 from twitch import Client
@@ -72,6 +75,6 @@ client.run()
 ## Documentation and Support
 
 For more detailed instructions,
-visit the [Twitchify Documentation](https://twitchify.readthedocs.io/en/latest/).
+visit the [twitch.py Documentation](https://twitchify.readthedocs.io/en/latest/).
 
 Need help or want to join the community? Join the [Discord server](https://discord.gg/UFTkgnse7d).

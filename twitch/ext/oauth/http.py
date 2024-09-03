@@ -48,7 +48,7 @@ class HTTPClient:
 
     def __init__(self, client_id: str, *, loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
         self.__session: Optional[aiohttp.ClientSession] = None
-        self.user_agent: str = f'Twitchify/{__version__} (GitHub: {__github__})'
+        self.user_agent: str = f'twitch.py/{__version__} (GitHub: {__github__})'
         self.client_id: str = client_id
         self.loop: asyncio.AbstractEventLoop = loop
 

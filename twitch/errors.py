@@ -45,7 +45,7 @@ __all__ = ('TwitchException',
 
 class TwitchException(Exception):
     """
-    Base exception for Twitchify.
+    Base exception for twitch.py.
     """
     pass
 

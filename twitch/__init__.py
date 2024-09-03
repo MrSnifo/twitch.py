@@ -1,5 +1,5 @@
 """
-Twitchify
+twitch.py
 
 Real-time Twitch Event Handling and Helix API Integration in Python
 
@@ -7,12 +7,12 @@ Real-time Twitch Event Handling and Helix API Integration in Python
 :license: MIT, see LICENSE for more details.
 """
 
-__title__ = 'Twitchify'
+__title__ = 'twitch.py'
 __version__ = '3.1.2'
 __license__ = 'MIT License'
 __author__ = 'Snifo'
 __email__ = 'Snifo@mail.com'
-__github__ = 'https://github.com/mrsnifo/twitchify'
+__github__ = 'https://github.com/mrsnifo/twitch.py'
 
 from .user import *
 from .chat import *

@@ -117,7 +117,7 @@ class EventSubWebSocket:
             # Add additional default events.
             events.update({'channel_update', 'user_update', 'stream_online', 'stream_offline'})
             task = ws.create_subscriptions(events=events, initial=initial)
-            ws._subscriptions_task = ws.loop.create_task(task, name='Twitchify:Subscriptions')
+            ws._subscriptions_task = ws.loop.create_task(task, name='twitch:gateway:subscriptions')
         else:
             state.state_ready()
         return ws

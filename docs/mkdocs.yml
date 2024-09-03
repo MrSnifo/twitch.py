@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 
-site_name: Twitchify
+site_name: twitch.py
 # GitHub repository
-repo_url: https://github.com/MrSniFo/Twitchify
-repo_name: Twitchify
+repo_url: https://github.com/MrSniFo/twitch.py
+repo_name: twitch.py
 copyright: Copyright (c) 2024-present Snifo
 
 extra:
@@ -56,7 +56,7 @@ nav:
       - 'events/index.md'
       - Events: 'events/events.md'
       - Types: 'events/types.md'
-  - Extension:
+  - Extensions:
       - Bot:
           - 'ext/bot/index.md'
           - Bot: 'ext/bot/bot.md'

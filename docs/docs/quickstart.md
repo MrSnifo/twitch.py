@@ -199,6 +199,6 @@ creating custom events with the Bot **won’t incur extra costs** for registered
     client.run()
     ```
 
-For more examples, check out the [examples repository](https://github.com/MrSniFo/Twitchify/tree/main/examples).
+For more examples, check out the [examples repository](https://github.com/MrSniFo/twitch.py/tree/main/examples).
 Remember, if you want to add more events, visit the [event reference](events/index.md) section.
 
