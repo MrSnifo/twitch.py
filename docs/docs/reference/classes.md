@@ -2,39 +2,39 @@
 icon: simple/databricks
 ---
 
-## User
+# User
 ___
-### ::: twitch.user.User
+## ::: twitch.user.User
 ---
-### ::: twitch.user.Broadcaster
+## ::: twitch.user.Broadcaster
 ---
-### ::: twitch.user.ClientUser
+## ::: twitch.user.ClientUser
 
-## Channel
+# Channel
 ___
-### ::: twitch.channel.Channel
+## ::: twitch.channel.Channel
 ---
-### ::: twitch.channel.BroadcasterChannel
+## ::: twitch.channel.BroadcasterChannel
 ---
-### ::: twitch.channel.ClientChannel
+## ::: twitch.channel.ClientChannel
 
 
-## Chat
+# Chat
 ___
-### ::: twitch.chat.Chat
+## ::: twitch.chat.Chat
 ---
-### ::: twitch.chat.BroadcasterChat
+## ::: twitch.chat.BroadcasterChat
 
 
-## Stream
+# Stream
 ___
-### ::: twitch.stream.Stream
+## ::: twitch.stream.Stream
 ---
-### ::: twitch.stream.BroadcasterStream
+## ::: twitch.stream.BroadcasterStream
 
 
-## Utils
+# Utils
 ___
-### ::: twitch.utils.convert_rfc3339
+## ::: twitch.utils.convert_rfc3339
 ---
-### ::: twitch.utils.datetime_to_str
+## ::: twitch.utils.datetime_to_str

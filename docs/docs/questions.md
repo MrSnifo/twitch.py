@@ -46,10 +46,22 @@ Essentially, the Client is a mix of the app and its user.
 Currently, scaling twitch.py directly isn't possible, but it's possible with
 [Conduits](https://dev.twitch.tv/docs/eventsub/handling-conduit-events/) for advanced scalability. 
 Conduits offer scalability options but can be complex unless Twitch improves them as suggested 
-[here](https://twitch.uservoice.com/forums/310213-developers/suggestions/48773702-metadata-and-ordering-features-for-conduits). 
+[here](https://twitch.uservoice.com/forums/310213-developers/suggestions/48773702-metadata-and-ordering-features-for-conduits).
 
 Conduits help bypass WebSocket limitations, allowing for more subscriptions and new event types. However,
 the current Conduit setup does not integrate with twitch.py.
+
+#### Future of Scaling
+In most cases, the bot extension will be able to provide scalable solutions by registering 
+multiple users. The vanilla WebSocket, however, only supports authentication for a single user,
+so scaling isn't necessary in this scenario. With Conduit, however, things change. Essentially,
+you have a parent that subscribes to events from multiple users,
+and the child connections can be either WebSockets or webhooks.
+
+In this case, Twitch.py uses WebSockets, where each WebSocket operates on a single shard.
+With Conduit, all events are distributed to the child connections,
+making it possible to scale massively. This setup simplifies creating large bots,
+and I’m working to streamline the usability of Twitch.py.
 
 ### What are the system requirements for using twitch.py?
 twitch.py requirements are pretty chill: Python 3.8 or later.
