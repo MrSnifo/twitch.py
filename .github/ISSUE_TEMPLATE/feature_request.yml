@@ -1,4 +1,4 @@
-body:
+fields:
   - type: input
     id: start_date
     attributes:
