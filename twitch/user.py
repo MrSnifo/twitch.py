@@ -178,6 +178,27 @@ class Broadcaster(User):
         """
         return BroadcasterChannel(self.id, state=self._state)
 
+    async def update(self, description: Optional[str]) -> users.User:
+        """
+        Update the user's profile information.
+
+        | Scopes      | Description           |
+        | ----------- | ----------------------|
+        | `user:edit` | Manage a user object. |
+
+        Parameters
+        ----------
+        description: Optional[str]
+            The new description to set for the user, by default None.
+
+        Returns
+        -------
+        users.User
+            The updated `users.User` object with the new description.
+        """
+        data: Data[List[users.User]] = await self._state.http.update_user(self.id, description)
+        return data['data'][0]
+
     async def fetch_emotes(self, user: Optional[User] = None) -> AsyncGenerator[Tuple[List[chat.Emote], str], None]:
         """
         Fetch emotes associated with the user or broadcaster.
