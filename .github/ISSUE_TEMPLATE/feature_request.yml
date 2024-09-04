@@ -1,8 +1,3 @@
-name: "Feature Request"
-description: Submit a new feature request
-title: "[REQUEST] - <title>"
-labels:
-  - "feature request"
 body:
   - type: input
     id: start_date
@@ -49,10 +44,11 @@ body:
     validations:
       required: true
 
-  - type: checkbox
+  - type: input
     id: no_duplicate
     attributes:
       label: "No Duplicate"
       description: "I have checked, and this request has not been made before"
+      placeholder: "Enter 'yes' to confirm"
     validations:
       required: true
