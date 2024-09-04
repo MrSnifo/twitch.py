@@ -3,7 +3,7 @@ description: Submit a new feature request
 title: "[REQUEST] - <title>"
 labels:
   - "feature request"
-fields:
+body:
   - type: input
     id: start_date
     attributes:
