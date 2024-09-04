@@ -14,43 +14,32 @@ DeviceAuthFlow(
 
 @client.event
 async def on_code(code: str):
-    """
-    Handles the event when a device authorization code is generated.
-    """
+    """Handles the event when a device authorization code is generated."""
     print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
 
 
 @client.event
 async def on_auth(access_token: str, refresh_token: str):
-    """
-    Handles the event after successful authentication, providing access and refresh tokens.
-    """
+    """Handles the event after successful authentication, providing access and refresh tokens."""
     print(f'access_token={access_token}\nrefresh_token={refresh_token}')
 
 
 @client.event
 async def on_ready():
-    """
-    Handles the event when the bot is ready and connected to Twitch.
-    """
+    """Handles the event when the bot is ready and connected to Twitch."""
     print('PogU')
 
 
 @client.event
 async def on_user_register(broadcaster: Broadcaster):
-    """
-    Handles the event when a new user registers as a broadcaster.
-    """
+    """Handles the event when a new user registers as a broadcaster."""
     info = await broadcaster.get_info()
     print(info['display_name'], 'has registered!')
-    # Additional custom events can be added here for post-registration actions.
 
 
 @client.event
 async def on_chat_message(data: eventsub.chat.MessageEvent):
-    """
-    Handles chat messages and responds to the !invite command by sending an authorization link.
-    """
+    """Handles chat messages and responds to the !invite command by sending an authorization link."""
     if data['message']['text'].startswith('!invite'):
         # Start the device authorization flow
         auth = DeviceAuthFlow(client=client, scopes=[Scopes.USER_READ_EMAIL], dispatch=False)
@@ -60,11 +49,8 @@ async def on_chat_message(data: eventsub.chat.MessageEvent):
             # Get the device code and other details for authorization
             user_code, device_code, expires_in, interval = await auth.get_device_code()
 
-            # Fetch the user who sent the invite command
             user = client.get_user_by_id(data['chatter_user_id'])
-
             try:
-                # Send a whisper message with the authorization link
                 await client.user.whisper(
                     user,
                     message=f'Click this link to authorize: https://www.twitch.tv/activate?device-code={user_code} '

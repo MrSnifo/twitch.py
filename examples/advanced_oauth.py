@@ -10,25 +10,20 @@ class Twitch(Client):
         self.auth_flow = DeviceAuthFlow(
             self,
             scopes=[Scopes.USER_READ_EMAIL, Scopes.MODERATOR_READ_FOLLOWERS],
+            dispatch=False,
             wrap_run=False
         )
 
     async def on_ready(self):
-        """
-        Notify when the bot is ready.
-        """
+        """Notify when the client is ready"""
         print('Client is ready!')
 
     async def on_follow(self, data: eventsub.channels.FollowEvent):
-        """
-        Handle new follower events.
-        """
+        """Handle new follower events"""
         await self.channel.chat.send_message(f'{data["user_name"]} has followed the channel!')
 
     async def custom_auth_flow(self):
-        """
-        Custom method to manage device authentication flow.
-        """
+        """Custom method to manage device authentication flow"""
         async with self.auth_flow:
             # Retrieve device code and display the verification URL
             user_code, device_code, expires_in, interval = await self.auth_flow.get_device_code()
@@ -48,13 +43,10 @@ class Twitch(Client):
         async with self:
             await self.start(access_token, refresh_token)
 
-    async def run_bot(self):
-        """
-        Run the bot with full control over device authentication and event handling.
-        """
+    async def run_client(self):
+        """Run the client with full control over device authentication and event handling"""
         await self.custom_auth_flow()
 
 
-# Initialize and run the bot
-bot = Twitch(client_id='YOUR_CLIENT_ID')
-asyncio.run(bot.run_bot())
+client = Twitch(client_id='YOUR_CLIENT_ID')
+asyncio.run(client.run_client())

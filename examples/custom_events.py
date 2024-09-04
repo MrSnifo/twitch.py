@@ -7,11 +7,7 @@ client = Client(client_id='YOUR_CLIENT_ID')
 
 @client.event
 async def on_ready():
-    """
-    Triggered when the client is fully connected and ready to handle events.
-
-    This function demonstrates adding custom event subscriptions and tracking subscription costs.
-    """
+    """Triggered when the client is fully connected and ready to handle events."""
     print('PogU')
 
     # Display the remaining subscription points before adding any custom events.
@@ -39,16 +35,12 @@ async def on_ready():
 
 
 async def on_live(data: eventsub.streams.StreamOnlineEvent):
-    """
-    Custom event handler for when a stream goes live.
-    """
+    """Custom event handler for when a stream goes live."""
     print(f'{data["broadcaster_user_name"]} is live!')
 
 
 async def someone_raided(data: eventsub.streams.RaidEvent):
-    """
-    Custom event handler for when the client is raided.
-    """
+    """Custom event handler for when the client is raided."""
     print(f'{data["from_broadcaster_user_name"]} has raided {data["to_broadcaster_user_name"]}')
 
 

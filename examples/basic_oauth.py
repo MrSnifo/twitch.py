@@ -13,25 +13,19 @@ DeviceAuthFlow(
 
 @client.event
 async def on_code(code: str):
-    """
-    Handles the device authorization code event.
-    """
+    """Handles the device authorization code event."""
     print(f'Verification URI: https://www.twitch.tv/activate?device-code={code}')
 
 
 @client.event
 async def on_auth(access_token: str, refresh_token: str):
-    """
-    Handles the authentication event.
-    """
+    """Handles the authentication event."""
     print(f'access_token={access_token}\nrefresh_token={refresh_token}')
 
 
 @client.event
 async def on_ready():
-    """
-    Handles the client ready event.
-    """
+    """Handles the client ready event."""
     print('PogU')
 
 

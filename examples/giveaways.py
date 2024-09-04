@@ -3,7 +3,7 @@ from twitch import Client
 from random import choice
 
 
-class GiveawaysBot(Client):
+class Giveaways(Client):
     def __init__(self, client_id: str, **options):
         super().__init__(client_id, **options)
         self._is_giveaway_on = False
@@ -11,15 +11,11 @@ class GiveawaysBot(Client):
 
     @staticmethod
     async def on_ready():
-        """
-        Called when the bot is ready and connected to Twitch.
-        """
-        print('Bot is ready!')
+        """Called when the client is ready."""
+        print('client is ready!')
 
     async def on_chat_message(self, data: eventsub.chat.MessageEvent):
-        """
-        Handles chat messages and responds to giveaway commands.
-        """
+        """Handles chat messages and responds to giveaway commands."""
         # Handle the "!join" command
         message_text = data['message']['text']
 
@@ -53,25 +49,19 @@ class GiveawaysBot(Client):
                 await self.channel.chat.send_message('There is no active giveaway.')
 
     def clear_giveaway(self):
-        """
-        Clears the giveaway state, resetting the user list and ending the giveaway.
-        """
+        """Clears the giveaway state, resetting the user list and ending the giveaway."""
         self._users.clear()
         self._is_giveaway_on = False
 
     async def join(self, name: str, message_id: str):
-        """
-        Adds a user to the giveaway if they haven't already joined.
-        """
+        """Adds a user to the giveaway if they haven't already joined."""
         if name not in self._users:
             self._users.append(name)
         else:
             await self.channel.chat.send_message('You have already joined!', message_id)
 
     async def start_giveaway(self):
-        """
-        Starts the giveaway if one is not already in progress.
-        """
+        """Starts the giveaway if one is not already in progress."""
         if self._is_giveaway_on:
             await self.channel.chat.send_message('The giveaway is already running! Type !end to stop it.')
         else:
@@ -79,9 +69,7 @@ class GiveawaysBot(Client):
             await self.channel.chat.send_message('The giveaway has started! Type !join to enter BopBop')
 
     async def end_giveaway(self):
-        """
-        Ends the giveaway and announces the winner, if there are participants.
-        """
+        """Ends the giveaway and announces the winner, if there are participants."""
         if len(self._users) >= 1:
             winner = choice(self._users)
             await self.channel.chat.send_message('@%s has won the giveaway! Congratulations! Pog' % winner)
@@ -90,5 +78,5 @@ class GiveawaysBot(Client):
         self.clear_giveaway()
 
 
-bot = GiveawaysBot(client_id='YOUR_CLIENT_ID')
-bot.run(access_token='YOUR_USER_ACCESS_TOKEN')
+client = Giveaways(client_id='YOUR_CLIENT_ID')
+client.run(access_token='YOUR_USER_ACCESS_TOKEN')

@@ -6,19 +6,14 @@ client = Client(client_id='YOUR_CLIENT_ID')
 
 @client.event
 async def on_ready():
-    """
-    Handles the client ready event.
-    """
+    """Handles the client ready event."""
     print('PogU')
 
 
 @client.event
 async def on_points_reward_redemption_add(data: eventsub.interaction.RewardRedemptionEvent):
-    """
-    Handles points reward redemption events.
+    """Handles points reward redemption events."""
 
-    Automatically gives a VIP or bans the user based on the reward.
-    """
     if data['status'] == 'fulfilled':
         await client.channel.chat.send_message(f'{data["user_name"]} has redeemed {data["reward"]["title"]}!')
         user = client.get_user_by_id(data['user_id'])

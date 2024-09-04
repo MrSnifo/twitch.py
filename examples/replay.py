@@ -7,17 +7,13 @@ client = Client(client_id='YOUR_CLIENT_ID', client_secret='YOUR_CLIENT_SECRET')
 
 @client.event
 async def on_ready():
-    """
-    Handles the client ready event.
-    """
+    """Handles the client ready event."""
     print('PogU')
 
 
 @client.event
 async def on_chat_message(data: eventsub.chat.MessageEvent):
-    """
-    Handles chat messages and responds to giveaway commands.
-    """
+    """Handles chat messages and responds to giveaway commands."""
 
     # replaying to ur self?
     if client.user.id == data['chatter_user_id']:

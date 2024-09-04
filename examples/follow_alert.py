@@ -8,11 +8,7 @@ total_followers = 0
 
 @client.event
 async def on_ready():
-    """
-    Handles the client ready event.
-
-    Updates the total followers count when the client is ready.
-    """
+    """Handles the client ready event."""
     global total_followers
     # Retrieve the total number of followers for the channel.
     total_followers = await client.channel.get_total_followers()
@@ -21,9 +17,7 @@ async def on_ready():
 
 @client.event
 async def on_follow(data: eventsub.channels.FollowEvent):
-    """
-    Handles the follow event.
-    """
+    """Handles the follow event."""
     global total_followers
     # Increment the follower count
     total_followers += 1
