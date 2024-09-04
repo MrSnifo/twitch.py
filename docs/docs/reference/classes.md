@@ -2,7 +2,7 @@
 icon: simple/databricks
 ---
 
-# User
+User
 ___
 ## ::: twitch.user.User
 ---
@@ -10,7 +10,7 @@ ___
 ---
 ## ::: twitch.user.ClientUser
 
-# Channel
+Channel
 ___
 ## ::: twitch.channel.Channel
 ---
@@ -18,23 +18,26 @@ ___
 ---
 ## ::: twitch.channel.ClientChannel
 
-
-# Chat
+Chat
 ___
 ## ::: twitch.chat.Chat
 ---
 ## ::: twitch.chat.BroadcasterChat
 
 
-# Stream
+Stream
 ___
 ## ::: twitch.stream.Stream
 ---
 ## ::: twitch.stream.BroadcasterStream
 
 
-# Utils
+Utils
 ___
 ## ::: twitch.utils.convert_rfc3339
+       options:
+         show_symbol_type_toc: true 
 ---
 ## ::: twitch.utils.datetime_to_str
+       options:
+         show_symbol_type_toc: true 
