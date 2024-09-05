@@ -5,15 +5,16 @@ site_description: >
   A Python library designed to interact with Twitch's API and provide real-time event handling 
   through WebSocket EventSub. It simplifies asynchronous operations, making it easy to integrate 
   Twitch functionalities into your Python projects.
+
 # GitHub repository
-repo_url: https://github.com/MrSniFo/twitch.py
+repo_url: https://github.com/mrSnifo/twitch.py
 repo_name: twitch.py
 copyright: Copyright (c) 2024-present Snifo
 
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/MrSniFo
+      link: https://github.com/mrSnifo
 
 theme:
   name: 'material'
