@@ -8,7 +8,7 @@ Real-time Twitch Event Handling and Helix API Integration in Python
 """
 
 __title__ = 'twitch.py'
-__version__ = '3.1.2'
+__version__ = '3.2.0'
 __license__ = 'MIT License'
 __author__ = 'Snifo'
 __email__ = 'Snifo@mail.com'
