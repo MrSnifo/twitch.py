@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "twitchify"
+name = "twitch.py"
 description = "Real-time Twitch Event Handling and Helix API Integration in Python"
 readme = "README.md"
 requires-python = ">=3.8.0"

@@ -8,22 +8,18 @@ To set up twitch.py and create an app on the Twitch Developer Console, follow th
 
 ### Install twitch.py
 
-!!! Warning
-    If you're currently using twitchify, please note that it will soon be moved to twitch.py on PyPI.
-
-
 Ensure you have `pip` installed, then run the following command in your terminal or command prompt:
 
 #### On Windows
 
 ```bash
-py -3 -m pip install -U twitchify
+py -3 -m pip install -U twitch.py
 ```
 
 #### On Linux/macOS
 
 ```bash
-python3 -m pip install -U twitchify
+python3 -m pip install -U twitch.py
 ```
 
 #### Clone
@@ -32,7 +28,7 @@ python3 -m pip install -U twitchify
     Cloning the repository is for accessing beta releases.
 
 ```shell
-git clone https://github.com/MrSniFo/twitch.py
+git clone https://github.com/MrSnifo/twitch.py.git
 ```
 
 ### Create a Twitch Account
