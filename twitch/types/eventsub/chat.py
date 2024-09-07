@@ -28,7 +28,7 @@ from .users import SpecificBroadcaster, SpecificUser
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
-    from typing import Literal, Optional, List, Dict
+    from typing import Literal, Optional, List
 
 
 # Message
@@ -614,7 +614,7 @@ class NotificationEvent(SpecificBroadcaster):
         Paid upgrade for a Prime subscription, if applicable.
     raid: Optional[Raid]
         Raid event details, if applicable.
-    unraid: Optional[Dict[Any, Any]]
+    unraid: Optional[SpecificUser]
         Unraid event details, if applicable.
     pay_it_forward: Optional[PayItForward]
         Pay It Forward event details, if applicable.
@@ -672,7 +672,7 @@ class NotificationEvent(SpecificBroadcaster):
     prime_paid_upgrade: Optional[PrimePaidUpgrade]
     pay_it_forward: Optional[PayItForward]
     raid: Optional[Raid]
-    unraid: Optional[dict]
+    unraid: Optional[SpecificUser]
     announcement: Optional[Announcement]
     bits_badge_tier: Optional[BitsBadgeTier]
     charity_donation: Optional[CharityDonation]
