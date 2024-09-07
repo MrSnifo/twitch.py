@@ -183,9 +183,15 @@ class GoalsEvent(SpecificBroadcaster):
     ----------
     id: str
         The unique identifier for the goal event.
-    type: Literal['follow', 'subscription', 'subscription_count', 'new_subscription', 'new_subscription_count',
-          'new_bit', 'new_cheerer']
-        The type of goal being tracked (e.g., follow, subscription).
+    type: str
+        The type of goal being tracked. Possible values include:
+        - 'follow'
+        - 'subscription'
+        - 'subscription_count'
+        - 'new_subscription'
+        - 'new_subscription_count'
+        - 'new_bit'
+        - 'new_cheerer'
     description: str
         A description of the goal event.
     is_achieved: bool
