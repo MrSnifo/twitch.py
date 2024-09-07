@@ -72,11 +72,17 @@ class AutomaticReward(TypedDict):
 
     Attributes
     ----------
-    type: Literal['single_message_bypass_sub_mode', 'send_highlighted_message', 
-                  'random_sub_emote_unlock', 'chosen_sub_emote_unlock',
-                  'chosen_modified_sub_emote_unlock', 'message_effect',
-                  'gigantify_an_emote', 'celebration']
-        The type of the automatic reward.
+    type: str
+        The type of event. Possible values include:
+
+        - single_message_bypass_sub_mode
+        - send_highlighted_message
+        - random_sub_emote_unlock
+        - chosen_sub_emote_unlock
+        - chosen_modified_sub_emote_unlock
+        - message_effect
+        - gigantify_an_emote
+        - celebration
     cost: int
         The cost of the reward in channel points or other currency.
     unlocked_emote: Optional[UnlockedEmote]

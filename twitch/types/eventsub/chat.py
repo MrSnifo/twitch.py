@@ -242,12 +242,13 @@ class MessageEvent(SpecificBroadcaster):
             An ordered list of message fragments (e.g., text, cheermotes, emotes, mentions).
     message_type: str
         The type of the message. Possible values include:
-        - 'text'
-        - 'channel_points_highlighted'
-        - 'channel_points_sub_only'
-        - 'user_intro'
-        - 'power_ups_message_effect'
-        - 'power_ups_gigantified_emote'
+
+        - text
+        - channel_points_highlighted
+        - channel_points_sub_only
+        - user_intro
+        - power_ups_message_effect
+        - power_ups_gigantified_emote
     badges: List[Badge]
         A list of badges associated with the user.
     cheer: Optional[Cheer]
