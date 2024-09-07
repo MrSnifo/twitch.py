@@ -28,7 +28,7 @@ from .users import SpecificBroadcaster, Broadcaster, SpecificUser
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
-    from typing import List, Literal
+    from typing import Literal
 
 
 class DonationAmount(TypedDict):

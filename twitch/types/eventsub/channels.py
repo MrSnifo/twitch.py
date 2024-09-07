@@ -168,4 +168,3 @@ class VIPRemoveEvent(SpecificBroadcaster, SpecificUser):
     Represents an event where a user is removed from VIP status in a broadcaster's channel.
     """
     pass
-

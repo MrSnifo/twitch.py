@@ -31,7 +31,6 @@ if TYPE_CHECKING:
     from typing import List, Optional, Literal
 
 
-
 # AutoMod
 class Emote(TypedDict):
     """
@@ -123,18 +122,12 @@ class AutomodMessageHoldEvent(SpecificBroadcaster, SpecificUser):
     held_at: str
 
 
-class AutomodMessageUpdateEvent(SpecificBroadcaster, SpecificUser):
+class AutomodMessageUpdateEvent(SpecificBroadcaster, SpecificModerator, SpecificUser):
     """
     Represents an event where a held message is updated by AutoMod.
 
     Attributes
     ----------
-    moderator_user_id: str
-        The user ID of the moderator updating the message.
-    moderator_user_login: str
-        The login name of the moderator updating the message.
-    moderator_user_name: str
-        The display name of the moderator updating the message.
     message_id: str
         The ID of the updated message.
     message: Message
@@ -148,9 +141,6 @@ class AutomodMessageUpdateEvent(SpecificBroadcaster, SpecificUser):
     held_at: str
         The timestamp when the message was held, in ISO 8601 format.
     """
-    moderator_user_id: str
-    moderator_user_login: str
-    moderator_user_name: str
     message_id: str
     message: Message
     category: str
@@ -317,26 +307,17 @@ class BanMetadata(SpecificUser):
     reason: Optional[str]
 
 
-class TimeoutMetadata(TypedDict):
+class TimeoutMetadata(SpecificUser):
     """
     Represents metadata related to a timeout.
 
     Attributes
     ----------
-    user_id: str
-        The ID of the user who was timed out.
-    user_login: str
-        The login name of the user who was timed out.
-    user_name: str
-        The display name of the user who was timed out.
     reason: Optional[str]
         The reason for the timeout, if provided.
     expires_at: Optional[str]
         The timestamp when the timeout will end, in ISO 8601 format.
     """
-    user_id: str
-    user_login: str
-    user_name: str
     reason: Optional[str]
     expires_at: Optional[str]
 
@@ -459,6 +440,16 @@ class ModerateEvent(SpecificBroadcaster, SpecificModerator):
         Metadata related to an unban request, if applicable.
     warn: Optional[WarnMetadata]
         Metadata related to a warning, if applicable.
+    shared_chat_ban: Optional[BanMetadata]
+        Information about the shared_chat_ban event, if applicable.
+    shared_chat_unban: Optional[SpecificUser]
+        Information about the shared_chat_unban event, if applicable.
+    shared_chat_timeout: Optional[TimeoutMetadata]
+        Information about the shared_chat_timeout event, if applicable.
+    shared_chat_untimeout: Optional[SpecificUser]
+        Information about the shared_chat_untimeout event, if applicable.
+    shared_chat_delete: Optional[DeleteMetadata]
+        Information about the shared_chat_delete event, if applicable.
     """
     action: str
     followers: Optional[FollowersMetadata]
@@ -477,6 +468,11 @@ class ModerateEvent(SpecificBroadcaster, SpecificModerator):
     automod_terms: Optional[AutomodTermsMetadata]
     unban_request: Optional[UnbanRequestMetadata]
     warn: Optional[WarnMetadata]
+    shared_chat_ban: Optional[BanMetadata]
+    shared_chat_unban: Optional[SpecificUser]
+    shared_chat_timeout: Optional[TimeoutMetadata]
+    shared_chat_untimeout: Optional[SpecificUser]
+    shared_chat_delete: Optional[DeleteMetadata]
 
 
 # Moderator Add/Remove

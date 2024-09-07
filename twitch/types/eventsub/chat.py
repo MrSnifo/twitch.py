@@ -28,7 +28,7 @@ from .users import SpecificBroadcaster, SpecificUser
 from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
-    from typing import Literal, Optional, List, Dict, Any
+    from typing import Literal, Optional, List, Dict
 
 
 # Message
@@ -233,9 +233,13 @@ class MessageEvent(SpecificBroadcaster):
     chatter_user_login: str
         The login name of the user who sent the message.
     message_id: str
-        The ID of the message.
+        A UUID that identifies the message.
     message: Message
-        The message content.
+        The structured chat message content.
+        - text: str
+            The plain text of the message.
+        - fragments: List[Fragment]
+            An ordered list of message fragments (e.g., text, cheermotes, emotes, mentions).
     message_type: Literal[
         'text',
         'channel_points_highlighted',
@@ -248,15 +252,30 @@ class MessageEvent(SpecificBroadcaster):
     badges: List[Badge]
         A list of badges associated with the user.
     cheer: Optional[Cheer]
-        Details of the cheer, if applicable.
+        Metadata if the message includes a cheer.
     color: Optional[str]
-        The color of the user's chat message.
+        The color of the user's chat message, in hexadecimal RGB format (e.g., "#FF0000").
     reply: Optional[Reply]
-        Details of the reply to the message, if applicable.
+        Details of a reply to a message, if applicable.
     channel_points_custom_reward_id: Optional[str]
         The ID of the custom reward associated with the message, if applicable.
     channel_points_animation_id: Optional[str]
         The ID of the animation associated with the channel points reward, if applicable.
+    source_broadcaster_user_id: Optional[str]
+        The broadcaster user ID of the channel the message was sent from,
+        in case of a shared chat session.
+    source_broadcaster_user_name: Optional[str]
+        The user name of the broadcaster of the channel the message was sent from,
+        in case of a shared chat session.
+    source_broadcaster_user_login: Optional[str]
+        The login of the broadcaster of the channel the message was sent from,
+        in case of a shared chat session.
+    source_message_id: Optional[str]
+        The UUID that identifies the source message from the channel it was sent from,
+        in case of a shared chat session.
+    source_badges: Optional[List[Badge]]
+        The list of chat badges for the chatter in the channel the message was sent from,
+        in case of a shared chat session.
     """
     chatter_user_id: str
     chatter_user_name: str
@@ -277,6 +296,11 @@ class MessageEvent(SpecificBroadcaster):
     reply: Optional[Reply]
     channel_points_custom_reward_id: Optional[str]
     channel_points_animation_id: Optional[str]
+    source_broadcaster_user_id: Optional[str]
+    source_broadcaster_user_name: Optional[str]
+    source_broadcaster_user_login: Optional[str]
+    source_message_id: Optional[str]
+    source_badges: Optional[List[Badge]]
 
 
 class MessageDeleteEvent(SpecificBroadcaster):
@@ -544,73 +568,99 @@ class BitsBadgeTier(TypedDict):
     tier: int
 
 
-class NotificationEvent(TypedDict):
+class NotificationEvent(SpecificBroadcaster):
     """
     Represents a notification event.
 
     Attributes
     ----------
     broadcaster_user_id: str
-        The ID of the broadcaster associated with the notification.
+        ID of the broadcaster.
     broadcaster_user_name: str
-        The name of the broadcaster associated with the notification.
+        Name of the broadcaster.
     broadcaster_user_login: str
-        The login name of the broadcaster associated with the notification.
+        Login of the broadcaster.
     chatter_user_id: str
-        The ID of the chatter associated with the notification.
+        ID of the chatter.
     chatter_user_name: str
-        The name of the chatter associated with the notification.
+        Name of the chatter.
     chatter_user_login: str
-        The login name of the chatter associated with the notification.
+        Login of the chatter.
     chatter_is_anonymous: bool
         Whether the chatter is anonymous.
     color: str
-        The color of the notification.
+        Color of the notification.
     badges: List[Badge]
-        A list of badges associated with the chatter.
-    system_message: str
-        The system message of the notification.
+        Badges associated with the chatter.
+    system_message: Optional[str]
+        System message of the notification.
     message_id: str
-        The ID of the message associated with the notification.
+        ID of the message.
     message: Message
-        The message content.
+        Content of the message.
     notice_type: str
-        The type of notification.
+        Type of the notification.
     sub: Optional[Sub]
-        Details of the subscription, if applicable.
+        Subscription details, if applicable.
     resub: Optional[Resub]
-        Details of the resubscription, if applicable.
+        Resubscription details, if applicable.
     sub_gift: Optional[SubGift]
-        Details of the subscription gift, if applicable.
+        Subscription gift details, if applicable.
     community_sub_gift: Optional[CommunitySubGift]
-        Details of the community subscription gift, if applicable.
+        Community subscription gift details, if applicable.
     gift_paid_upgrade: Optional[GiftPaidUpgrade]
-        Details of the paid upgrade for a gifted subscription, if applicable.
+        Paid upgrade for a gifted subscription, if applicable.
     prime_paid_upgrade: Optional[PrimePaidUpgrade]
-        Details of the paid upgrade for a Prime subscription, if applicable.
+        Paid upgrade for a Prime subscription, if applicable.
     raid: Optional[Raid]
-        Details of the raid event, if applicable.
+        Raid event details, if applicable.
     unraid: Optional[Dict[Any, Any]]
-        Details of the unraid event, if applicable.
+        Unraid event details, if applicable.
     pay_it_forward: Optional[PayItForward]
-        Details of the Pay It Forward event, if applicable.
+        Pay It Forward event details, if applicable.
     announcement: Optional[Announcement]
-        Details of the announcement, if applicable.
+        Announcement details, if applicable.
     charity_donation: Optional[CharityDonation]
-        Details of the charity donation, if applicable.
+        Charity donation details, if applicable.
     bits_badge_tier: Optional[BitsBadgeTier]
-        Details of the bits badge tier, if applicable.
+        Bits badge tier details, if applicable.
+    source_broadcaster_user_id: Optional[str]
+        ID of the source broadcaster, if different.
+    source_broadcaster_user_name: Optional[str]
+        Name of the source broadcaster, if different.
+    source_broadcaster_user_login: Optional[str]
+        Login of the source broadcaster, if different.
+    source_message_id: Optional[str]
+        ID of the source message, if different.
+    source_badges: Optional[List[Badge]]
+        Badges for the source chatter, if different.
+    shared_chat_sub: Optional[Sub]
+        Shared chat subscription details, if applicable.
+    shared_chat_resub: Optional[Resub]
+        Shared chat re-subscription details, if applicable.
+    shared_chat_sub_gift: Optional[SubGift]
+        Shared chat subscription gift details, if applicable.
+    shared_chat_community_sub_gift: Optional[CommunitySubGift]
+        Shared chat community subscription gift details, if applicable.
+    shared_chat_gift_paid_upgrade: Optional[GiftPaidUpgrade]
+        Shared chat paid upgrade for a gifted subscription, if applicable.
+    shared_chat_prime_paid_upgrade: Optional[PrimePaidUpgrade]
+        Shared chat paid upgrade for a Prime subscription, if applicable.
+    shared_chat_pay_it_forward: Optional[PayItForward]
+        Shared chat Pay It Forward event details, if applicable.
+    shared_chat_raid: Optional[Raid]
+        Shared chat raid event details, if applicable.
+    shared_chat_announcement: Optional[Announcement]
+        Shared chat announcement details, if applicable.
     """
-    broadcaster_user_id: str
-    broadcaster_user_name: str
-    broadcaster_user_login: str
+    tier: int
     chatter_user_id: str
     chatter_user_name: str
     chatter_user_login: str
     chatter_is_anonymous: bool
     color: str
     badges: List[Badge]
-    system_message: str
+    system_message: Optional[str]
     message_id: str
     message: Message
     notice_type: str
@@ -620,12 +670,26 @@ class NotificationEvent(TypedDict):
     community_sub_gift: Optional[CommunitySubGift]
     gift_paid_upgrade: Optional[GiftPaidUpgrade]
     prime_paid_upgrade: Optional[PrimePaidUpgrade]
-    raid: Optional[Raid]
-    unraid: Optional[Dict[Any, Any]]
     pay_it_forward: Optional[PayItForward]
+    raid: Optional[Raid]
+    unraid: Optional[dict]
     announcement: Optional[Announcement]
-    charity_donation: Optional[CharityDonation]
     bits_badge_tier: Optional[BitsBadgeTier]
+    charity_donation: Optional[CharityDonation]
+    source_broadcaster_user_id: Optional[str]
+    source_broadcaster_user_name: Optional[str]
+    source_broadcaster_user_login: Optional[str]
+    source_message_id: Optional[str]
+    source_badges: Optional[List[Badge]]
+    shared_chat_sub: Optional[Sub]
+    shared_chat_resub: Optional[Resub]
+    shared_chat_sub_gift: Optional[SubGift]
+    shared_chat_community_sub_gift: Optional[CommunitySubGift]
+    shared_chat_gift_paid_upgrade: Optional[GiftPaidUpgrade]
+    shared_chat_prime_paid_upgrade: Optional[PrimePaidUpgrade]
+    shared_chat_pay_it_forward: Optional[PayItForward]
+    shared_chat_raid: Optional[Raid]
+    shared_chat_announcement: Optional[Announcement]
 
 
 # Settings
