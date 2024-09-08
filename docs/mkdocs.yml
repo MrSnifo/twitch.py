@@ -27,7 +27,7 @@ theme:
   name: 'material'
   custom_dir: overrides
   font:
-    text: Open Sans
+    text: Roboto
   icon:
     logo: material/twitch
   palette:
