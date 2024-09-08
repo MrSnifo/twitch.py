@@ -2,7 +2,6 @@
 
 ![PyPI - Version](https://img.shields.io/pypi/v/twitch.py?color=%23673AB7)
 [![Python Versions](https://img.shields.io/pypi/pyversions/twitch.py?color=%23673AB7)](https://pypi.org/project/twitch.py)
-![Read the Docs](https://img.shields.io/readthedocs/twitchpy?style=flat&color=%23673AB7)
 
 A Python wrapper for Twitch It handles real-time events via WebSocket EventSub and integrates with the Helix API,
 all designed for easy asynchronous use.
