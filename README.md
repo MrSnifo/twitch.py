@@ -7,7 +7,6 @@ A Python wrapper for Twitch It handles real-time events via WebSocket EventSub a
 all designed for easy asynchronous use.
 
 ## Installation
-___
 
 Install twitch.py using pip:
 
