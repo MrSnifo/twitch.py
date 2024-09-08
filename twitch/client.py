@@ -51,9 +51,10 @@ class Client:
     """
     A client for interacting with the Twitch API.
 
-    This class manages authentication and communication with the Twitch API, handling
-    both HTTP requests and WebSocket connections for real-time events. It provides
-    properties to access user and channel information and to check if the user is live.
+    The `Client` class allows you to connect to and interact with Twitch's API. It handles
+    authentication, manages HTTP requests, and provides WebSocket connections for real-time
+    updates. The client offers methods to access user and channel information and to check
+    live status.
 
     Parameters
     ----------
