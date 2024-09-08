@@ -8,7 +8,7 @@ hide:
 
 ## Overview
 
-`Bot` is a Python class that extends `twitch.Client` to manage Twitch interactions more effectively.
+`Bot` is a Python class that extends [Client][twitch.client.Client] to manage Twitch interactions more effectively.
 
 ## Features
 
