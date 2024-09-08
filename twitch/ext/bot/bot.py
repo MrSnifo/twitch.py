@@ -52,16 +52,17 @@ class Bot(twitch.Client):
     client_secret: Optional[str]
         The client secret used for authentication. Default is None.
     **options:
+
         Additional configuration options:
-        - 'cli': bool
+        - cli: bool
             Whether CLI mode is enabled. Default is False.
-        - 'cli_port': int
+        - cli_port: int
             The port used for CLI mode. Default is 8080.
-        - 'socket_debug': bool
+        - socket_debug: bool
             Whether to enable WebSocket debug messages. Default is False.
-        - 'proxy': Optional[str]
+        - proxy: Optional[str]
             The proxy URL for HTTP requests. Default is None.
-        - 'proxy_auth': Optional[aiohttp.BasicAuth]
+        - proxy_auth: Optional[aiohttp.BasicAuth]
             Authentication details for the proxy. Default is None.
     """
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:

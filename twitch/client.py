@@ -63,16 +63,17 @@ class Client:
         The client secret used for authentication with the Twitch API. Default is None.
     **options:
         Additional configuration options:
-        - 'cli': bool
+
+        - cli: bool
             Flag indicating if CLI mode is enabled. Default is False.
-        - 'cli_port': int
+        - cli_port: int
             The port number used for CLI mode. Default is 8080.
-        - 'socket_debug': bool
+        - socket_debug: bool
             Flag indicating if raw WebSocket messages should be dispatched for debugging purposes.
             If enabled, raw WebSocket messages are dispatched to the debug dispatcher. Default is False.
-        - 'proxy': Optional[str]
+        - proxy: Optional[str]
             The proxy URL to use for HTTP requests. Default is None.
-        - 'proxy_auth': Optional[aiohttp.BasicAuth]
+        - proxy_auth: Optional[aiohttp.BasicAuth]
             Authentication details for the proxy, if required. Default is None.
     """
 
