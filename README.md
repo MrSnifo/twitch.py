@@ -13,13 +13,13 @@ To install **twitch.py**, use the appropriate command for your operating system:
 For Windows:
 
 ```bash
-py -3 -m pip install --upgrade twitchify
+py -3 -m pip install --upgrade twitch.py
 ```
 
 For macOS/Linux:
 
 ```bash
-python3 -m pip install --upgrade twitchify
+python3 -m pip install --upgrade twitch.py
 ```
 
 ## Quick Start
