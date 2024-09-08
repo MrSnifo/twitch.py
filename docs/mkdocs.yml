@@ -26,6 +26,8 @@ extra:
 theme:
   name: 'material'
   custom_dir: overrides
+  font:
+    text: Open Sans
   icon:
     logo: material/twitch
   palette:
