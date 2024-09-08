@@ -51,10 +51,9 @@ class Client:
     """
     A client for interacting with the Twitch API.
 
-    The `Client` class allows you to connect to and interact with Twitch's API. It handles
-    authentication, manages HTTP requests, and provides WebSocket connections for real-time
-    updates. The client offers methods to access user and channel information and to check
-    live status.
+    The Client class enables interaction with the Twitch API. After authentication,
+    it manages HTTP requests and WebSocket connections for real-time updates,
+    providing access to a broad range of Helix API endpoints.
 
     Parameters
     ----------
