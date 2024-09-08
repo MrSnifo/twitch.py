@@ -19,6 +19,10 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/mrSnifo
 
+  analytics:
+    provider: google
+    property: !!python/object/apply:os.getenv ["GOOGLE_ANALYTICS_G"]
+
 theme:
   name: 'material'
   custom_dir: overrides
