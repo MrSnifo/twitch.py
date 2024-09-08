@@ -17,7 +17,7 @@ copyright: Copyright (c) 2024-present Snifo
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/mrSnifo
+      link: https://github.com/mrsnifo
 
   analytics:
     provider: google
