@@ -94,7 +94,7 @@ creating custom events with the Bot **won’t incur extra costs** for registered
 
 === "Bot"
 
-    ??? tip
+    ???+ tip
         After authentication, make sure to store the received `access_token` and `refresh_token`
         for future use. Storing these tokens eliminates the need for reauthorization.
 
