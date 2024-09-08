@@ -1,6 +1,6 @@
 # twitch.py
 
-[![PyPI - Version](https://img.shields.io/pypi/v/twitch.py?color=%23673AB7)]((https://pypi.org/project/twitch.py))
+[![PyPI - Version](https://img.shields.io/pypi/v/twitch.py?color=%23673AB7)](https://pypi.org/project/twitch.py)
 [![Python Versions](https://img.shields.io/pypi/pyversions/twitch.py?color=%23673AB7)](https://pypi.org/project/twitch.py)
 
 A Python wrapper for Twitch It handles real-time events via WebSocket EventSub and integrates with the Helix API,
