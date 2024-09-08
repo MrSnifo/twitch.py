@@ -82,7 +82,7 @@ class Client:
         - socket_debug: `None`
 
             Flag indicating if raw WebSocket messages should be dispatched for debugging purposes.
-            If enabled, raw WebSocket messages are dispatched to the debug dispatcher.
+            If enabled, raw WebSocket messages are dispatched to the on_socket_raw_receive.
 
             **Default**: `False`
             ___
