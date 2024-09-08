@@ -1,5 +1,4 @@
 # twitch.py
-___
 
 ![PyPI - Version](https://img.shields.io/pypi/v/twitch.py?color=%23673AB7)
 [![Python Versions](https://img.shields.io/pypi/pyversions/twitch.py?color=%23673AB7)](https://pypi.org/project/twitch.py)
@@ -21,7 +20,6 @@ python3 -m pip install -U twitch.py
 ```
 
 ## Quick Start
-___
 
 Here’s a simple example to get you started with twitch.py:
 
@@ -43,7 +41,6 @@ client.run('YOUR_USER_ACCESS_TOKEN')
 ```
 
 ## OAuth Authentication
-___
 
 Authenticate easily with Twitch using the Device Flow authentication method:
 
@@ -75,7 +72,6 @@ client.run()
 ```
 
 ## Documentation and Support
-___
 
 For more detailed instructions,
 visit the [twitch.py Documentation](https://twitchpy.readthedocs.io/latest/).
