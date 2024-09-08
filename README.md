@@ -8,14 +8,18 @@ all designed for easy asynchronous use.
 
 ## Installation
 
-Install twitch.py using pip:
+To install **twitch.py**, use the appropriate command for your operating system:
+
+For Windows:
 
 ```bash
-# On Windows
-py -3 -m pip install -U twitch.py
+py -3 -m pip install --upgrade twitchify
+```
 
-# On Linux/macOS
-python3 -m pip install -U twitch.py
+For macOS/Linux:
+
+```bash
+python3 -m pip install --upgrade twitchify
 ```
 
 ## Quick Start
