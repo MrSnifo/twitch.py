@@ -18,6 +18,7 @@ extra:
 
 theme:
   name: 'material'
+  custom_dir: overrides
   icon:
     logo: material/twitch
   palette:
