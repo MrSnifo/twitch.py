@@ -1,17 +1,17 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 
 site_name: twitch.py
-site_url: https://twitchpy.readthedocs.io/
+site_url: !!python/object/apply:os.getenv ["READTHEDOCS_CANONICAL_URL"]
+site_author: Snifo
 
-
-site_description: >
+site_description: >-
   A Python library designed to interact with Twitch's API and provide real-time event handling 
   through WebSocket EventSub. It simplifies asynchronous operations, making it easy to integrate 
   Twitch functionalities into your Python projects.
 
 # GitHub repository
-repo_url: https://github.com/mrSnifo/twitch.py
-repo_name: twitch.py
+repo_url: https://github.com/mrsnifo/twitch.py
+repo_name: mrsnifo/twitch.py
 copyright: Copyright (c) 2024-present Snifo
 
 extra:
