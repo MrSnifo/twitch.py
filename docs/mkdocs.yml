@@ -1,6 +1,9 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 
 site_name: twitch.py
+site_url: https://twitchpy.readthedocs.io/
+
+
 site_description: >
   A Python library designed to interact with Twitch's API and provide real-time event handling 
   through WebSocket EventSub. It simplifies asynchronous operations, making it easy to integrate 
