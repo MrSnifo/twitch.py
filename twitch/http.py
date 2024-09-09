@@ -53,9 +53,15 @@ class Route:
     BASE: ClassVar[str] = 'https://api.twitch.tv/helix/'
     OAUTH2: ClassVar[str] = 'https://id.twitch.tv/oauth2/'
 
-    __slots__ = ('method', 'url')
+    __slots__ = ('method', 'url', 'auth_user_id')
 
-    def __init__(self, method: str, path: str, oauth2: bool = False, **parameters: Any) -> None:
+    def __init__(self,
+                 auth_user_id: Optional[str],
+                 method: str,
+                 path: str,
+                 oauth2: bool = False,
+                 **parameters: Any) -> None:
+        self.auth_user_id: Optional[str] = auth_user_id
         self.method: str = method
         base_url = self.OAUTH2 if oauth2 else self.BASE
 
@@ -176,7 +182,7 @@ class HTTPClient:
         url: str = f'ws://localhost:{self.cli_port}/ws' if (self.cli and not resume) else url
         return await self.__session.ws_connect(url, **kwargs)
 
-    async def request(self, __id: Optional[str], /, route: Route, **kwargs: Any) -> Any:
+    async def request(self, route: Route, **kwargs: Any) -> Any:
         """Make an HTTP request with the provided route and keyword arguments."""
         method = route.method
         url = route.url
@@ -184,14 +190,14 @@ class HTTPClient:
         if 'headers' not in kwargs:
             headers: Dict[str, str] = {'Client-ID': self.client_id}
 
-            if __id:
-                token_data = self.__tokens.get(__id)
+            if route.auth_user_id:
+                token_data = self.__tokens.get(route.auth_user_id)
                 if token_data:
                     headers['Authorization'] = f'Bearer {token_data["access_token"]}'
                 else:
                     raise UnregisteredUser(
                         'Access token is missing for user %s. Please register the user using `register_user`.'
-                        % __id
+                        % route.auth_user_id
                     )
 
             if 'json' in kwargs:
@@ -276,7 +282,7 @@ class HTTPClient:
     def validate_token(self, access_token: str) -> Response[users.OAuthToken]:
         """Validate the provided access token."""
         headers: Dict[str, str] = {'Client-ID': self.client_id, 'Authorization': 'Bearer ' + access_token}
-        return self.request(None, Route('GET', 'validate', oauth2=True), headers=headers)
+        return self.request(Route(None, 'GET', 'validate', oauth2=True), headers=headers)
 
     def refresh_token(self, refresh_token: str) -> Response[users.OAuthRefreshToken]:
         """Regenerate the user's access token using the provided refresh token."""
@@ -284,7 +290,7 @@ class HTTPClient:
                                 'refresh_token': refresh_token,
                                 'client_secret': self.client_secret,
                                 'client_id': self.client_id}
-        return self.request(None, Route('POST', 'token', oauth2=True), data=body)
+        return self.request(Route(None, 'POST', 'token', oauth2=True), data=body)
 
     async def token_keep_alive(self) -> None:
         """Keeps the tokens alive by regenerating or revalidating when necessary."""
@@ -697,7 +703,7 @@ class HTTPClient:
             subscription_condition: Dict[str, Any]
     ) -> Response[TTMData[List[users.EventSubSubscription]]]:
         """Create an EventSub Websocket Subscription."""
-        route = Route('POST', 'eventsub/subscriptions')
+        route = Route(__id, 'POST', 'eventsub/subscriptions')
         if self.cli:
             route.url = f'http://localhost:{self.cli_port}/eventsub/subscriptions'
 
@@ -722,14 +728,14 @@ class HTTPClient:
                 'session_id': session_id
             }
         }
-        return self.request(__id, route=route, json=body)
+        return self.request(route=route, json=body)
 
     def delete_subscription(self, __id: str, subscription_id: str) -> Response[None]:
         """Delete an EventSub Websocket Subscription."""
         params: Dict[str, Any] = {
             'id': subscription_id
         }
-        return self.request(__id, Route('DELETE', 'eventsub/subscriptions', **params))
+        return self.request(Route(__id, 'DELETE', 'eventsub/subscriptions', **params))
 
     # ---------------------------------------
     #               GENERAL API
@@ -744,17 +750,18 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'length': length
         }
-        return self.request(broadcaster_id, Route('POST', 'channels/commercial'), data=body)
+        return self.request(Route(broadcaster_id, 'POST', 'channels/commercial'), data=body)
 
     def get_ad_schedule(self, broadcaster_id: str) -> Response[Data[List[streams.AdSchedule]]]:
-        return self.request(broadcaster_id, Route('GET', 'channels/ads', broadcaster_id=broadcaster_id))
+        return self.request(Route(broadcaster_id, 'GET', 'channels/ads', broadcaster_id=broadcaster_id))
 
     def snooze_next_ad(self, broadcaster_id: str) -> Response[Data[List[streams.AdSnooze]]]:
-        return self.request(broadcaster_id,
-                            Route('POST', 'channels/ads/schedule/snooze', broadcaster_id=broadcaster_id))
+        return self.request(Route(broadcaster_id, 'POST', 'channels/ads/schedule/snooze',
+                                  broadcaster_id=broadcaster_id))
 
     # Analytics
-    def get_extension_analytics(self, __id: str,
+    def get_extension_analytics(self,
+                                __id: str,
                                 extension_id: Optional[str] = None,
                                 analytics_type: Literal['overview_v2'] = 'overview_v2',
                                 started_at: Optional[str] = None,
@@ -769,7 +776,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(__id, Route('GET', 'analytics/extensions', **params))
+        return self.request(Route(__id, 'GET', 'analytics/extensions', **params))
 
     def get_game_analytics(self, __id: str,
                            game_id: Optional[str] = None,
@@ -786,7 +793,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(__id, Route('GET', 'analytics/games', **params))
+        return self.request(Route(__id, 'GET', 'analytics/games', **params))
 
     # Bits
     def get_bits_leaderboard(self, __id: str,
@@ -799,15 +806,15 @@ class HTTPClient:
                                   'started_at': started_at,
                                   'user_id': user_id
                                   }
-        return self.request(__id, Route('GET', 'bits/leaderboard', **params))
+        return self.request(Route(__id, 'GET', 'bits/leaderboard', **params))
 
     def get_cheermotes(self, __id: str, broadcaster_id: Optional[str] = None) -> Response[Data[List[bits.Cheermote]]]:
-        return self.request(__id, Route('GET', 'bits/cheermotes', broadcaster_id=broadcaster_id))
+        return self.request(Route(__id, 'GET', 'bits/cheermotes', broadcaster_id=broadcaster_id))
 
     # Channel
     def get_channel_information(self, __id: str, broadcaster_ids: List[str]
                                 ) -> Response[Data[List[channels.ChannelInfo]]]:
-        return self.request(__id, Route('GET', 'channels', broadcaster_id=broadcaster_ids))
+        return self.request(Route(__id, 'GET', 'channels', broadcaster_id=broadcaster_ids))
 
     def modify_channel_information(self,
                                    broadcaster_id: str,
@@ -828,11 +835,11 @@ class HTTPClient:
             is_branded_content: is_branded_content,
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('PATCH', 'channels', broadcaster_id=broadcaster_id),
+        return self.request(Route(broadcaster_id, 'PATCH', 'channels', broadcaster_id=broadcaster_id),
                             data=body)
 
     def get_channel_editors(self, broadcaster_id: str) -> Response[Data[List[channels.Editor]]]:
-        return self.request(broadcaster_id, Route('GET', 'channels/editors',
+        return self.request(Route(broadcaster_id, 'GET', 'channels/editors',
                                                   broadcaster_id=broadcaster_id))
 
     def get_followed_channels(self,
@@ -846,7 +853,7 @@ class HTTPClient:
                                   'after': after,
                                   'first': first}
 
-        return self.request(user_id, Route('GET', 'channels/followed', **params))
+        return self.request(Route(user_id, 'GET', 'channels/followed', **params))
 
     def get_channel_followers(self, __id: str,
                               broadcaster_id: str,
@@ -859,7 +866,7 @@ class HTTPClient:
                                   'after': after,
                                   'first': first}
 
-        return self.request(__id, Route('GET', 'channels/followers', **params))
+        return self.request(Route(__id, 'GET', 'channels/followers', **params))
 
     # Channel Points
     def create_custom_rewards(self,
@@ -894,16 +901,15 @@ class HTTPClient:
             'should_redemptions_skip_request_queue': should_redemptions_skip_request_queue
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id,
-                            Route('POST', 'channel_points/custom_rewards', broadcaster_id=broadcaster_id),
-                            data=body)
+        return self.request(Route(broadcaster_id, 'POST', 'channel_points/custom_rewards',
+                                  broadcaster_id=broadcaster_id), data=body)
 
     def delete_custom_reward(self, broadcaster_id: str, reward_id: str) -> Response[None]:
         params: Dict[str, Any] = {
             'broadcaster_id': broadcaster_id,
             'id': reward_id
         }
-        return self.request(broadcaster_id, Route('DELETE', 'channel_points/custom_rewards', **params))
+        return self.request(Route(broadcaster_id, 'DELETE', 'channel_points/custom_rewards', **params))
 
     def get_custom_reward(self,
                           broadcaster_id: str,
@@ -917,7 +923,7 @@ class HTTPClient:
             'only_manageable_rewards': only_manageable_rewards
         }
 
-        return self.request(broadcaster_id, Route('GET', 'channel_points/custom_rewards', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'channel_points/custom_rewards', **params))
 
     def get_custom_reward_redemption(self,
                                      broadcaster_id: str,
@@ -938,7 +944,7 @@ class HTTPClient:
             'first': first,
         }
 
-        return self.request(broadcaster_id, Route('GET', 'channel_points/custom_rewards/redemptions',
+        return self.request(Route(broadcaster_id, 'GET', 'channel_points/custom_rewards/redemptions',
                                                   **params))
 
     def update_custom_reward(self,
@@ -980,7 +986,7 @@ class HTTPClient:
             'should_redemptions_skip_request_queue': should_redemptions_skip_request_queue
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('PATCH', 'channel_points/custom_rewards', **params),
+        return self.request(Route(broadcaster_id, 'PATCH', 'channel_points/custom_rewards', **params),
                             data=body)
 
     def update_redemption_status(self,
@@ -1000,13 +1006,13 @@ class HTTPClient:
         body: Dict[str, Any] = {
             'status': status.upper(),
         }
-        return self.request(broadcaster_id, Route('PATCH', 'channel_points/custom_rewards/redemptions',
+        return self.request(Route(broadcaster_id, 'PATCH', 'channel_points/custom_rewards/redemptions',
                                                   **params),
                             data=body)
 
     # Charity
     def get_charity_campaign(self, broadcaster_id: str) -> Response[Data[List[activity.Charity]]]:
-        return self.request(broadcaster_id, Route('GET', 'charity/campaigns',
+        return self.request(Route(broadcaster_id, 'GET', 'charity/campaigns',
                                                   broadcaster_id=broadcaster_id))
 
     def get_charity_campaign_donations(self,
@@ -1019,7 +1025,7 @@ class HTTPClient:
             'after': after
         }
 
-        return self.request(broadcaster_id, Route('GET', 'charity/donations', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'charity/donations', **params))
 
     # Chat
     def get_chatters(self,
@@ -1033,16 +1039,16 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(moderator_id, Route('GET', 'chat/chatters', **params))
+        return self.request(Route(moderator_id, 'GET', 'chat/chatters', **params))
 
     def get_channel_emotes(self, __id: str, broadcaster_id: str) -> Response[Edata[List[chat.Emote]]]:
-        return self.request(__id, Route('GET', 'chat/emotes', broadcaster_id=broadcaster_id))
+        return self.request(Route(__id, 'GET', 'chat/emotes', broadcaster_id=broadcaster_id))
 
     def get_global_emotes(self, __id: str) -> Response[Edata[List[chat.Emote]]]:
-        return self.request(__id, Route('GET', 'chat/emotes/global'))
+        return self.request(Route(__id, 'GET', 'chat/emotes/global'))
 
     def get_emote_sets(self, __id: str, emote_set_ids: List[str]) -> Response[Edata[List[chat.Emote]]]:
-        return self.request(__id, Route('GET', 'chat/emotes/set', emote_set_id=emote_set_ids))
+        return self.request(Route(__id, 'GET', 'chat/emotes/set', emote_set_id=emote_set_ids))
 
     def get_user_emotes(self,
                         user_id: str,
@@ -1053,13 +1059,13 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'after': after
         }
-        return self.request(user_id, Route('GET', 'chat/emotes/user', **params))
+        return self.request(Route(user_id, 'GET', 'chat/emotes/user', **params))
 
     def get_channel_chat_badges(self, __id: str, broadcaster_id: str) -> Response[Data[List[chat.Badge]]]:
-        return self.request(__id, Route('GET', 'chat/badges', broadcaster_id=broadcaster_id))
+        return self.request(Route(__id, 'GET', 'chat/badges', broadcaster_id=broadcaster_id))
 
     def get_global_chat_badges(self, __id: str) -> Response[Data[List[chat.Badge]]]:
-        return self.request(__id, Route('GET', 'chat/badges/global'))
+        return self.request(Route(__id, 'GET', 'chat/badges/global'))
 
     def get_chat_settings(self,
                           broadcaster_id: str,
@@ -1069,7 +1075,7 @@ class HTTPClient:
             'moderator_id': moderator_id
         }
 
-        return self.request(moderator_id, Route('GET', 'chat/settings', **params))
+        return self.request(Route(moderator_id, 'GET', 'chat/settings', **params))
 
     def update_chat_settings(
             self,
@@ -1105,7 +1111,7 @@ class HTTPClient:
         }
 
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(moderator_id, Route('PATCH', 'chat/settings', **params), data=body)
+        return self.request(Route(moderator_id, 'PATCH', 'chat/settings', **params), data=body)
 
     def send_chat_announcement(self,
                                broadcaster_id: str,
@@ -1123,7 +1129,7 @@ class HTTPClient:
             'message': message,
             'color': color,
         }
-        return self.request(moderator_id, Route('POST', 'chat/announcements', **params), data=body)
+        return self.request(Route(moderator_id, 'POST', 'chat/announcements', **params), data=body)
 
     def send_a_shoutout(self,
                         from_broadcaster_id: str,
@@ -1135,7 +1141,7 @@ class HTTPClient:
             'to_broadcaster_id': to_broadcaster_id,
             'moderator_id': moderator_id
         }
-        return self.request(moderator_id, Route('POST', 'chat/shoutouts', **params))
+        return self.request(Route(moderator_id, 'POST', 'chat/shoutouts', **params))
 
     def send_chat_message(self,
                           broadcaster_id: str,
@@ -1151,15 +1157,15 @@ class HTTPClient:
             'reply_parent_message_id': reply_parent_message_id
         }
 
-        return self.request(sender_id, Route('POST', 'chat/messages', **params))
+        return self.request(Route(sender_id, 'POST', 'chat/messages', **params))
 
     def get_user_chat_color(self, __id: str, user_ids: List[str]) -> Response[Data[List[chat.UserChatColor]]]:
-        return self.request(__id, Route('GET', 'chat/color', user_id=user_ids))
+        return self.request(Route(__id, 'GET', 'chat/color', user_id=user_ids))
 
     def update_user_chat_color(self,
                                user_id: str,
                                color: Union[str, chat.UserChatColors]) -> Response[None]:
-        return self.request(user_id, Route('PUT', 'chat/color', user_id=user_id, color=color))
+        return self.request(Route(user_id, 'PUT', 'chat/color', user_id=user_id, color=color))
 
     # Clips
     def create_clip(self, __id: str,
@@ -1167,7 +1173,7 @@ class HTTPClient:
                     *,
                     has_delay: bool = False
                     ) -> Response[Data[List[channels.ClipEdit]]]:
-        return self.request(__id, Route('POST', 'clips', broadcaster_id=broadcaster_id,
+        return self.request(Route(__id, 'POST', 'clips', broadcaster_id=broadcaster_id,
                                         has_delay=has_delay))
 
     def get_clips(self, __id: str,
@@ -1192,13 +1198,13 @@ class HTTPClient:
             'after': after,
             'is_featured': is_featured
         }
-        return self.request(__id, Route('GET', 'clips', **params))
+        return self.request(Route(__id, 'GET', 'clips', **params))
 
     # CCLs
     def get_content_classification_labels(self, __id: str,
                                           locale: streams.Locale = 'en-US'
                                           ) -> Response[Data[List[streams.CCLInfo]]]:
-        return self.request(__id, Route('GET', 'content_classification_labels', locale=locale))
+        return self.request(Route(__id, 'GET', 'content_classification_labels', locale=locale))
 
     # Entitlements
     def get_drops_entitlements(self,
@@ -1217,7 +1223,7 @@ class HTTPClient:
             'after': after,
             'first': first
         }
-        return self.request(user_id, Route('GET', 'entitlements/drops', **params))
+        return self.request(Route(user_id, 'GET', 'entitlements/drops', **params))
 
     def update_drops_entitlements(self, __id: str,
                                   entitlement_ids: List[str],
@@ -1227,7 +1233,7 @@ class HTTPClient:
             'entitlement_ids': entitlement_ids,
             'fulfillment_status': fulfillment_status.upper(),
         }
-        return self.request(__id, Route('PATCH', 'entitlements/drops', **params))
+        return self.request(Route(__id, 'PATCH', 'entitlements/drops', **params))
 
     # Games
     def get_top_games(self, __id: str,
@@ -1238,7 +1244,7 @@ class HTTPClient:
             'first': first,
             'after': after,
         }
-        return self.request(__id, Route('GET', 'games/top', **params))
+        return self.request(Route(__id, 'GET', 'games/top', **params))
 
     def get_games(self, __id: str,
                   game_ids: Optional[List[str]] = None,
@@ -1249,11 +1255,11 @@ class HTTPClient:
             'name': names,
             'igdb_id': igdb_ids
         }
-        return self.request(__id, Route('GET', 'games', **params))
+        return self.request(Route(__id, 'GET', 'games', **params))
 
     # Goals
     def get_creator_goals(self, broadcaster_id: str) -> Response[Data[List[activity.Goal]]]:
-        return self.request(broadcaster_id, Route('GET', 'goals', broadcaster_id=broadcaster_id))
+        return self.request(Route(broadcaster_id, 'GET', 'goals', broadcaster_id=broadcaster_id))
 
     # Hype Train
     def get_hype_train_events(self,
@@ -1265,7 +1271,7 @@ class HTTPClient:
             'after': after,
             'first': first
         }
-        return self.request(broadcaster_id, Route('GET', 'hypetrain/events', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'hypetrain/events', **params))
 
     # Moderation
     def check_automod_status(self,
@@ -1273,10 +1279,9 @@ class HTTPClient:
                              messages: List[str]
                              ) -> Response[Data[List[moderation.AutoModMessageStatus]]]:
         body = {'data': [{'msg_id': str(abs(hash(msg))), 'msg_text': msg} for msg in messages]}
-        return self.request(broadcaster_id,
-                            Route('POST', 'moderation/enforcements/status', broadcaster_id=broadcaster_id),
-                            json=body
-                            )
+        return self.request(Route(broadcaster_id, 'POST', 'moderation/enforcements/status',
+                                  broadcaster_id=broadcaster_id),
+                            json=body)
 
     def manage_held_automod_messages(self,
                                      user_id: str,
@@ -1288,7 +1293,7 @@ class HTTPClient:
             'msg_id': msg_id,
             'action': action.upper()
         }
-        return self.request(user_id, Route('POST', 'moderation/automod/message', **params))
+        return self.request(Route(user_id, 'POST', 'moderation/automod/message', **params))
 
     def get_automod_settings(self,
                              broadcaster_id: str,
@@ -1297,7 +1302,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'moderator_id': moderator_id,
         }
-        return self.request(moderator_id, Route('GET', 'moderation/automod/settings', **params))
+        return self.request(Route(moderator_id, 'GET', 'moderation/automod/settings', **params))
 
     def update_automod_settings(self,
                                 broadcaster_id: str,
@@ -1332,7 +1337,7 @@ class HTTPClient:
             body = {key: value for key, value in body.items() if value is not None}
         else:
             body: Dict[str, Any] = {'overall_level': overall_level}
-        return self.request(moderator_id, Route('PUT', 'moderation/automod/settings', **params), data=body)
+        return self.request(Route(moderator_id, 'PUT', 'moderation/automod/settings', **params), data=body)
 
     def get_banned_users(self, __id: str,
                          broadcaster_id: str,
@@ -1349,7 +1354,7 @@ class HTTPClient:
             'after': after,
         }
 
-        return self.request(__id, Route('GET', 'moderation/banned', **params))
+        return self.request(Route(__id, 'GET', 'moderation/banned', **params))
 
     def ban_user(self,
                  broadcaster_id: str,
@@ -1369,7 +1374,7 @@ class HTTPClient:
             'reason': reason
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(moderator_id, Route('POST', 'moderation/bans', **params), json={'data': body})
+        return self.request(Route(moderator_id, 'POST', 'moderation/bans', **params), json={'data': body})
 
     def unban_user(self,
                    broadcaster_id: str,
@@ -1380,7 +1385,7 @@ class HTTPClient:
             'moderator_id': moderator_id,
             'user_id': user_id
         }
-        return self.request(moderator_id, Route('DELETE', 'moderation/bans', **params))
+        return self.request(Route(moderator_id, 'DELETE', 'moderation/bans', **params))
 
     def get_unban_requests(self,
                            broadcaster_id: str,
@@ -1400,7 +1405,7 @@ class HTTPClient:
             'first': first
         }
 
-        return self.request(moderator_id, Route('GET', 'moderation/unban_requests', **params))
+        return self.request(Route(moderator_id, 'GET', 'moderation/unban_requests', **params))
 
     def resolve_unban_requests(self,
                                broadcaster_id: str,
@@ -1418,7 +1423,7 @@ class HTTPClient:
             'resolution_text': resolution_text,
         }
 
-        return self.request(moderator_id, Route('PATCH', 'moderation/unban_requests', **params))
+        return self.request(Route(moderator_id, 'PATCH', 'moderation/unban_requests', **params))
 
     def get_blocked_terms(self,
                           broadcaster_id: str,
@@ -1433,7 +1438,7 @@ class HTTPClient:
             'after': after
         }
 
-        return self.request(moderator_id, Route('GET', 'moderation/blocked_terms', **params))
+        return self.request(Route(moderator_id, 'GET', 'moderation/blocked_terms', **params))
 
     def add_blocked_term(self,
                          broadcaster_id: str,
@@ -1449,7 +1454,7 @@ class HTTPClient:
         body: Dict[str, Any] = {
             'text': text
         }
-        return self.request(moderator_id, Route('POST', 'moderation/blocked_terms', **params), data=body)
+        return self.request(Route(moderator_id, 'POST', 'moderation/blocked_terms', **params), data=body)
 
     def remove_blocked_term(self,
                             broadcaster_id: str,
@@ -1461,7 +1466,7 @@ class HTTPClient:
             'moderator_id': moderator_id,
             'id': term_id
         }
-        return self.request(moderator_id, Route('DELETE', 'moderation/blocked_terms', **params))
+        return self.request(Route(moderator_id, 'DELETE', 'moderation/blocked_terms', **params))
 
     def delete_chat_messages(self,
                              broadcaster_id: str,
@@ -1475,7 +1480,7 @@ class HTTPClient:
             'message_id': message_id
         }
 
-        return self.request(moderator_id, Route('DELETE', 'moderation/chat', **params))
+        return self.request(Route(moderator_id, 'DELETE', 'moderation/chat', **params))
 
     def get_moderated_channels(self,
                                user_id: str,
@@ -1488,7 +1493,7 @@ class HTTPClient:
             'first': first
         }
 
-        return self.request(user_id, Route('GET', 'moderation/channels', **params))
+        return self.request(Route(user_id, 'GET', 'moderation/channels', **params))
 
     def get_moderators(self,
                        broadcaster_id: str,
@@ -1502,7 +1507,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(broadcaster_id, Route('GET', 'moderation/moderators', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'moderation/moderators', **params))
 
     def add_channel_moderator(self,
                               broadcaster_id: str,
@@ -1512,7 +1517,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'user_id': user_id
         }
-        return self.request(broadcaster_id, Route('POST', 'moderation/moderators', **params))
+        return self.request(Route(broadcaster_id, 'POST', 'moderation/moderators', **params))
 
     def remove_channel_moderator(self,
                                  broadcaster_id: str,
@@ -1522,7 +1527,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'user_id': user_id
         }
-        return self.request(broadcaster_id, Route('DELETE', 'moderation/moderators', **params))
+        return self.request(Route(broadcaster_id, 'DELETE', 'moderation/moderators', **params))
 
     def get_vips(self,
                  broadcaster_id: str,
@@ -1536,7 +1541,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(broadcaster_id, Route('GET', 'channels/vips', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'channels/vips', **params))
 
     def add_channel_vip(self,
                         broadcaster_id: str,
@@ -1546,7 +1551,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'user_id': user_id
         }
-        return self.request(broadcaster_id, Route('POST', 'channels/vips', **params))
+        return self.request(Route(broadcaster_id, 'POST', 'channels/vips', **params))
 
     def remove_channel_vip(self,
                            broadcaster_id: str,
@@ -1556,7 +1561,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'user_id': user_id
         }
-        return self.request(broadcaster_id, Route('DELETE', 'channels/vips', **params))
+        return self.request(Route(broadcaster_id, 'DELETE', 'channels/vips', **params))
 
     def update_shield_mode_status(self,
                                   broadcaster_id: str,
@@ -1570,7 +1575,7 @@ class HTTPClient:
         data: Dict[str, Any] = {
             'is_active': is_active
         }
-        return self.request(moderator_id, Route('PUT', 'moderation/shield_mode', **params), data=data)
+        return self.request(Route(moderator_id, 'PUT', 'moderation/shield_mode', **params), data=data)
 
     def get_shield_mode_status(self,
                                broadcaster_id: str,
@@ -1580,7 +1585,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'moderator_id': moderator_id
         }
-        return self.request(moderator_id, Route('GET', 'moderation/shield_mode', **params))
+        return self.request(Route(moderator_id, 'GET', 'moderation/shield_mode', **params))
 
     def warn_chat_user(self,
                        broadcaster_id: str,
@@ -1596,7 +1601,7 @@ class HTTPClient:
             'user_id': user_id,
             'reason': reason
         }
-        return self.request(moderator_id, Route('POST', 'moderation/warnings', **params), data=body)
+        return self.request(Route(moderator_id, 'POST', 'moderation/warnings', **params), data=body)
 
     # Polls
     def get_polls(self,
@@ -1612,7 +1617,7 @@ class HTTPClient:
             'after': after
         }
 
-        return self.request(broadcaster_id, Route('GET', 'polls', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'polls', **params))
 
     def create_poll(self,
                     broadcaster_id: str,
@@ -1631,7 +1636,7 @@ class HTTPClient:
             'channel_points_per_vote': channel_points_per_vote
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('POST', 'polls'), data=body)
+        return self.request(Route(broadcaster_id, 'POST', 'polls'), data=body)
 
     def end_poll(self,
                  broadcaster_id: str,
@@ -1643,7 +1648,7 @@ class HTTPClient:
             'id': poll_id,
             'status': status.upper()
         }
-        return self.request(broadcaster_id, Route('PATCH', 'polls'), data=body)
+        return self.request(Route(broadcaster_id, 'PATCH', 'polls'), data=body)
 
     # Predictions
     def get_predictions(self,
@@ -1657,7 +1662,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(broadcaster_id, Route('GET', 'predictions', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'predictions', **params))
 
     def create_prediction(self,
                           broadcaster_id: str,
@@ -1671,7 +1676,7 @@ class HTTPClient:
             'outcomes': [{'title': outcome} for outcome in outcomes],
             'prediction_window': prediction_window
         }
-        return self.request(broadcaster_id, Route('POST', 'predictions'), data=body)
+        return self.request(Route(broadcaster_id, 'POST', 'predictions'), data=body)
 
     def end_prediction(self,
                        broadcaster_id: str,
@@ -1686,7 +1691,7 @@ class HTTPClient:
             'winning_outcome_id': winning_outcome_id
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('PATCH', 'predictions'), data=body)
+        return self.request(Route(broadcaster_id, 'PATCH', 'predictions'), data=body)
 
     # Raid
     def start_raid(self,
@@ -1697,7 +1702,7 @@ class HTTPClient:
             'from_broadcaster_id': from_broadcaster_id,
             'to_broadcaster_id': to_broadcaster_id
         }
-        return self.request(from_broadcaster_id, Route('POST', 'raids'), data=body)
+        return self.request(Route(from_broadcaster_id, 'POST', 'raids'), data=body)
 
     def cancel_raid(self,
                     broadcaster_id: str
@@ -1705,7 +1710,7 @@ class HTTPClient:
         params: Dict[str, Any] = {
             'broadcaster_id': broadcaster_id
         }
-        return self.request(broadcaster_id, Route('DELETE', 'raids', **params))
+        return self.request(Route(broadcaster_id, 'DELETE', 'raids', **params))
 
     def get_channel_stream_schedule(self, __id: str,
                                     broadcaster_id: str,
@@ -1722,10 +1727,10 @@ class HTTPClient:
             'after': after
         }
 
-        return self.request(__id, Route('GET', 'schedule', **params))
+        return self.request(Route(__id, 'GET', 'schedule', **params))
 
     def get_channel_icalendar(self, __id: str, broadcaster_id: str) -> Response[str]:
-        return self.request(__id, Route('GET', 'schedule/icalendar', broadcaster_id=broadcaster_id))
+        return self.request(Route(__id, 'GET', 'schedule/icalendar', broadcaster_id=broadcaster_id))
 
     def update_channel_stream_schedule(self,
                                        broadcaster_id: str,
@@ -1741,7 +1746,7 @@ class HTTPClient:
             'vacation_end_time': vacation_end_time,
             'timezone': timezone
         }
-        return self.request(broadcaster_id, Route('PATCH', 'schedule/settings', **params))
+        return self.request(Route(broadcaster_id, 'PATCH', 'schedule/settings', **params))
 
     def create_channel_schedule_segment(self,
                                         broadcaster_id: str,
@@ -1762,7 +1767,7 @@ class HTTPClient:
             'title': title
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('POST', 'schedule/segment'), data=body)
+        return self.request(Route(broadcaster_id, 'POST', 'schedule/segment'), data=body)
 
     def update_channel_schedule_segment(self,
                                         broadcaster_id: str,
@@ -1785,7 +1790,7 @@ class HTTPClient:
             'timezone': timezone
         }
         body = {key: value for key, value in body.items() if value is not None}
-        return self.request(broadcaster_id, Route('PATCH', 'schedule/segment'), data=body)
+        return self.request(Route(broadcaster_id, 'PATCH', 'schedule/segment'), data=body)
 
     def delete_channel_schedule_segment(self,
                                         broadcaster_id: str,
@@ -1795,7 +1800,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'id': segment_id
         }
-        return self.request(broadcaster_id, Route('DELETE', 'schedule/segment', **params))
+        return self.request(Route(broadcaster_id, 'DELETE', 'schedule/segment', **params))
 
     # Search
     def search_categories(self, __id: str,
@@ -1808,7 +1813,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(__id, Route('GET', 'search/categories', **params))
+        return self.request(Route(__id, 'GET', 'search/categories', **params))
 
     def search_channels(self, __id: str,
                         query: str,
@@ -1822,11 +1827,11 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(__id, Route('GET', 'search/channels', **params))
+        return self.request(Route(__id, 'GET', 'search/channels', **params))
 
     # Streams
     def get_stream_key(self, broadcaster_id: str) -> Response[Data[List[streams.StreamKey]]]:
-        return self.request(broadcaster_id, Route('GET', 'streams/key', broadcaster_id=broadcaster_id))
+        return self.request(Route(broadcaster_id, 'GET', 'streams/key', broadcaster_id=broadcaster_id))
 
     def get_streams(self, __id: str,
                     user_ids: Optional[List[str]] = None,
@@ -1848,7 +1853,7 @@ class HTTPClient:
             'before': before,
             'after': after
         }
-        return self.request(__id, Route('GET', 'streams', **params))
+        return self.request(Route(__id, 'GET', 'streams', **params))
 
     def get_followed_streams(self,
                              user_id: str,
@@ -1860,7 +1865,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(user_id, Route('GET', 'streams/followed', **params))
+        return self.request(Route(user_id, 'GET', 'streams/followed', **params))
 
     def create_stream_marker(self, __id: str,
                              user_id: str,
@@ -1870,7 +1875,7 @@ class HTTPClient:
             'user_id': user_id,
             'description': description
         }
-        return self.request(__id, Route('POST', 'streams/markers'), data=body)
+        return self.request(Route(__id, 'POST', 'streams/markers'), data=body)
 
     def get_stream_markers(self, __id: str,
                            user_id: [str] = None,
@@ -1886,7 +1891,7 @@ class HTTPClient:
             'before': before,
             'after': after
         }
-        return self.request(__id, Route('GET', 'streams/markers', **params))
+        return self.request(Route(__id, 'GET', 'streams/markers', **params))
 
     # Subscriptions
     def get_broadcaster_subscriptions(self,
@@ -1903,7 +1908,7 @@ class HTTPClient:
             'before': before,
             'after': after
         }
-        return self.request(broadcaster_id, Route('GET', 'subscriptions', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'subscriptions', **params))
 
     def check_user_subscription(self,
                                 user_id: str,
@@ -1913,7 +1918,7 @@ class HTTPClient:
             'broadcaster_id': broadcaster_id,
             'user_id': user_id
         }
-        return self.request(user_id, Route('GET', 'subscriptions/user', **params))
+        return self.request(Route(user_id, 'GET', 'subscriptions/user', **params))
 
     def get_team_info(self, __id: str,
                       team_name: Optional[str] = None,
@@ -1923,10 +1928,10 @@ class HTTPClient:
             'name': team_name.replace(' ', '').lower(),
             'id': team_id
         }
-        return self.request(__id, Route('GET', 'teams', **params))
+        return self.request(Route(__id, 'GET', 'teams', **params))
 
     def get_channel_teams(self, __id: str, broadcaster_id: str) -> Response[Data[List[channels.ChannelTeam]]]:
-        return self.request(__id, Route('GET', 'teams/channel', broadcaster_id=broadcaster_id))
+        return self.request(Route(__id, 'GET', 'teams/channel', broadcaster_id=broadcaster_id))
 
     # Users
     def get_users(self, __id: str,
@@ -1936,10 +1941,10 @@ class HTTPClient:
             'login': user_logins,
             'id': user_ids
         }
-        return self.request(__id, Route('GET', 'users', **params))
+        return self.request(Route(__id, 'GET', 'users', **params))
 
     def update_user(self, __id: str, description: str) -> Response[Data[List[users.User]]]:
-        return self.request(__id, Route('PUT', 'users', description=description))
+        return self.request(Route(__id, 'PUT', 'users', description=description))
 
     def get_user_block_list(self,
                             broadcaster_id: str,
@@ -1951,7 +1956,7 @@ class HTTPClient:
             'first': first,
             'after': after
         }
-        return self.request(broadcaster_id, Route('GET', 'users/blocks', **params))
+        return self.request(Route(broadcaster_id, 'GET', 'users/blocks', **params))
 
     def block_user(self, __id: str, user_id: str,
                    source_context: Literal['chat', 'whisper'] = None,
@@ -1961,18 +1966,18 @@ class HTTPClient:
             'source_context': source_context,
             'reason': reason
         }
-        return self.request(__id, Route('PUT', 'users/blocks', **params))
+        return self.request(Route(__id, 'PUT', 'users/blocks', **params))
 
     def unblock_user(self, __id: str, user_id: str) -> Response[None]:
-        return self.request(__id, Route('DELETE', 'users/blocks', user_id=user_id))
+        return self.request(Route(__id, 'DELETE', 'users/blocks', user_id=user_id))
 
     def get_user_extensions(self, __id: str) -> Response[Data[List[channels.Extension]]]:
-        return self.request(__id, Route('GET', 'users/extensions/list'))
+        return self.request(Route(__id, 'GET', 'users/extensions/list'))
 
     def get_user_active_extensions(self, __id: str,
                                    user_id: Optional[str] = None
                                    ) -> Response[Data[channels.ActiveExtensions]]:
-        return self.request(__id, Route('GET', 'users/extensions', user_id=user_id))
+        return self.request(Route(__id, 'GET', 'users/extensions', user_id=user_id))
 
     def update_user_extensions(self, __id: str,
                                key: Literal['panel', 'overlay', 'component'],
@@ -1989,7 +1994,7 @@ class HTTPClient:
         }
         if x and y:
             body[key][number].update({'x': x, 'y': y})
-        return self.request(__id, Route('PUT', 'users/extensions'), data=body)
+        return self.request(Route(__id, 'PUT', 'users/extensions'), data=body)
 
     # Videos
     def get_videos(self, __id: str,
@@ -2016,10 +2021,10 @@ class HTTPClient:
             'after': after,
             'before': before
         }
-        return self.request(__id, Route('GET', 'videos', **params))
+        return self.request(Route(__id, 'GET', 'videos', **params))
 
     def delete_videos(self, __id: str, video_ids: List[str]) -> Response[Data[List[str]]]:
-        return self.request(__id, Route('DELETE', 'videos', id=video_ids))
+        return self.request(Route(__id, 'DELETE', 'videos', id=video_ids))
 
     # Whispers
     def send_whisper(self,
@@ -2034,4 +2039,4 @@ class HTTPClient:
         body: Dict[str, Any] = {
             'message': message
         }
-        return self.request(from_user_id, Route('POST', 'whispers', **params), data=body)
+        return self.request(Route(from_user_id, 'POST', 'whispers', **params), data=body)
