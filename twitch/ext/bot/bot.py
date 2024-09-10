@@ -69,7 +69,7 @@ class Bot(twitch.Client):
             **Default**: `8080`
             ___
 
-        - socket_debug: `False`
+        - socket_debug: [False][bool]
 
             Flag indicating if raw WebSocket messages should be dispatched for debugging purposes.
             If enabled, raw WebSocket messages are dispatched to the on_socket_raw_receive.
