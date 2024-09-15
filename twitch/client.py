@@ -278,9 +278,8 @@ class Client:
             Do not use `await wait_until_ready()` within this method as it may cause
             it to freeze.
 
-        This method can be used to execute any extra initialization or setup tasks
-        needed for the server before the client becomes fully operational. You can
-        configure or set up additional extensions or services as required.
+        This method can be used to execute any extra initialization or setup tasks needed before the client becomes
+        fully operational. You can configure or set up additional extensions or services as required.
         """
         pass
 
