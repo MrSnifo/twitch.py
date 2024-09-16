@@ -488,13 +488,14 @@ class ConnectionState:
             event_type = data['subscription']['type']
             event = self._events.get(user_id, {}).get(event_type)
 
-            # Incase Using CLI
+            # Incase Using CLI.
             if event is not None:
                 for callback in event['callbacks']:
                     self.__custom_dispatch(event['name'], callback, data['event'])
 
-            if user_id != self.user.id:
-                return
+                # Dispatch only custom events incase the user is not the client.
+                if user_id != self.user.id:
+                    return
 
             # Client events
             parse = getattr(self, 'parse_' + data['subscription']['type'].replace('.', '_'))
