@@ -34,7 +34,8 @@ packages = [
     "twitch.types",
     "twitch.types.eventsub",
     "twitch.ext.bot",
-    "twitch.ext.oauth"
+    "twitch.ext.oauth",
+    "twitch.ext.overlay"
 ]
 include-package-data = true
 

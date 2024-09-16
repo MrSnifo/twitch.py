@@ -7,11 +7,11 @@ hide:
 # Introduction
 
 ## Overview
+___
 
 `Bot` is a Python class that extends [Client][twitch.client.Client] to manage Twitch interactions more effectively.
 
 ## Features
-
 - **User Registration**: Register broadcasters with their access tokens and manage their tokens for API requests.
 - **Broadcaster Management**: Retrieve and manage registered broadcasters within the bot's connection.
 - **Flexible Authentication**: Authenticate users using their access or refresh tokens.

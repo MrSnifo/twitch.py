@@ -91,6 +91,12 @@ nav:
           - Oauth: 'ext/oauth/oauth.md'
           - Events: 'ext/oauth/events.md'
           - Enums: 'ext/oauth/enums.md'
+      - Overlay:
+          - 'ext/overlay/index.md'
+          - Overlay: 'ext/overlay/overlay.md'
+          - Format: 'ext/overlay/format.md'
+          - Attachment: 'ext/overlay/attachment.md'
+          - Events: 'ext/overlay/events.md'
 markdown_extensions:
   - def_list
   - admonition

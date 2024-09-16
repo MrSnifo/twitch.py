@@ -4,7 +4,7 @@ hide:
   - toc
 ---
 
-# Twitch.py
+# twitch.py
 
 A Python library designed to interact with Twitch's API and provide real-time event handling through WebSocket EventSub. It simplifies asynchronous operations, making it easy to integrate Twitch functionalities into your Python projects.
 

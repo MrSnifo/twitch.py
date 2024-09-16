@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from twitch import Client, utils
+from twitch import utils
 from typing import TYPE_CHECKING
 from .http import HTTPClient
 from .enums import Scopes
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from typing import Optional, Type, Self, List, Union, Tuple
     from types import TracebackType
     from twitch.types import users
+    from twitch import Client
 
 import logging
 _logger = logging.getLogger(__name__)

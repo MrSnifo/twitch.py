@@ -7,6 +7,7 @@ hide:
 # Introduction
 
 ## Overview
+___
 
 `DeviceAuthFlow` is a Python class designed for managing Twitch's device authentication flow. It simplifies obtaining access tokens and managing the authentication process.
 
