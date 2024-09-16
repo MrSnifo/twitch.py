@@ -29,7 +29,7 @@ For support, mention @Snifo in the #general-python channel on the [Twitch API Di
 
 - [Bot Extension](ext/bot/index.md): Enhance your Twitch interactions with the `Bot` class, an extension of `twitch.Client` designed for efficient management of Twitch operations.
 - [OAuth Extension](ext/oauth/index.md): Simplify the device authentication process with the `DeviceAuthFlow` class, which streamlines obtaining and managing access tokens.
-
+- [Overlay Extension](ext/overlay/index.md): Create dynamic and customizable overlays for your Twitch streams using the `Overlay` class. This extension allows you to manage alerts, animations, and other graphical elements displayed on stream.
 ## Documentation
 
 - **[Client API Reference](reference/client.md)**: Detailed documentation.
