@@ -482,15 +482,19 @@ class ConnectionState:
 
     def parse(self, data: EvData[Any]) -> None:
         try:
-            # Custom Event
-            condition = data['subscription']['condition']
-            user_id = condition.get('broadcaster_user_id') or condition.get('to_broadcaster_user_id')
-            event = self._events[user_id].get(data['subscription']['type'])
-            for callback in event['callbacks']:
-                self.__custom_dispatch(event['name'], callback, data['event'])
+            conditions = data['subscription']['condition']
+            user_id = conditions.get('broadcaster_user_id') or conditions.get('to_broadcaster_user_id')
 
-            if user_id != self.user.id:
-                return
+            event_type = data['subscription']['type']
+            event = self._events.get(user_id, {}).get(event_type)
+
+            # Incase Using CLI
+            if event is not None:
+                for callback in event['callbacks']:
+                    self.__custom_dispatch(event['name'], callback, data['event'])
+
+                if user_id != self.user.id:
+                    return
 
             # Client events
             parse = getattr(self, 'parse_' + data['subscription']['type'].replace('.', '_'))
