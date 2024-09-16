@@ -49,7 +49,6 @@ ___
             # Your setup logic here
             ...
     ```
-  
 ---
 
 - `on_socket_raw_receive`
