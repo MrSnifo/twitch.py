@@ -10,11 +10,11 @@ class Giveaways(Client):
         self._users = []
 
     @staticmethod
-    async def on_ready():
+    async def on_ready() -> None:
         """Called when the client is ready."""
         print('client is ready!')
 
-    async def on_chat_message(self, data: eventsub.chat.MessageEvent):
+    async def on_chat_message(self, data: eventsub.chat.MessageEvent) -> None:
         """Handles chat messages and responds to giveaway commands."""
         # Handle the "!join" command
         message_text = data['message']['text']
@@ -48,19 +48,19 @@ class Giveaways(Client):
             if (not self._is_giveaway_on) and data['message']['text'].startswith(('!end', '!total')):
                 await self.channel.chat.send_message('There is no active giveaway.')
 
-    def clear_giveaway(self):
+    def clear_giveaway(self) -> None:
         """Clears the giveaway state, resetting the user list and ending the giveaway."""
         self._users.clear()
         self._is_giveaway_on = False
 
-    async def join(self, name: str, message_id: str):
+    async def join(self, name: str, message_id: str) -> None:
         """Adds a user to the giveaway if they haven't already joined."""
         if name not in self._users:
             self._users.append(name)
         else:
             await self.channel.chat.send_message('You have already joined!', message_id)
 
-    async def start_giveaway(self):
+    async def start_giveaway(self) -> None:
         """Starts the giveaway if one is not already in progress."""
         if self._is_giveaway_on:
             await self.channel.chat.send_message('The giveaway is already running! Type !end to stop it.')
@@ -68,7 +68,7 @@ class Giveaways(Client):
             self._is_giveaway_on = True
             await self.channel.chat.send_message('The giveaway has started! Type !join to enter BopBop')
 
-    async def end_giveaway(self):
+    async def end_giveaway(self) -> None:
         """Ends the giveaway and announces the winner, if there are participants."""
         if len(self._users) >= 1:
             winner = choice(self._users)
