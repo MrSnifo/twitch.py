@@ -12,16 +12,16 @@ class Twitch(Client):
         """Called when the client is setting up"""
         await self.overlay.start_app()
 
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         """Called when the client is ready."""
         print('Bot is ready!')
 
-    async def on_overlay_ready(self):
+    async def on_overlay_ready(self) -> None:
         """Called when the overlay is ready."""
         # Link it to your OBS.
         print('Overlay URL: ', self.overlay.url('follow'))
 
-    async def on_follow(self, data: eventsub.channels.FollowEvent):
+    async def on_follow(self, data: eventsub.channels.FollowEvent) -> None:
         """Handles follow events."""
         await self.overlay.alert(
             f'<<{data["user_name"]}>> just followed!',

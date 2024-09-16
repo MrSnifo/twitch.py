@@ -14,15 +14,15 @@ class Twitch(Client):
             wrap_run=False
         )
 
-    async def on_ready(self):
+    async def on_ready(self) -> None:
         """Notify when the client is ready"""
         print('Client is ready!')
 
-    async def on_follow(self, data: eventsub.channels.FollowEvent):
+    async def on_follow(self, data: eventsub.channels.FollowEvent) -> None:
         """Handle new follower events"""
         await self.channel.chat.send_message(f'{data["user_name"]} has followed the channel!')
 
-    async def custom_auth_flow(self):
+    async def custom_auth_flow(self) -> None:
         """Custom method to manage device authentication flow"""
         async with self.auth_flow:
             # Retrieve device code and display the verification URL
@@ -43,7 +43,7 @@ class Twitch(Client):
         async with self:
             await self.start(access_token, refresh_token)
 
-    async def run_client(self):
+    async def run_client(self) -> None:
         """Run the client with full control over device authentication and event handling"""
         await self.custom_auth_flow()
 
