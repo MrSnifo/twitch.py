@@ -1,15 +1,11 @@
----
-icon: material/information-slab-circle  
-hide:  
-  - toc  
----
-
 # Introduction
 
 ## Overview
 ___
 
 The `Overlay` class enables you to integrate dynamic overlays into your stream, allowing you to display customized alerts and messages in response to various Twitch events.
+
+![overlay example](obs-alert.gif)
 
 ## Features
 
