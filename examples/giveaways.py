@@ -4,7 +4,7 @@ from random import choice
 
 
 class Giveaways(Client):
-    def __init__(self, client_id: str, **options):
+    def __init__(self, client_id: str, **options) -> None:
         super().__init__(client_id, **options)
         self._is_giveaway_on = False
         self._users = []
