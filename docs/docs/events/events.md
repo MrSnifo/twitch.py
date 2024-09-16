@@ -37,6 +37,18 @@ ___
     async def on_disconnect() -> None:
         ...
     ```
+
+---
+
+- `setup_hook`
+    - **Description**: Method to be implemented within the client class for setup actions that should occur before the client starts running.
+    - **Usage**:
+    ```python
+    class Twitch(Client):
+        async def setup_hook(self) -> None:
+            # Your setup logic here
+            ...
+    ```
   
 ---
 
