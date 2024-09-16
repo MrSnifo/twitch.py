@@ -226,13 +226,14 @@ class Overlay:
         """
         self._attachment.clear()
 
-    def get_attachments(self) -> Dict[str, bytes]:
+    def get_attachments(self) -> Dict[str, str]:
         """
-        Get all attachments.
+        Retrieve all file attachments.
 
         Returns
         -------
-        Dict[str, bytes]
-            A dictionary where the keys are attachment names and the values are the file contents in bytes.
+        Dict[str, str]
+            A dictionary where the keys represent attachment names and
+            the values represent their corresponding upload paths.
         """
-        return self._attachment.attachments
+        return self._attachment.path_keys
