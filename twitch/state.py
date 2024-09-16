@@ -493,8 +493,8 @@ class ConnectionState:
                 for callback in event['callbacks']:
                     self.__custom_dispatch(event['name'], callback, data['event'])
 
-                if user_id != self.user.id:
-                    return
+            if user_id != self.user.id:
+                return
 
             # Client events
             parse = getattr(self, 'parse_' + data['subscription']['type'].replace('.', '_'))
