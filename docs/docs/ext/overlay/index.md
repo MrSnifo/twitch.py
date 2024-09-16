@@ -1,3 +1,9 @@
+---
+icon: material/information-slab-circle
+hide:
+  - toc
+---
+
 # Introduction
 
 ## Overview
