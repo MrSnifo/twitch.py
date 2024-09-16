@@ -5,7 +5,7 @@ import asyncio
 
 
 class Twitch(Client):
-    def __init__(self, client_id: str, **options):
+    def __init__(self, client_id: str, **options) -> None:
         super().__init__(client_id, **options)
         self.auth_flow = DeviceAuthFlow(
             self,

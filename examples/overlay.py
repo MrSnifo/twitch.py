@@ -4,7 +4,7 @@ from twitch import Client
 
 
 class Twitch(Client):
-    def __init__(self, client_id: str, client_secret: str, **options):
+    def __init__(self, client_id: str, client_secret: str, **options) -> None:
         super().__init__(client_id, client_secret, **options)
         self.overlay = Overlay(self)
 
