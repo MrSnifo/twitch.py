@@ -160,8 +160,4 @@ cython_debug/
 .idea/
 
 # Ignore
-test.py
-test1.py
-todo.
-/vs-code-overlay
-/tests
+.workspace/
