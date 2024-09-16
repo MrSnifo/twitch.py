@@ -64,15 +64,15 @@ class Overlay:
         Additional options to configure the `web.Application` instance.
     """
 
-    __slots__ = ('app', 'host', 'port', 'gateway', 'attachment', 'route', '_client')
+    __slots__ = ('app', 'host', 'port', 'gateway', '_attachment', 'route', '_client')
 
     def __init__(self, client: Optional[Client] = None, host: str = 'localhost', port: int = 5050, **options) -> None:
         self.app = web.Application(**options)
         self.host = host
         self.port = port
         self.gateway = WebSocket()
-        self.attachment = Attachment()
-        self.route = Route(self.app.router, self.gateway, self.attachment)
+        self._attachment = Attachment()
+        self.route = Route(self.app.router, self.gateway, self._attachment)
         self._client: Optional[Client] = client
 
     def url(self, default: str = 'all') -> str:
@@ -187,8 +187,8 @@ class Overlay:
             'text_animation': text_animation,
             'start_animation': start_animation,
             'end_animation': end_animation,
-            'image': self.attachment.get_path_key(image),
-            'audio': self.attachment.get_path_key(audio),
+            'image': self._attachment.get_path_key(image),
+            'audio': self._attachment.get_path_key(audio),
             'alert_duration': alert_duration
         }
         await self.gateway.send_data(data, default)
@@ -207,7 +207,7 @@ class Overlay:
         path: str
             The file path of the attachment.
         """
-        self.attachment.load_file_into_memory(name, path)
+        self._attachment.load_file_into_memory(name, path)
 
     def remove_attachment(self, name: str) -> None:
         """
@@ -218,11 +218,21 @@ class Overlay:
         name: str
             The name of the attachment to remove.
         """
-        self.attachment.remove_attachment(name)
+        self._attachment.remove_attachment(name)
 
     def clear_attachments(self) -> None:
         """
         Clear all attachments.
         """
-        self.attachment.clear()
+        self._attachment.clear()
 
+    def get_attachments(self) -> Dict[str, bytes]:
+        """
+        Get all attachments.
+
+        Returns
+        -------
+        Dict[str, bytes]
+            A dictionary where the keys are attachment names and the values are the file contents in bytes.
+        """
+        return self._attachment.attachments
