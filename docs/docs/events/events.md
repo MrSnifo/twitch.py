@@ -102,6 +102,8 @@ ___
         ...
     ```
 
+---
+
 - `on_chat_message`
     - **Description**: Triggered when a chat message is received.
     - **Scope**: `user:read:chat`
