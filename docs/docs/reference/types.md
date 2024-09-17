@@ -65,6 +65,8 @@ ___
 #### ::: twitch.types.chat.MessageDropReason
 ---
 ### ::: twitch.types.chat.UserChatColor
+---
+### ::: twitch.types.chat.SharedChatSession
 
 
 ## Streams
