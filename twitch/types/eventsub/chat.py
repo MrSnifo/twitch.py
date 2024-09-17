@@ -721,3 +721,72 @@ class SettingsUpdateEvent(SpecificBroadcaster):
     slow_mode_wait_time_seconds: Optional[int]
     subscriber_mode: bool
     unique_chat_mode: bool
+
+
+class SharedChatBeginEvent(SpecificBroadcaster):
+    """
+    Represents the beginning of a channel shared chat session event.
+
+    Attributes
+    ----------
+    session_id: str
+        The unique identifier for the shared chat session.
+    host_broadcaster_user_id: str
+        The User ID of the host channel.
+    host_broadcaster_user_name: str
+        The display name of the host channel.
+    host_broadcaster_user_login: str
+        The user login of the host channel.
+    participants: List[SpecificBroadcaster]
+        The list of participants in the session.
+    """
+    session_id: str
+    host_broadcaster_user_id: str
+    host_broadcaster_user_name: str
+    host_broadcaster_user_login: str
+    participants: List[SpecificBroadcaster]
+
+
+class SharedChatUpdateEvent(SpecificBroadcaster):
+    """
+    Represents an update to a channel shared chat session event.
+
+    Attributes
+    ----------
+    session_id: str
+        The unique identifier for the shared chat session.
+    host_broadcaster_user_id: str
+        The User ID of the host channel.
+    host_broadcaster_user_name: str
+        The display name of the host channel.
+    host_broadcaster_user_login: str
+        The user login of the host channel.
+    participants: List[SpecificBroadcaster]
+        The list of participants in the session.
+    """
+    session_id: str
+    host_broadcaster_user_id: str
+    host_broadcaster_user_name: str
+    host_broadcaster_user_login: str
+    participants: List[SpecificBroadcaster]
+
+
+class SharedChatEndEvent(SpecificBroadcaster):
+    """
+    Represents the end of a channel shared chat session event.
+
+    Attributes
+    ----------
+    session_id: str
+        The unique identifier for the shared chat session.
+    host_broadcaster_user_id: str
+        The User ID of the host channel.
+    host_broadcaster_user_name: str
+        The display name of the host channel.
+    host_broadcaster_user_login: str
+        The user login of the host channel.
+    """
+    session_id: str
+    host_broadcaster_user_id: str
+    host_broadcaster_user_name: str
+    host_broadcaster_user_login: str

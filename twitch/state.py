@@ -522,6 +522,15 @@ class ConnectionState:
     def parse_channel_chat_settings_update(self, data: eventsub.chat.SettingsUpdateEvent) -> None:
         self.__dispatch('chat_settings_update', data)
 
+    def parse_channel_shared_chat_begin(self, data: eventsub.chat.SharedChatBeginEvent) -> None:
+        self.__dispatch('shared_chat_begin', data)
+
+    def parse_channel_shared_chat_update(self, data: eventsub.chat.SharedChatUpdateEvent) -> None:
+        self.__dispatch('shared_chat_update', data)
+
+    def parse_channel_shared_chat_end(self, data: eventsub.chat.SharedChatEndEvent) -> None:
+        self.__dispatch('shared_chat_end', data)
+
     # Bits
     def parse_channel_cheer(self, data: eventsub.bits.CheerEvent) -> None:
         self.__dispatch('cheer', data)

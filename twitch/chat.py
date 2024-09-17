@@ -67,6 +67,20 @@ class Chat:
                                                                                    self._auth_user_id)
         return data['data'][0]
 
+
+    async def get_shared_chat_session(self) -> Optional[chat.SharedChatSession]:
+        """
+        Retrieve the shared chat session details for the broadcaster.
+
+        Returns
+        -------
+        chat.SharedChatSession
+            A dictionary containing details about the shared chat session.
+        """
+        data: Data[List[chat.SharedChatSession]] = await self._state.http.get_shared_chat_session(self._auth_user_id,
+                                                                                                  self._user_id)
+        return data['data'][0] if len(data['data']) != 0 else None
+
     async def update_settings(self,
                               emote_mode: Optional[bool] = None,
                               follower_mode: Optional[bool] = None,

@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, TypedDict
 from .users import SpecificUser
 
 if TYPE_CHECKING:
-    from typing import List, Optional, Literal, NotRequired
+    from typing import List, Optional, Literal, NotRequired, Dict
 
 
 class EmoteImages(TypedDict):
@@ -226,3 +226,27 @@ class UserChatColor(SpecificUser):
         The hexadecimal color code chosen by the user for their chat messages.
     """
     color: str
+
+
+class SharedChatSession(TypedDict):
+    """
+    A TypedDict representing a shared chat session.
+
+    Attributes
+    ----------
+    session_id: str
+        Unique identifier for the chat session.
+    host_broadcaster_id: str
+        Identifier for the host broadcaster.
+    participants: List[Dict[Literal['broadcaster_id'], str]]
+        List of participants with broadcaster IDs.
+    created_at  str
+        Timestamp of when the session was created.
+    updated_at: str
+        Timestamp of the last update to the session.
+    """
+    session_id: str
+    host_broadcaster_id: str
+    participants: List[Dict[Literal['broadcaster_id'], str]]
+    created_at: str
+    updated_at: str

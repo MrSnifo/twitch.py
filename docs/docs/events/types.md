@@ -106,6 +106,12 @@ ___
 #### ::: twitch.types.eventsub.chat.BitsBadgeTier
 ---
 ### ::: twitch.types.eventsub.chat.SettingsUpdateEvent
+---
+### ::: twitch.types.eventsub.chat.SharedChatBeginEvent
+---
+### ::: twitch.types.eventsub.chat.SharedChatUpdateEvent
+---
+### ::: twitch.types.eventsub.chat.SharedChatEndEvent
 
 
 ## Streams

@@ -428,6 +428,21 @@ class HTTPClient:
                 'version': '1',
                 'condition': {'broadcaster': 'user_id', 'user': 'broadcaster_user_id'}
             },
+            'shared_chat_begin': {
+                'name': 'channel.shared_chat.begin',
+                'version': '1',
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
+            },
+            'shared_chat_update': {
+                'name': 'channel.shared_chat.update',
+                'version': '1',
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
+            },
+            'shared_chat_end': {
+                'name': 'channel.shared_chat.end',
+                'version': '1',
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
+            },
             'subscribe': {
                 'name': 'channel.subscribe',
                 'version': '1',
@@ -1028,6 +1043,10 @@ class HTTPClient:
         return self.request(Route(broadcaster_id, 'GET', 'charity/donations', **params))
 
     # Chat
+
+    def get_shared_chat_session(self, __id: str, broadcaster_id: str) -> Response[Data[List[chat.SharedChatSession]]]:
+        return self.request(Route(__id, 'GET', 'shared_chat/session', broadcaster_id=broadcaster_id))
+
     def get_chatters(self,
                      broadcaster_id: str,
                      moderator_id: str,

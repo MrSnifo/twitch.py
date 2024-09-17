@@ -138,7 +138,7 @@ ___
     async def on_chat_notification(data: eventsub.chat.NotificationEvent):
         ...
     ```
-  
+
 ---
 
 - `on_chat_settings_update`
@@ -152,12 +152,51 @@ ___
         ...
     ```
 
+---
+
+- `on_shared_chat_begin`
+    - **Description**: Triggered when a shared chat session begins.
+    - **Data Type**: [`SharedChatBeginEvent`][twitch.types.eventsub.chat.SharedChatBeginEvent]
+    - **Usage**:
+    ```python
+    @client.event
+    async def on_shared_chat_begin(data: eventsub.chat.SharedChatBeginEvent):
+        # Handle shared chat session begin event
+        ...
+    ```
+
+---
+
+- `on_shared_chat_update`
+    - **Description**: Triggered when a shared chat session is updated.
+    - **Scope**: `user:read:chat`
+    - **Data Type**: [`SharedChatUpdateEvent`][twitch.types.eventsub.chat.SharedChatUpdateEvent]
+    - **Usage**:
+    ```python
+    @client.event
+    async def on_shared_chat_update(data: eventsub.chat.SharedChatUpdateEvent):
+        # Handle shared chat session update event
+        ...
+    ```
+
+---
+
+- `on_shared_chat_end`
+    - **Description**: Triggered when a shared chat session ends.
+    - **Data Type**: [`SharedChatEndEvent`][twitch.types.eventsub.chat.SharedChatEndEvent]
+    - **Usage**:
+    ```python
+    @client.event
+    async def on_shared_chat_end(data: eventsub.chat.SharedChatEndEvent):
+        # Handle shared chat session end event
+        ...
+    ```
+
 ## Bits Events
 ___
 
 - `on_cheer`
     - **Description**: Triggered when a cheer event occurs.
-    - **Scope**: `bits:read`
     - **Data Type**: [`CheerEvent`][twitch.types.eventsub.bits.CheerEvent]
     - **Usage**:
     ```python
