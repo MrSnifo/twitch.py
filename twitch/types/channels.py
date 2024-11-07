@@ -38,12 +38,14 @@ class CCL(TypedDict):
 
     Attributes
     ----------
-    id: Literal['DrugsIntoxication', 'SexualThemes', 'ViolentGraphic', 'Gambling', 'ProfanityVulgarity']
+    id: Literal['DebatedSocialIssuesAndPolitics', 'DrugsIntoxication', 'SexualThemes', 'ViolentGraphic', 'Gambling',
+                'ProfanityVulgarity']
         The type of content classification.
     is_enabled: bool
         Indicates if the classification is enabled.
     """
-    id: Literal['DrugsIntoxication', 'SexualThemes', 'ViolentGraphic', 'Gambling', 'ProfanityVulgarity']
+    id: Literal['DebatedSocialIssuesAndPolitics', 'DrugsIntoxication', 'SexualThemes', 'ViolentGraphic', 'Gambling',
+    'ProfanityVulgarity']
     is_enabled: bool
 
 
