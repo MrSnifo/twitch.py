@@ -23,8 +23,7 @@ creating custom events with the Bot **won’t incur extra costs** for registered
 === "Client"
 
     !!! warning
-        The provided code is missing the app client secret and user refresh token. Without these components,
-        the access token won't be able to regenerate when it expires.
+        The provided code is missing the **Client Secret**. Without it, The access token won't be able to regenerate when it expires.
 
     ```python
     from twitch.ext.oauth import DeviceAuthFlow, Scopes
