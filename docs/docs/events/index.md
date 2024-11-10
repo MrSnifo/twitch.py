@@ -24,19 +24,6 @@ do not require separate function definitions, you can add custom handlers if nee
 
 You may add custom handlers for these events to perform specific actions in response.
 
-### Custom Events
-___
-
-You have the ability to add and remove custom event subscriptions using the client. Here’s how you can manage them:
-
-- **[Adding Custom Events][twitch.client.Client.add_custom_event]**: Register a callback function for a 
-custom event and user. This allows you to define how the client should handle specific custom events.
-
-- **[Removing Custom Events][twitch.client.Client.remove_custom_event]**: Unsubscribe a user from a custom event.
-This stops the client from triggering the callback function for that event.
-
-Note: Client Events are not included (e.g., on_ready… etc.).
-
 ### Subscription Limits
 ___
 

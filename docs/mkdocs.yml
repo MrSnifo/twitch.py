@@ -80,6 +80,7 @@ nav:
   - Events Reference:
       - 'events/index.md'
       - Events: 'events/events.md'
+      - Custom: 'events/custom.md'
       - Types: 'events/types.md'
   - Extensions:
       - Bot:
