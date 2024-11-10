@@ -37,7 +37,7 @@ creating custom events with the Bot **won’t incur extra costs** for registered
     # This is required for obtaining user-specific access tokens.
     DeviceAuthFlow(
         client=client,
-        scopes=[Scopes.USER_READ_FOLLOWS]
+        scopes=[Scopes.MODERATOR_READ_FOLLOWERS, Scopes.USER_WRITE_CHAT]
     )
     
     @client.event
