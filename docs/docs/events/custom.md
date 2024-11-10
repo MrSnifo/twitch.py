@@ -11,8 +11,9 @@ The client allows you to add and remove custom event subscriptions, providing fl
 
 - **[Removing Custom Events][twitch.client.Client.remove_custom_event]**: Unsubscribe a user from a custom event to stop triggering the callback function for that event.
 
-Events with a scope starting with `moderator:` can be used, but only if you have moderator privileges in the channel.
-Almost Without scopes events are accessible, but it’s important to monitor the **[total subscription cost][twitch.client.Client.total_subscription_cost]** to stay within your limit.
+You can subscribe to **[Events](events.md)** if they have customizable `True` or if they require `moderator privileges`.
+Ensure you have moderator rights for events with such scopes and monitor the
+[total subscription cost][twitch.client.Client.total_subscription_cost] to remain within your subscription limit.
 
 #### Example Usage
 

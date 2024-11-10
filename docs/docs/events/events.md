@@ -81,6 +81,7 @@ ___
 - `on_chat_clear`
     - **Description**: Triggered when the chat is cleared.
     - **Scope**: `user:read:chat`
+    - **Customizable**: `True`
     - **Data Type**: [`ChatClearEvent`][twitch.types.eventsub.chat.ChatClearEvent]
     - **Usage**:
     ```python
@@ -94,6 +95,7 @@ ___
 - `on_chat_clear_user_messages`
     - **Description**: Triggered when a user's messages are cleared.
     - **Scope**: `user:read:chat`
+    - **Customizable**: `True`
     - **Data Type**: [`ClearUserMessagesEvent`][twitch.types.eventsub.chat.ClearUserMessagesEvent]
     - **Usage**:
     ```python
@@ -107,6 +109,7 @@ ___
 - `on_chat_message`
     - **Description**: Triggered when a chat message is received.
     - **Scope**: `user:read:chat`
+    - **Customizable**: `True`
     - **Data Type**: [`MessageEvent`][twitch.types.eventsub.chat.MessageEvent]
     - **Usage**:
     ```python
@@ -120,6 +123,7 @@ ___
 - `on_chat_message_delete`
     - **Description**: Triggered when a chat message is deleted.
     - **Scopes**: `user:read:chat`
+    - **Customizable**: `True`
     - **Data Type**:  [`MessageDeleteEvent`][twitch.types.eventsub.chat.MessageDeleteEvent]
     - **Usage**:
     ```python
@@ -133,6 +137,7 @@ ___
 - `on_chat_notification`
     - **Description**: Triggered when a chat notification is received.
     - **Scope**: `user:read:chat`
+    - **Customizable**: `True`
     - **Data Type**: [`NotificationEvent`][twitch.types.eventsub.chat.NotificationEvent]
     - **Usage**:
     ```python
@@ -146,6 +151,7 @@ ___
 - `on_chat_settings_update`
     - **Description**: Triggered when chat settings are updated.
     - **Scope**: `user:read:chat`
+    - **Customizable**: `True`
     - **Data Type**: [`SettingsUpdateEvent`][twitch.types.eventsub.chat.SettingsUpdateEvent]
     - **Usage**:
     ```python
@@ -158,6 +164,7 @@ ___
 
 - `on_shared_chat_begin`
     - **Description**: Triggered when a shared chat session begins.
+    - **Customizable**: `True`
     - **Data Type**: [`SharedChatBeginEvent`][twitch.types.eventsub.chat.SharedChatBeginEvent]
     - **Usage**:
     ```python
@@ -172,6 +179,7 @@ ___
 - `on_shared_chat_update`
     - **Description**: Triggered when a shared chat session is updated.
     - **Scope**: `user:read:chat`
+    - **Customizable**: `True`
     - **Data Type**: [`SharedChatUpdateEvent`][twitch.types.eventsub.chat.SharedChatUpdateEvent]
     - **Usage**:
     ```python
@@ -185,6 +193,7 @@ ___
 
 - `on_shared_chat_end`
     - **Description**: Triggered when a shared chat session ends.
+    - **Customizable**: `True`
     - **Data Type**: [`SharedChatEndEvent`][twitch.types.eventsub.chat.SharedChatEndEvent]
     - **Usage**:
     ```python
@@ -215,6 +224,7 @@ ___
     - **Possible Scopes**:
          - `moderator:read:shield_mode`
          - `moderator:manage:shield_mode`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`ShieldModeBeginEvent`][twitch.types.eventsub.moderation.ShieldModeBeginEvent]
     - **Usage**:
     ```python
@@ -230,6 +240,7 @@ ___
     - **Possible Scopes**:
          - `moderator:read:shield_mode`
          - `moderator:manage:shield_mode`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`ShieldModeEndEvent`][twitch.types.eventsub.moderation.ShieldModeEndEvent]
     - **Usage**:
     ```python
@@ -243,6 +254,7 @@ ___
 - `on_suspicious_user_message`
     - **Description**: Triggered when a suspicious user message is detected.
     - **Scope**: `moderator:read:suspicious_users`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`ShieldModeBeginEvent`][twitch.types.eventsub.moderation.ShieldModeBeginEvent]
     - **Usage**:
     ```python
@@ -256,6 +268,7 @@ ___
 - `on_suspicious_user_update`
     - **Description**: Triggered when a suspicious user's status is updated.
     - **Scope**: `moderator:read:suspicious_users`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`SuspiciousUserUpdateEvent`][twitch.types.eventsub.moderation.SuspiciousUserUpdateEvent]
     - **Usage**:
     ```python
@@ -271,6 +284,7 @@ ___
     - **Possible Scopes**: 
          - `moderator:read:warnings`
          - `moderator:manage:warnings`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`WarningAcknowledgeEvent`][twitch.types.eventsub.moderation.WarningAcknowledgeEvent]
     - **Usage**:
     ```python
@@ -286,6 +300,7 @@ ___
     - **Possible Scopes**: 
          - `moderator:read:warnings`
          - `moderator:manage:warnings`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`WarningSendEvent`][twitch.types.eventsub.moderation.WarningSendEvent]
     - **Usage**:
     ```python
@@ -299,6 +314,7 @@ ___
 - `on_automod_message_hold`
     - **Description**: Triggered when a message is held by AutoMod.
     - **Scope**: `moderator:manage:automod`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`AutomodMessageHoldEvent`][twitch.types.eventsub.moderation.AutomodMessageHoldEvent]
     - **Usage**:
     ```python
@@ -312,6 +328,7 @@ ___
 - `on_automod_message_update`
     - **Description**: Triggered when an AutoMod-held message is updated.
     - **Scope**: `moderator:manage:automod`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`AutomodMessageUpdateEvent`][twitch.types.eventsub.moderation.AutomodMessageUpdateEvent]
     - **Usage**:
     ```python
@@ -325,6 +342,7 @@ ___
 - `on_automod_settings_update`
     - **Description**: Triggered when AutoMod settings are updated.
     - **Scopes**: `moderator:read:automod_settings`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`AutomodSettingsUpdateEvent`][twitch.types.eventsub.moderation.AutomodSettingsUpdateEvent]
     - **Usage**:
     ```python
@@ -338,6 +356,7 @@ ___
 - `on_automod_terms_update`
     - **Description**: Triggered when AutoMod terms are updated.
     - **Scope**: `moderator:manage:automod`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`AutomodTermsUpdateEvent`][twitch.types.eventsub.moderation.AutomodTermsUpdateEvent]
     - **Usage**:
     ```python
@@ -351,6 +370,7 @@ ___
 - `on_ban`
     - **Description**: Triggered when a user is banned.
     - **Scope**: `channel:moderate`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`BanEvent`][twitch.types.eventsub.moderation.BanEvent]
     - **Usage**:
     ```python
@@ -364,6 +384,7 @@ ___
 - `on_unban`
     - **Description**: Triggered when a user is unbanned.
     - **Scope**: `channel:moderate`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`UnbanEvent`][twitch.types.eventsub.moderation.UnbanEvent]
     - **Usage**:
     ```python
@@ -379,6 +400,7 @@ ___
     - **Possible Scopes**: 
          - `moderator:read:unban_requests` 
          - `moderator:manage:unban_requests`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`UnbanRequestCreateEvent`][twitch.types.eventsub.moderation.UnbanRequestCreateEvent]
     - **Usage**:
     ```python
@@ -394,6 +416,7 @@ ___
     - **Possible Scopes**: 
          - `moderator:read:unban_requests` 
          - `moderator:manage:unban_requests`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`UnbanRequestResolveEvent`][twitch.types.eventsub.moderation.UnbanRequestResolveEvent]
     - **Usage**:
     ```python
@@ -454,6 +477,7 @@ ___
 
 - `on_channel_update`
     - **Description**: Triggered when the channel is updated.
+    - **Customizable**: `True`
     - **Data Type**: [`ChannelUpdateEvent`][twitch.types.eventsub.channels.ChannelUpdateEvent]
     - **Usage**:
     ```python
@@ -468,6 +492,7 @@ ___
 - `on_follow`
     - **Description**: Triggered when a user follows the channel.
     - **Scope**: `moderator:read:followers`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`FollowEvent`][twitch.types.eventsub.channels.FollowEvent]
     - **Usage**:
     ```python
@@ -917,6 +942,7 @@ ___
 
 - `on_raid`
     - **Description**: Triggered when a raid starts on the stream.
+    - **Customizable**: `True`
     - **Data Type**: [`RaidEvent`][twitch.types.eventsub.streams.RaidEvent]
     - **Usage**:
     ```python
@@ -932,6 +958,7 @@ ___
     - **Possible Scopes**: 
          - `moderator:read:shoutouts` 
          - `moderator:manage:shoutouts`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`ShoutoutCreateEvent`][twitch.types.eventsub.streams.ShoutoutCreateEvent]
     - **Usage**:
     ```python
@@ -947,6 +974,7 @@ ___
     - **Possible Scopes**: 
          - `moderator:read:shoutouts` 
          - `moderator:manage:shoutouts`
+    - **Customizable**: `Moderator Privileges`
     - **Data Type**: [`ShoutoutReceivedEvent`][twitch.types.eventsub.streams.ShoutoutReceivedEvent]
     - **Usage**:
     ```python
@@ -959,6 +987,7 @@ ___
 
 - `on_stream_online`
     - **Description**: Triggered when a stream goes live.
+    - **Customizable**: `True`
     - **Data Type**: [`StreamOnlineEvent`][twitch.types.eventsub.streams.StreamOnlineEvent]
     - **Usage**:
     ```python
@@ -971,6 +1000,7 @@ ___
 
 - `on_stream_offline`
     - **Description**: Triggered when a stream goes offline.
+    - **Customizable**: `True`
     - **Data Type**: [`StreamOfflineEvent`][twitch.types.eventsub.streams.StreamOfflineEvent]
     - **Usage**:
     ```python
@@ -985,6 +1015,7 @@ ___
 - `on_user_update`
     - **Description**: Triggered when a user updates their profile, such as changing their display name or profile image.
     - **Optional Scope**: `user:read:email`
+    - **Customizable**: `True`
     - **Data Type**: [`UserUpdateEvent`][twitch.types.eventsub.users.UserUpdateEvent]
     - **Usage**:
     ```python
@@ -1015,6 +1046,7 @@ ___
     - **Possible Scopes**: 
          - `user:read:whispers` 
          - `user:manage:whispers`
+    - **Customizable**: `True`
     - **Possible Scopes**: 
          - `user:read:chat` - Receive chatroom messages and informational notifications relating to a channel’s chatroom.
     - **Data Type**: [`MessageHoldEvent`][twitch.types.eventsub.users.MessageHoldEvent]
@@ -1030,6 +1062,7 @@ ___
 - `on_chat_user_message_update`
     - **Description**: Triggered when a held chat message from a user is updated by AutoMod.
     - **Scope**: `user:read:chat`
+    - **Customizable**: `True`
     - **Possible Scopes**: 
          - `user:read:chat` - Receive chatroom messages and informational notifications relating to a channel’s chatroom.
     - **Data Type**: [`MessageUpdateEvent`][twitch.types.eventsub.users.MessageUpdateEvent]
