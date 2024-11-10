@@ -9,6 +9,7 @@ ___
 
 - `on_connect`
     - **Description**: Triggered when the client successfully connects to the eventsub websocket.
+    - **Customizable**: `False`
     - **Usage**:
     ```python
     @client.event
@@ -20,6 +21,7 @@ ___
 
 - `on_ready`
     - **Description**: Triggered when the client is fully ready and connected.
+    - **Customizable**: `False`
     - **Usage**:
     ```python
     @client.event
@@ -31,6 +33,7 @@ ___
 
 - `on_disconnect`
     - **Description**: Triggered when the client disconnects from the eventsub websocket server.
+    - **Customizable**: `False`
     - **Usage**:
     ```python
     @client.event
@@ -42,6 +45,7 @@ ___
 
 - `setup_hook`
     - **Description**: Method to be implemented within the client class for setup actions that should occur before the client starts running.
+    - **Customizable**: `False`
     - **Usage**:
     ```python
     class Twitch(Client):
@@ -53,6 +57,7 @@ ___
 
 - `on_socket_raw_receive`
     - **Description**: Triggered when th client receives a raw message from the WebSocket.
+    - **Customizable**: `False`
     - **Event requirements**: You must enable `socket_debug` in client options.
     - **Usage**:
     ```python
@@ -66,6 +71,7 @@ ___
 - `on_error`
     - **Description**: Handles errors that occur during event dispatch. This method logs any exceptions that
 crop up while processing an event.
+    - **Customizable**: `False`
     - **Usage**:
     ```python
     @client.event
@@ -208,6 +214,7 @@ ___
 
 - `on_cheer`
     - **Description**: Triggered when a cheer event occurs.
+    - **Customizable**: `False`
     - **Data Type**: [`CheerEvent`][twitch.types.eventsub.bits.CheerEvent]
     - **Usage**:
     ```python
@@ -438,6 +445,7 @@ ___
          - `moderator:read:warnings` OR `moderator:manage:warnings`
          - `moderator:read:moderators`
          - `moderator:read:vips`
+    - **Customizable**: `False`
     - **Data Type**: [`ModerateEvent`][twitch.types.eventsub.moderation.ModerateEvent]
     - **Usage**:
     ```python
@@ -451,6 +459,7 @@ ___
 - `on_moderator_add`
     - **Description**: Triggered when a moderator is added.
     - **Scope**: `moderation:read`
+    - **Customizable**: `False`
     - **Data Type**: [`ModeratorAddEvent`][twitch.types.eventsub.moderation.ModeratorAddEvent]
     - **Usage**:
     ```python
@@ -464,6 +473,7 @@ ___
 - `on_moderator_remove`
     - **Description**: Triggered when a moderator is removed.
     - **Scope**: `moderation:read`
+    - **Customizable**: `False`
     - **Data Type**: [`ModeratorRemoveEvent`][twitch.types.eventsub.moderation.ModeratorRemoveEvent]
     - **Usage**:
     ```python
@@ -508,6 +518,7 @@ ___
     - **Description**: Triggers when a user transitions from not subscribed to subscribed.
                        May also trigger on manual re-subs after a lapse but not for auto-renews.
     - **Scope**: `channel:read:subscriptions`
+    - **Customizable**: `False`
     - **Data Type**: [`SubscribeEvent`][twitch.types.eventsub.channels.SubscribeEvent]
     - **Usage**:
     ```python
@@ -521,6 +532,7 @@ ___
 - `on_subscription_end`
     - **Description**: Triggered when a user's subscription ends.
     - **Scope**: `channel:read:subscriptions`
+    - **Customizable**: `False`
     - **Data Type**: [`SubscriptionEndEvent`][twitch.types.eventsub.channels.SubscriptionEndEvent]
     - **Usage**:
     ```python
@@ -534,6 +546,7 @@ ___
 - `on_subscription_gift`
     - **Description**: Triggered when a subscription is gifted.
     - **Scope**: `channel:read:subscriptions`
+    - **Customizable**: `False`
     - **Data Type**: [`SubscriptionGiftEvent`][twitch.types.eventsub.channels.SubscriptionGiftEvent]
     - **Usage**:
     ```python
@@ -547,6 +560,7 @@ ___
 - `on_subscription_message`
     - **Description**: Triggered when a subscription message is received.
     - **Scope**: `channel:read:subscriptions`
+    - **Customizable**: `False`
     - **Data Type**: [`SubscriptionMessageEvent`][twitch.types.eventsub.channels.SubscriptionMessageEvent]
     - **Usage**:
     ```python
@@ -562,6 +576,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:vips` 
          - `channel:manage:vips`
+    - **Customizable**: `False`
     - **Data Type**: [`VIPAddEvent`][twitch.types.eventsub.channels.VIPAddEvent]
     - **Usage**:
     ```python
@@ -577,6 +592,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:vips` 
          - `channel:manage:vips`
+    - **Customizable**: `False`
     - **Data Type**: [`VIPRemoveEvent`][twitch.types.eventsub.channels.VIPRemoveEvent]
     - **Usage**:
     ```python
@@ -593,6 +609,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
+    - **Customizable**: `False`
     - **Data Type**: [`AutomaticRewardRedemptionAddEvent`][twitch.types.eventsub.interaction.AutomaticRewardRedemptionAddEvent]
     - **Usage**:
     ```python
@@ -608,6 +625,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
+    - **Customizable**: `False`
     - **Data Type**: [`RewardAddEvent`][twitch.types.eventsub.interaction.PointRewardEvent]
     - **Usage**:
     ```python
@@ -625,6 +643,7 @@ ___
          - `channel:manage:redemptions`
     - **Custom event options**:
          - `reward_id`
+    - **Customizable**: `False`
     - **Data Type**: [`RewardUpdateEvent`][twitch.types.eventsub.interaction.PointRewardEvent]
     - **Usage**:
     ```python
@@ -642,6 +661,7 @@ ___
          - `channel:manage:redemptions`
     - **Custom event options**:
          - `reward_id`
+    - **Customizable**: `False`
     - **Data Type**: [`PointRewardEvent`][twitch.types.eventsub.interaction.PointRewardEvent]
     - **Usage**:
     ```python
@@ -659,6 +679,7 @@ ___
          - `channel:manage:redemptions`
     - **Custom event options**:
          - `reward_id`
+    - **Customizable**: `False`
     - **Data Type**: [`RewardRedemptionEvent`][twitch.types.eventsub.interaction.RewardRedemptionEvent]
     - **Usage**:
     ```python
@@ -676,6 +697,7 @@ ___
          - `channel:manage:redemptions`
     - **Custom event options**:
          - `reward_id`
+    - **Customizable**: `False`
     - **Data Type**: [`RewardRedemptionEvent`][twitch.types.eventsub.interaction.RewardRedemptionEvent]
     - **Usage**:
     ```python
@@ -692,6 +714,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:polls` 
          - `channel:manage:polls`
+    - **Customizable**: `False`
     - **Data Type**: [`PollBeginEvent`][twitch.types.eventsub.interaction.PollBeginEvent]
     - **Usage**:
     ```python
@@ -707,6 +730,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:polls` 
          - `channel:manage:polls`
+    - **Customizable**: `False`
     - **Data Type**: [`PollProgressEvent`][twitch.types.eventsub.interaction.PollProgressEvent]
     - **Usage**:
     ```python
@@ -722,6 +746,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:polls` 
          - `channel:manage:polls`
+    - **Customizable**: `False`
     - **Data Type**: [`PollEndEvent`][twitch.types.eventsub.interaction.PollEndEvent]
     - **Usage**:
     ```python
@@ -738,6 +763,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:predictions` 
          - `channel:manage:predictions`
+    - **Customizable**: `False`
     - **Data Type**: [`PredictionBeginEvent`][twitch.types.eventsub.interaction.PredictionBeginEvent]
     - **Usage**:
     ```python
@@ -753,6 +779,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:predictions` 
          - `channel:manage:predictions`
+    - **Customizable**: `False`
     - **Data Type**: [`PredictionProgressEvent`][twitch.types.eventsub.interaction.PredictionProgressEvent]
     - **Usage**:
     ```python
@@ -768,6 +795,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:predictions` 
          - `channel:manage:predictions`
+    - **Customizable**: `False`
     - **Data Type**: [`PredictionLockEvent`][twitch.types.eventsub.interaction.PredictionLockEvent]
     - **Usage**:
     ```python
@@ -783,6 +811,7 @@ ___
     - **Possible Scopes**: 
          - `channel:read:predictions` 
          - `channel:manage:predictions`
+    - **Customizable**: `False`
     - **Data Type**: [`PredictionEndEvent`][twitch.types.eventsub.interaction.PredictionEndEvent]
     - **Usage**:
     ```python
@@ -797,6 +826,7 @@ ___
 - `on_hype_train_begin`
     - **Description**: Triggered when a Hype Train begins.
     - **Scope**: `channel:read:hype_train`
+    - **Customizable**: `False`
     - **Data Type**: [`HypeTrainEvent`][twitch.types.eventsub.interaction.HypeTrainEvent]
     - **Usage**:
     ```python
@@ -810,6 +840,7 @@ ___
 - `on_hype_train_progress`
     - **Description**: Triggered when a Hype Train progresses.
     - **Scope**: `channel:read:hype_train`
+    - **Customizable**: `False`
     - **Data Type**: [`HypeTrainEvent`][twitch.types.eventsub.interaction.HypeTrainEvent]
     - **Usage**:
     ```python
@@ -823,6 +854,7 @@ ___
 - `on_hype_train_end`
     - **Description**: Triggered when a Hype Train ends.
     - **Scope**: `channel:read:hype_train`
+    - **Customizable**: `False`
     - **Data Type**: [`HypeTrainEndEvent`][twitch.types.eventsub.interaction.HypeTrainEndEvent]
     - **Usage**:
     ```python
@@ -837,6 +869,7 @@ ___
 - `on_charity_campaign_start`
     - **Description**: Triggered when a charity campaign starts.
     - **Scope**: `channel:read:charity`
+    - **Customizable**: `False`
     - **Data Type**: [`CharityCampaignStartEvent`][twitch.types.eventsub.activity.CharityCampaignStartEvent]
     - **Usage**:
     ```python
@@ -850,6 +883,7 @@ ___
 - `on_charity_campaign_progress`
     - **Description**: Triggered when a charity campaign progresses.
     - **Scope**: `channel:read:charity`
+    - **Customizable**: `False`
     - **Data Type**: [`CharityCampaignProgressEvent`][twitch.types.eventsub.activity.CharityCampaignProgressEvent]
     - **Usage**:
     ```python
@@ -863,6 +897,7 @@ ___
 - `on_charity_campaign_stop`
     - **Description**: Triggered when a charity campaign stops.
     - **Scope**: `channel:read:charity`
+    - **Customizable**: `False`
     - **Data Type**:  [`CharityCampaignStopEvent`][twitch.types.eventsub.activity.CharityCampaignStopEvent]
     - **Usage**:
     ```python
@@ -876,6 +911,7 @@ ___
 - `on_charity_campaign_donate`
     - **Description**: Triggered when a donation is made to a charity campaign.
     - **Scope**: `channel:read:charity`
+    - **Customizable**: `False`
     - **Data Type**: [`CharityDonationEvent`][twitch.types.eventsub.activity.CharityDonationEvent]
     - **Usage**:
     ```python
@@ -890,6 +926,7 @@ ___
 - `on_goal_begin`
     - **Description**: Triggered when a goal begins.
     - **Scope**: `channel:read:goals`
+    - **Customizable**: `False`
     - **Data Type**: [`GoalsEvent`][twitch.types.eventsub.activity.GoalsEvent]
     - **Usage**:
     ```python
@@ -903,6 +940,7 @@ ___
 - `on_goal_progress`
     - **Description**: Triggered when a goal progresses.
     - **Scope**: `channel:read:goals`
+    - **Customizable**: `False`
     - **Data Type**: [`GoalsEvent`][twitch.types.eventsub.activity.GoalsEvent]
     - **Usage**:
     ```python
@@ -916,6 +954,7 @@ ___
 - `on_goal_end`
     - **Description**: Triggered when a goal ends.
     - **Scope**: `channel:read:goals`
+    - **Customizable**: `False`
     - **Data Type**: [`GoalsEvent`][twitch.types.eventsub.activity.GoalsEvent]
     - **Usage**:
     ```python
@@ -930,6 +969,7 @@ ___
 - `on_ad_break_begin`
     - **Description**: Triggered when an ad break begins on the stream.
     - **Scope**: `channel:read:ads`
+    - **Customizable**: `False`
     - **Data Type**: [`AdBreakBeginEvent`][twitch.types.eventsub.streams.AdBreakBeginEvent]
     - **Usage**:
     ```python
@@ -1031,6 +1071,7 @@ ___
     - **Possible Scopes**: 
          - `user:read:whispers` 
          - `user:manage:whispers`
+    - **Customizable**: `False`
     - **Data Type**: [`WhisperReceivedEvent`][twitch.types.eventsub.users.WhisperReceivedEvent]
     - **Usage**:
     ```python
