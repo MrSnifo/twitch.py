@@ -478,7 +478,6 @@ class Client:
             Indicates whether to attempt reconnection if the WebSocket connection is lost.
         """
         kwargs: Dict[str, Any] = {'resume': False, 'initial': True}
-
         backoff = ExponentialBackoff()
 
         while not self.is_closed():
