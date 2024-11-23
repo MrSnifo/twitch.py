@@ -499,6 +499,8 @@ class HypeTrainEvent(SpecificBroadcaster):
         A list of top contributions to the Hype Train.
     last_contribution: Contribution
         The most recent contribution to the Hype Train.
+    is_golden_kappa_train: bool
+        Indicates if the Hype Train is a Golden Kappa Train.
     started_at: str
         The timestamp when the Hype Train started, in ISO 8601 format.
     expires_at: str
@@ -510,8 +512,10 @@ class HypeTrainEvent(SpecificBroadcaster):
     goal: int
     top_contributions: List[Contribution]
     last_contribution: Contribution
+    is_golden_kappa_train: bool
     started_at: str
     expires_at: str
+
 
 
 class HypeTrainEndEvent(SpecificBroadcaster):
@@ -528,6 +532,8 @@ class HypeTrainEndEvent(SpecificBroadcaster):
         The total amount of contributions to the Hype Train.
     top_contributions: List[Contribution]
         A list of top contributions to the Hype Train.
+    is_golden_kappa_train: bool
+        Indicates if the Hype Train is a Golden Kappa Train.
     started_at: str
         The timestamp when the Hype Train started, in ISO 8601 format.
     ended_at: str
@@ -539,6 +545,7 @@ class HypeTrainEndEvent(SpecificBroadcaster):
     level: int
     total: int
     top_contributions: List[Contribution]
+    is_golden_kappa_train: bool
     started_at: str
     ended_at: str
     cooldown_ends_at: str
