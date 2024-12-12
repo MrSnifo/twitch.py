@@ -33,30 +33,27 @@ if TYPE_CHECKING:
 
 # AutoMod
 class Emote(TypedDict):
-    """
-    Represents an emote.
+    """Represents metadata pertaining to an emote.
 
     Attributes
     ----------
     id: str
-        The ID of the emote.
+        An ID that uniquely identifies this emote.
     emote_set_id: str
-        The ID of the emote set to which the emote belongs.
+        An ID that identifies the emote set that the emote belongs to.
     """
     id: str
     emote_set_id: str
 
-
 class Cheermote(TypedDict):
-    """
-    Represents a cheermote.
+    """Represents metadata pertaining to a cheermote.
 
     Attributes
     ----------
     prefix: str
-        The prefix of the cheermote.
+        The name portion of the Cheermote string.
     bits: int
-        The number of bits required to use the cheermote.
+        The amount of bits cheered.
     tier: int
         The tier level of the cheermote.
     """
@@ -64,89 +61,155 @@ class Cheermote(TypedDict):
     bits: int
     tier: int
 
-
 class Fragment(TypedDict):
-    """
-    Represents a fragment of a message that can be an emote or cheermote.
+    """Represents a fragment of a message, which can include text, emotes, or cheermotes.
 
     Attributes
     ----------
+    type: str
+        The type of the fragment: "text", "emote", or "cheermote".
     text: str
         The text content of the fragment.
     emote: Optional[Emote]
-        The emote in the fragment, if any.
+        Metadata pertaining to the emote, if applicable.
     cheermote: Optional[Cheermote]
-        The cheermote in the fragment, if any.
+        Metadata pertaining to the cheermote, if applicable.
     """
+    type: str
     text: str
     emote: Optional[Emote]
     cheermote: Optional[Cheermote]
 
-
 class Message(TypedDict):
-    """
-    Represents a message with its content and fragments.
+    """Represents a user message with its content and parsed fragments.
 
     Attributes
     ----------
     text: str
-        The text content of the message.
+        The full text of the message.
     fragments: List[Fragment]
-        A list of fragments in the message.
+        A list of fragments representing parts of the message.
     """
     text: str
     fragments: List[Fragment]
 
+class Boundary(TypedDict):
+    """Defines boundaries for flagged portions of a message.
+
+    Attributes
+    ----------
+    start_pos: int
+        The starting position of the boundary in the message text.
+    end_pos: int
+        The ending position of the boundary in the message text.
+    """
+    start_pos: int
+    end_pos: int
+
+class Automod(TypedDict):
+    """Represents details about the AutoMod moderation decision.
+
+    Attributes
+    ----------
+    category: str
+        The category of the moderation, e.g., "aggressive".
+    level: int
+        The severity level of the moderation (1-4).
+    boundaries: List[Boundary]
+        A list of boundaries indicating flagged portions of the message.
+    """
+    category: str
+    level: int
+    boundaries: List[Boundary]
+
+class TermBoundary(TypedDict):
+    """Defines the boundary of a blocked term.
+
+    Attributes
+    ----------
+    start_pos: int
+        Index in the message for the start of the problem (0 indexed, inclusive).
+    end_pos: int
+        Index in the message for the end of the problem (0 indexed, inclusive).
+    """
+    start_pos: int
+    end_pos: int
+
+class BlockedTerm(TypedDict):
+    """Represents a blocked term found in a message.
+
+    Attributes
+    ----------
+    term_id: str
+        The ID of the blocked term found.
+    boundary: TermBoundary
+        The bounds of the text that caused the message to be flagged.
+    owner_broadcaster_user_id: str
+        The ID of the broadcaster that owns the blocked term.
+    owner_broadcaster_user_login: str
+        The login of the broadcaster that owns the blocked term.
+    owner_broadcaster_user_name: str
+        The username of the broadcaster that owns the blocked term.
+    """
+    term_id: str
+    boundary: TermBoundary
+    owner_broadcaster_user_id: str
+    owner_broadcaster_user_login: str
+    owner_broadcaster_user_name: str
 
 class AutomodMessageHoldEvent(SpecificBroadcaster, SpecificUser):
-    """
-    Represents an event where a message is held by AutoMod.
+    """Represents an AutoMod event where a message is held for moderation.
 
     Attributes
     ----------
     message_id: str
         The ID of the held message.
     message: Message
-        The details of the held message.
-    category: str
-        The category of the AutoMod action.
-    level: int
-        The moderation level of the AutoMod action.
+        The body of the held message.
     held_at: str
-        The timestamp when the message was held, in ISO 8601 format.
+        The timestamp of when AutoMod saved the message.
+    reason: str
+        The reason the message was flagged (e.g., "automod", "blocked_term").
+    automod: Optional[Automod]
+        Details about the AutoMod moderation decision, if applicable.
+    blocked_term: Optional[List[BlockedTerm]]
+        Details about blocked terms found in the message, if applicable.
     """
     message_id: str
     message: Message
-    category: str
-    level: int
     held_at: str
+    reason: str
+    automod: Optional[Automod]
+    blocked_term: Optional[List[BlockedTerm]]
 
 
 class AutomodMessageUpdateEvent(SpecificBroadcaster, SpecificModerator, SpecificUser):
-    """
-    Represents an event where a held message is updated by AutoMod.
+    """Represents an event when AutoMod settings are updated.
 
     Attributes
     ----------
     message_id: str
-        The ID of the updated message.
+        The ID of the message that was flagged by automod.
     message: Message
-        The updated message details.
-    category: str
-        The category of the AutoMod action.
-    level: int
-        The moderation level of the AutoMod action.
-    status: Literal['Approved', 'Denied', 'Expired']
-        The current status of the message.
+        The body of the message.
+    status: str
+        The message’s status. Possible values are: "Approved", "Denied", "Expired".
     held_at: str
-        The timestamp when the message was held, in ISO 8601 format.
+        The timestamp of when automod saved the message.
+    reason: str
+        The reason why the message was caught. Possible values are: "automod", "blocked_term".
+    automod: Optional[Automod]
+        If the message was caught by automod, this will be populated.
+    blocked_term: Optional[List[BlockedTerm]]
+        If the message was caught due to a blocked term, this will be populated.
     """
     message_id: str
     message: Message
-    category: str
-    level: int
-    status: Literal['Approved', 'Denied', 'Expired']
+    status: str
     held_at: str
+    reason: str
+    automod: Optional[Automod]
+    blocked_term: Optional[List[BlockedTerm]]
 
 
 class AutomodSettingsUpdateEvent(SpecificBroadcaster, SpecificModerator):
@@ -183,7 +246,6 @@ class AutomodSettingsUpdateEvent(SpecificBroadcaster, SpecificModerator):
     aggression: int
     sex_based_terms: int
     swearing: int
-
 
 class AutomodTermsUpdateEvent(SpecificBroadcaster, SpecificModerator):
     """

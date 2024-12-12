@@ -355,12 +355,12 @@ class HTTPClient:
         subscriptions: Dict[str, Dict[str, Any]] = {
             'automod_message_hold': {
                 'name': 'automod.message.hold',
-                'version': '1',
+                'version': '2',
                 'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'automod_message_update': {
                 'name': 'automod.message.update',
-                'version': '1',
+                'version': '2',
                 'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
             'automod_settings_update': {
