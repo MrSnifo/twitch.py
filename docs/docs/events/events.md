@@ -214,6 +214,7 @@ ___
 
 - `on_cheer`
     - **Description**: Triggered when a cheer event occurs.
+    - **Scope**: `bits:read`
     - **Customizable**: `False`
     - **Data Type**: [`CheerEvent`][twitch.types.eventsub.bits.CheerEvent]
     - **Usage**:
