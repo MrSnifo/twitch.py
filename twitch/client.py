@@ -507,6 +507,10 @@ class Client:
                 _logger.exception('Attempting a reconnect in %d seconds.', delay)
                 await asyncio.sleep(delay)
                 kwargs['initial'] = False
+
+                # Incase resume fails.
+                kwargs['resume'] = False
+                kwargs.pop('gateway', None)
                 continue
 
     async def start(self, access_token: str, refresh_token: Optional[str] = None, *, reconnect: bool = True) -> None:
