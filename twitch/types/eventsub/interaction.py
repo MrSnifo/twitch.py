@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2024-present Snifo
+Copyright (c) 2025-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -202,44 +202,92 @@ class PointRewardEvent(SpecificBroadcaster):
     redemptions_redeemed_current_stream: Optional[int]
 
 
-class RewardInfo(TypedDict):
+class RedemptionMessageEmote(TypedDict):
     """
-    Represents basic information about a reward.
+    Represents metadata about an emote.
 
     Attributes
     ----------
     id: str
-        The ID of the reward.
-    title: str
-        The title of the reward.
-    cost: int
-        The cost of the reward in channel points or other currency.
+        The unique identifier for the emote.
+    name: str
+        The human-readable emote token.
     """
     id: str
-    title: str
-    cost: int
+    name: str
+
+
+class RedemptionFragment(TypedDict):
+    """
+    Represents a fragment of a chat message.
+
+    Attributes
+    ----------
+    text: str
+        The message text within the fragment.
+    type: Literal["text", "emote"]
+        The type of fragment (text or emote).
+    emote: Optional[Emote]
+        Metadata about the emote if the fragment contains one.
+    """
+    text: str
+    type: Literal["text", "emote"]
+    emote: Optional[RedemptionMessageEmote]
+
+
+class RedemptionMessage(TypedDict):
+    """
+    Represents a chat message with potential emotes.
+
+    Attributes
+    ----------
+    text: str
+        The complete message in plain text.
+    fragments: List[Fragment]
+        The ordered list of message fragments.
+    """
+    text: str
+    fragments: List[RedemptionFragment]
+
+class RewardInfo(TypedDict):
+    """
+    Represents information about the reward redeemed by the user.
+
+    Attributes
+    ----------
+    type: Literal["single_message_bypass_sub_mode", "send_highlighted_message",
+                  "random_sub_emote_unlock", "chosen_sub_emote_unlock",
+                  "chosen_modified_sub_emote_unlock"]
+        The type of reward redeemed.
+    channel_points: int
+        The number of channel points used to redeem the reward.
+    emote: Optional[Emote]
+        The associated emote for the reward, if available.
+    message: Optional[Message]
+        The associated message and emote information for the reward.
+    """
+    type: Literal["single_message_bypass_sub_mode", "send_highlighted_message",
+                  "random_sub_emote_unlock", "chosen_sub_emote_unlock",
+                  "chosen_modified_sub_emote_unlock"]
+    channel_points: int
+    emote: Optional[Emote]
+    message: Optional[RedemptionMessage]
 
 
 class RewardRedemptionEvent(SpecificBroadcaster, SpecificUser):
     """
-    Represents an event where a reward redemption occurs.
+    Represents a channel points redemption event.
 
     Attributes
     ----------
     id: str
-        The ID of the reward redemption event.
-    user_input: str
-        The user input provided during the reward redemption.
-    status: Literal['unknown', 'unfulfilled', 'fulfilled', 'canceled']
-        The current status of the reward redemption.
-    reward: RewardInfo
-        Basic information about the reward redeemed.
+        The unique identifier for the redemption event.
+    reward: Reward
+        The reward information associated with the redemption.
     redeemed_at: str
-        The timestamp when the reward was redeemed, in ISO 8601 format.
+        The UTC date and time (in RFC3339 format) of when the reward was redeemed.
     """
     id: str
-    user_input: str
-    status: Literal['unknown', 'unfulfilled', 'fulfilled', 'canceled']
     reward: RewardInfo
     redeemed_at: str
 

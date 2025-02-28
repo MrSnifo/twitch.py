@@ -223,6 +223,18 @@ ___
     async def on_cheer(data: eventsub.bits.CheerEvent):
      ...
     ```
+  
+- `on_bits_use`
+    - **Description**: Triggered when a user redeems Bits (cheers) in a channel. This event captures the Bits used and any associated message or cheermote.
+    - **Scope**: `bits:read`
+    - **Customizable**: `False`
+    - **Data Type**: [`BitsEvent`][twitch.types.eventsub.bits.BitsEvent]
+    - **Usage**:
+    ```python
+    @client.event
+    async def on_bits_use(data: eventsub.bits.BitsEvent):
+        ...
+    ```
 
 ## Moderation Events
 ___
@@ -569,8 +581,9 @@ ___
     async def on_subscription_message(data: eventsub.channels.SubscriptionMessageEvent):
         ...
     ```
-  
----
+
+## Vip Events
+___
 
 - `on_vip_add`
     - **Description**: Triggered when a VIP is added.
@@ -601,7 +614,7 @@ ___
     async def on_vip_remove(data: eventsub.channels.VIPRemoveEvent):
         ...
     ```
-
+  
 ## Points Reward Events
 ___
 

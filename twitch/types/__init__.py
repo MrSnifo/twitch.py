@@ -3,7 +3,7 @@ twitch.types
 
 Typing for Twitch.
 
-:copyright: (c) 2024-present Snifo
+:copyright: (c) 2025-present Snifo
 :license: MIT, see LICENSE for more details.
 """
 

@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2024-present Snifo
+Copyright (c) 2025-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -534,6 +534,9 @@ class ConnectionState:
     # Bits
     def parse_channel_cheer(self, data: eventsub.bits.CheerEvent) -> None:
         self.__dispatch('cheer', data)
+
+    def parse_channel_bits_use(self, data: eventsub.bits.BitsEvent) -> None:
+        self.__dispatch('bits_use', data)
 
     # Moderation
     def parse_channel_shield_mode_begin(self, data: eventsub.moderation.ShieldModeBeginEvent) -> None:

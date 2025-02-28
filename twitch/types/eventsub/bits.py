@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2024-present Snifo
+Copyright (c) 2025-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -24,11 +24,12 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from .users import SpecificBroadcaster
-from typing import TYPE_CHECKING
+from .users import SpecificBroadcaster, SpecificUser
+from typing import TYPE_CHECKING, TypedDict
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Optional, List, Optional, Literal
+
 
 
 class CheerEvent(SpecificBroadcaster):
@@ -56,3 +57,118 @@ class CheerEvent(SpecificBroadcaster):
     user_name: Optional[str]
     message: str
     bits: int
+
+# Bits use
+class Emote(TypedDict):
+    """
+    Represents metadata about an emote.
+
+    Attributes
+    ----------
+    id: str
+        The unique identifier for the emote.
+    emote_set_id: str
+        The identifier for the emote set the emote belongs to.
+    owner_id: str
+        The ID of the broadcaster who owns the emote.
+    format: list of {'animated', 'static'}
+        Available formats for the emote (e.g., static PNG or animated GIF).
+    """
+    id: str
+    emote_set_id: str
+    owner_id: str
+    format: List[Literal["animated", "static"]]
+
+
+class Cheermote(TypedDict):
+    """
+    Represents metadata about a cheermote.
+
+    Attributes
+    ----------
+    prefix: str
+        The prefix of the Cheermote string used in chat.
+    bits: int
+        The number of Bits cheered.
+    tier: int
+        The tier level of the cheermote.
+    """
+    prefix: str
+    bits: int
+    tier: int
+
+
+class Fragment(TypedDict):
+    """
+    Represents a fragment of a chat message.
+
+    Attributes
+    ----------
+    text: str
+        The message text within the fragment.
+    type: Literal["text", "cheermote", "emote"]
+        The type of fragment (text, cheermote, or emote).
+    emote: Optional[Emote]
+        Metadata about the emote if the fragment contains one.
+    """
+    text: str
+    type: Literal["text", "cheermote", "emote"]
+    emote: Optional[Emote]
+
+
+class Message(TypedDict):
+    """
+    Represents a chat message with potential emotes and cheermotes.
+
+    Attributes
+    ----------
+    text: str
+        The complete message in plain text.
+    fragments: list of Fragment
+        The ordered list of message fragments.
+    """
+    text: str
+    fragments: List[Fragment]
+
+
+class PowerUp(TypedDict):
+    """
+    Represents a Power-up event in chat.
+
+    Attributes
+    ----------
+    type: Literal["message_effect", "celebration", "gigantify_an_emote"]
+        The type of Power-up effect.
+    emote: Optional[Emote]
+        Associated emote with the Power-up.
+    message_effect_id: Optional[str]
+        The ID of the message effect.
+    """
+    type: Literal["message_effect", "celebration", "gigantify_an_emote"]
+    emote: Optional[Emote]
+    message_effect_id: Optional[str]
+
+
+class BitsEvent(SpecificBroadcaster, SpecificUser):
+    """
+    Represents a Bits transaction event.
+
+    Attributes
+    ----------
+    bits: int
+        The number of Bits used.
+    type: Literal["cheer", "power_up"]
+        The type of Bits event.
+    message: Optional[Message]
+        An object containing the user message and emote information.
+    cheermote: Optional[Cheermote]
+        Metadata about the cheermote.
+    power_up: Optional[PowerUp]
+        Data about Power-up effects.
+    """
+    bits: int
+    type: Literal["cheer", "power_up"]
+    message: Optional[Message]
+    cheermote: Optional[Cheermote]
+    power_up: Optional[PowerUp]
+

@@ -214,6 +214,12 @@ ___
 ---
 #### ::: twitch.types.eventsub.interaction.RewardInfo
 ---
+#### ::: twitch.types.eventsub.interaction.RedemptionMessage
+---
+#### ::: twitch.types.eventsub.interaction.RedemptionFragment
+---
+#### ::: twitch.types.eventsub.interaction.RedemptionMessageEmote
+---
 ### ::: twitch.types.eventsub.interaction.PollBeginEvent
 ---
 ### ::: twitch.types.eventsub.interaction.PollProgressEvent
@@ -251,6 +257,17 @@ ___
 ___
 ### ::: twitch.types.eventsub.bits.CheerEvent
 ---
+### ::: twitch.types.eventsub.bits.BitsEvent
+---
+#### ::: twitch.types.eventsub.bits.PowerUp
+---
+#### ::: twitch.types.eventsub.bits.Message
+---
+#### ::: twitch.types.eventsub.bits.Fragment
+---
+#### ::: twitch.types.eventsub.bits.Cheermote
+---
+#### ::: twitch.types.eventsub.bits.Emote
 
 
 ## Activity

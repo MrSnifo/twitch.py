@@ -1,7 +1,7 @@
 """
 The MIT License (MIT)
 
-Copyright (c) 2024-present Snifo
+Copyright (c) 2025-present Snifo
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -373,6 +373,11 @@ class HTTPClient:
                 'version': '1',
                 'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
+            'bits_use': {
+                'name': 'channel.bits.use',
+                'version': '1',
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
+            },
             'channel_update': {
                 'name': 'channel.update',
                 'version': '2',
@@ -510,7 +515,7 @@ class HTTPClient:
             },
             'points_automatic_reward_redemption_add': {
                 'name': 'channel.channel_points_automatic_reward_redemption.add',
-                'version': '1',
+                'version': '2',
                 'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
             'points_reward_add': {
