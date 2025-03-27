@@ -42,7 +42,9 @@ client = Client(..., ..., return_full_data=True)
 
 @client.event
 async def on_chat_message(data: eventsub.MPData[eventsub.chat.MessageEvent]):
-    print(data)  # Prints the full event data including metadata
+    print(data)
+
+client.run(...)
 ```
 
 ### Subscription Limits
