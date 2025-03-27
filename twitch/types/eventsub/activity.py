@@ -25,10 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .users import SpecificBroadcaster, Broadcaster, SpecificUser
-from typing import TYPE_CHECKING, TypedDict
-
-if TYPE_CHECKING:
-    from typing import Literal
+from typing import Literal, TypedDict
 
 
 class DonationAmount(TypedDict):

@@ -24,6 +24,27 @@ do not require separate function definitions, you can add custom handlers if nee
 
 You may add custom handlers for these events to perform specific actions in response.
 
+### Full Event Data
+___
+
+When you need **full event data**, You can enable it by setting the `return_full_data` flag to `True`.
+This will ensure that all event data such as metadata and payload gets returned,
+and make sure to wrap it into [`MPData`][twitch.types.eventsub.MPData].
+
+Here’s how you can use it:
+
+```python
+from twitch.types import eventsub
+from twitch import Client
+
+# Initialize the client with full data enabled
+client = Client(..., ..., return_full_data=True)
+
+@client.event
+async def on_chat_message(data: eventsub.MPData[eventsub.chat.MessageEvent]):
+    print(data)  # Prints the full event data including metadata
+```
+
 ### Subscription Limits
 ___
 

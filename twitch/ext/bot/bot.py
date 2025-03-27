@@ -89,6 +89,16 @@ class Bot(twitch.Client):
             Authentication details for the proxy, if required.
 
             **Default**: `None`
+            ___
+
+        - return_full_data: [bool]
+
+            Flag indicating whether to return the full event data, including both the event payload
+            and metadata. If `True`, the event data will be wrapped in `types.eventsub.MPData`,
+            providing access to all details of the event. If `False`, only the event info will
+            be returned.
+
+            **Default**: `False`
     """
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:
         super().__init__(client_id=client_id, client_secret=client_secret, **options)

@@ -24,10 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from typing import TypedDict, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import List, Literal, Dict
+from typing import List, Literal, Dict, TypedDict
 
 
 class Broadcaster(TypedDict):

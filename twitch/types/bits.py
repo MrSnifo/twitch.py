@@ -24,11 +24,8 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import List, Literal, TypedDict
 from .users import SpecificUser
-
-if TYPE_CHECKING:
-    from typing import List, Literal
 
 
 # Leaderboard

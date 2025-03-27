@@ -25,10 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .users import SpecificUser, Broadcaster
-from typing import TYPE_CHECKING, TypedDict
-
-if TYPE_CHECKING:
-    from typing import List, Optional, Literal
+from typing import List, Optional, Literal, TypedDict
 
 
 # Raids

@@ -24,10 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
-
-if TYPE_CHECKING:
-    from typing import NotRequired, Optional, List
+from typing import NotRequired, Optional, List, TypedDict
 
 
 class Broadcaster(TypedDict):
@@ -57,7 +54,7 @@ class SpecificBroadcaster(TypedDict):
     broadcaster_user_id: str
         The user ID of the broadcaster.
     broadcaster_user_name: str
-        The user name of the broadcaster.
+        The username of the broadcaster.
     broadcaster_user_login: str
         The login name of the broadcaster.
     """
@@ -93,7 +90,7 @@ class SpecificModerator(TypedDict):
     moderator_user_id: str
         The user ID of the moderator.
     moderator_user_name: str
-        The user name of the moderator.
+        The username of the moderator.
     moderator_user_login: str
         The login name of the moderator.
     """

@@ -9,15 +9,12 @@ Typing for Twitch.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import TypedDict, Generic, TypeVar
 
-if TYPE_CHECKING:
-    from typing import TypeVar
-    T = TypeVar('T')
-
+T = TypeVar('T')
 
 # Most of the data in the Helix API is wrapped with the 'data' keyword.
-class Data(TypedDict):
+class Data(TypedDict, Generic[T]):
     data: T
 
 

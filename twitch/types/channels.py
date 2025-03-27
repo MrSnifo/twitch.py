@@ -24,11 +24,8 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
+from typing import List, Literal, Dict, Optional, NotRequired, TypedDict
 from .users import Broadcaster, SpecificUser
-from typing import TYPE_CHECKING, TypedDict
-
-if TYPE_CHECKING:
-    from typing import List, Literal, Dict, Optional, NotRequired
 
 
 # Channel

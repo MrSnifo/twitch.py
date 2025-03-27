@@ -25,10 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .users import SpecificBroadcaster, SpecificUser, SpecificModerator, Moderator
-from typing import TYPE_CHECKING, TypedDict
-
-if TYPE_CHECKING:
-    from typing import List, Optional, Literal
+from typing import List, Optional, Literal, TypedDict
 
 
 # AutoMod
@@ -631,7 +628,7 @@ class SuspiciousUserMessageEvent(SpecificBroadcaster, SpecificUser):
     """
     low_trust_status: Literal['none', 'active_monitoring', 'restricted']
     shared_ban_channel_ids: List[str]
-    types: List[Literal['manual', 'ban_evader_detector', 'shared_channel_ban']]
+    types: List[Literal['manually_added', 'ban_evader', 'banned_in_shared_channel']]
     ban_evasion_evaluation: Literal['unknown', 'possible', 'likely']
     message: ChatMessage
 

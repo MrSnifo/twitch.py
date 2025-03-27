@@ -25,11 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from .users import SpecificBroadcaster, SpecificUser
-from typing import TYPE_CHECKING, TypedDict
-
-if TYPE_CHECKING:
-    from typing import Optional, List, Optional, Literal
-
+from typing import TypedDict, List, Optional, Literal
 
 
 class CheerEvent(SpecificBroadcaster):

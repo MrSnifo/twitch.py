@@ -26,10 +26,7 @@ from __future__ import annotations
 
 from .users import SpecificBroadcaster, SpecificUser
 from .chat import TextEmoteMessage
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import List, Optional
+from typing import Optional, List
 
 
 # Update

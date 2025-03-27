@@ -35,7 +35,7 @@ import asyncio
 if TYPE_CHECKING:
     from .types import Data, TTMData, users, Edata, chat, channels, search, PData, streams, bits, analytics, eventsub
     from typing import List, Tuple, Literal, Callable, Any, Optional, Dict, AsyncGenerator
-    from .types.eventsub import Data as EvData
+    from .types.eventsub import MPData
     from .http import HTTPClient
 
 import logging
@@ -48,14 +48,16 @@ class ConnectionState:
     """
     Represents the state of the connection.
     """
-    __slots__ = ('http', 'user', 'is_live', '__dispatch', '__custom_dispatch', '_events', 'ready', 'total_cost',
-                 'max_total_cost', '_users', '_socket_debug', '_broadcasters', '_lock')
+    __slots__ = ('http', 'user', 'is_live', '__dispatch', '__custom_dispatch', '_return_full_data',
+                 '_events', 'ready', 'total_cost', 'max_total_cost', '_users', '_socket_debug', '_broadcasters',
+                 '_lock')
 
     def __init__(self,
                  dispatcher: Callable[..., Any],
                  custom_dispatch: Callable[..., Any],
                  http: HTTPClient,
-                 socket_debug: bool) -> None:
+                 socket_debug: bool,
+                 return_full_data: bool) -> None:
         self.http: HTTPClient = http
         # Client User-related attributes
         self.user: Optional[ClientUser] = None
@@ -63,6 +65,7 @@ class ConnectionState:
         # Callbacks for dispatching events
         self.__dispatch: Callable[..., Any] = dispatcher
         self.__custom_dispatch: Callable[..., Any] = custom_dispatch
+        self._return_full_data: bool = return_full_data
         # Event management
         self._events: Dict[str, Any] = {}
         self.ready: Optional[asyncio.Event] = None
@@ -480,256 +483,266 @@ class ConnectionState:
     def user_register(self, broadcaster: Broadcaster) -> None:
         self.__dispatch('user_register', broadcaster)
 
-    def parse(self, data: EvData[Any]) -> None:
+    def parse(self, data: MPData[Any]) -> None:
         try:
-            conditions = data['subscription']['condition']
+            conditions = data['payload']['subscription']['condition']
             user_id = conditions.get('broadcaster_user_id') or conditions.get('to_broadcaster_user_id')
 
-            event_type = data['subscription']['type']
+            event_type =  data['payload']['subscription']['type']
             event = self._events.get(user_id, {}).get(event_type)
 
             # Incase Using CLI.
             if event is not None:
                 for callback in event['callbacks']:
-                    self.__custom_dispatch(event['name'], callback, data['event'])
+                    self.__custom_dispatch(event['name'], callback,  data['payload']['event'])
 
                 # Dispatch only custom events incase the user is not the client.
                 if user_id != self.user.id:
                     return
 
             # Client events
-            parse = getattr(self, 'parse_' + data['subscription']['type'].replace('.', '_'))
-            parse(data['event'])
+            parse = getattr(self, 'parse_' +  data['payload']['subscription']['type'].replace('.', '_'))
+            parse(data)
         except Exception as error:
             _logger.exception('Failed to parse event: %s', error)
 
+
+    def _dispatcher(self, event: str, data: MPData[Any]) -> None:
+        if not self._return_full_data:
+            self.__dispatch(event, data['payload']['event'])
+        else:
+            self.__dispatch(event, data)
+
     # Chat
-    def parse_channel_chat_clear(self, data: eventsub.chat.ChatClearEvent) -> None:
-        self.__dispatch('chat_clear', data)
+    def parse_channel_chat_clear(self, data: MPData[eventsub.chat.ChatClearEvent]) -> None:
+        self._dispatcher('chat_clear', data)
 
-    def parse_channel_chat_clear_user_messages(self, data: eventsub.chat.ClearUserMessagesEvent) -> None:
-        self.__dispatch('chat_clear_user_messages', data)
+    def parse_channel_chat_clear_user_messages(self, data: MPData[eventsub.chat.ClearUserMessagesEvent]) -> None:
+        self._dispatcher('chat_clear_user_messages', data)
 
-    def parse_channel_chat_message(self, data: eventsub.chat.MessageEvent) -> None:
-        self.__dispatch('chat_message', data)
+    def parse_channel_chat_message(self, data: MPData[eventsub.chat.MessageEvent]) -> None:
+        self._dispatcher('chat_message', data)
 
-    def parse_channel_chat_message_delete(self, data: eventsub.chat.MessageDeleteEvent) -> None:
-        self.__dispatch('chat_message_delete', data)
+    def parse_channel_chat_message_delete(self, data: MPData[eventsub.chat.MessageDeleteEvent]) -> None:
+        self._dispatcher('chat_message_delete', data)
 
-    def parse_channel_chat_notification(self, data: eventsub.chat.NotificationEvent) -> None:
-        self.__dispatch('chat_notification', data)
+    def parse_channel_chat_notification(self, data: MPData[eventsub.chat.NotificationEvent]) -> None:
+        self._dispatcher('chat_notification', data)
 
-    def parse_channel_chat_settings_update(self, data: eventsub.chat.SettingsUpdateEvent) -> None:
-        self.__dispatch('chat_settings_update', data)
+    def parse_channel_chat_settings_update(self, data: MPData[eventsub.chat.SettingsUpdateEvent]) -> None:
+        self._dispatcher('chat_settings_update', data)
 
-    def parse_channel_shared_chat_begin(self, data: eventsub.chat.SharedChatBeginEvent) -> None:
-        self.__dispatch('shared_chat_begin', data)
+    def parse_channel_shared_chat_begin(self, data: MPData[eventsub.chat.SharedChatBeginEvent]) -> None:
+        self._dispatcher('shared_chat_begin', data)
 
-    def parse_channel_shared_chat_update(self, data: eventsub.chat.SharedChatUpdateEvent) -> None:
-        self.__dispatch('shared_chat_update', data)
+    def parse_channel_shared_chat_update(self, data: MPData[eventsub.chat.SharedChatUpdateEvent]) -> None:
+        self._dispatcher('shared_chat_update', data)
 
-    def parse_channel_shared_chat_end(self, data: eventsub.chat.SharedChatEndEvent) -> None:
-        self.__dispatch('shared_chat_end', data)
+    def parse_channel_shared_chat_end(self, data: MPData[eventsub.chat.SharedChatEndEvent]) -> None:
+        self._dispatcher('shared_chat_end', data)
 
     # Bits
-    def parse_channel_cheer(self, data: eventsub.bits.CheerEvent) -> None:
-        self.__dispatch('cheer', data)
+    def parse_channel_cheer(self, data: MPData[eventsub.bits.CheerEvent]) -> None:
+        self._dispatcher('cheer', data)
 
-    def parse_channel_bits_use(self, data: eventsub.bits.BitsEvent) -> None:
-        self.__dispatch('bits_use', data)
+    def parse_channel_bits_use(self, data: MPData[eventsub.bits.BitsEvent]) -> None:
+        self._dispatcher('bits_use', data)
 
     # Moderation
-    def parse_channel_shield_mode_begin(self, data: eventsub.moderation.ShieldModeBeginEvent) -> None:
-        self.__dispatch('shield_mode_begin', data)
+    def parse_channel_shield_mode_begin(self, data: MPData[eventsub.moderation.ShieldModeBeginEvent]) -> None:
+        self._dispatcher('shield_mode_begin', data)
 
-    def parse_channel_shield_mode_end(self, data: eventsub.moderation.ShieldModeEndEvent) -> None:
-        self.__dispatch('shield_mode_end', data)
+    def parse_channel_shield_mode_end(self, data: MPData[eventsub.moderation.ShieldModeEndEvent]) -> None:
+        self._dispatcher('shield_mode_end', data)
 
-    def parse_channel_suspicious_user_message(self, data: eventsub.moderation.SuspiciousUserMessageEvent) -> None:
-        self.__dispatch('suspicious_user_message', data)
+    def parse_channel_suspicious_user_message(self,
+                                              data: MPData[eventsub.moderation.SuspiciousUserMessageEvent]) -> None:
+        self._dispatcher('suspicious_user_message', data)
 
-    def parse_channel_suspicious_user_update(self, data: eventsub.moderation.SuspiciousUserUpdateEvent) -> None:
-        self.__dispatch('suspicious_user_update', data)
+    def parse_channel_suspicious_user_update(self, data: MPData[eventsub.moderation.SuspiciousUserUpdateEvent]) -> None:
+        self._dispatcher('suspicious_user_update', data)
 
-    def parse_channel_warning_acknowledge(self, data: eventsub.moderation.WarningAcknowledgeEvent) -> None:
-        self.__dispatch('warning_acknowledge', data)
+    def parse_channel_warning_acknowledge(self, data: MPData[eventsub.moderation.WarningAcknowledgeEvent]) -> None:
+        self._dispatcher('warning_acknowledge', data)
 
-    def parse_channel_warning_send(self, data: eventsub.moderation.WarningSendEvent) -> None:
-        self.__dispatch('warning_send', data)
+    def parse_channel_warning_send(self, data: MPData[eventsub.moderation.WarningSendEvent]) -> None:
+        self._dispatcher('warning_send', data)
 
-    def parse_automod_message_hold(self, data: eventsub.moderation.AutomodMessageHoldEvent) -> None:
-        self.__dispatch('automod_message_hold', data)
+    def parse_automod_message_hold(self, data: MPData[eventsub.moderation.AutomodMessageHoldEvent]) -> None:
+        self._dispatcher('automod_message_hold', data)
 
-    def parse_automod_message_update(self, data: eventsub.moderation.AutomodMessageUpdateEvent) -> None:
-        self.__dispatch('automod_message_update', data)
+    def parse_automod_message_update(self, data: MPData[eventsub.moderation.AutomodMessageUpdateEvent]) -> None:
+        self._dispatcher('automod_message_update', data)
 
-    def parse_automod_settings_update(self, data: eventsub.moderation.AutomodSettingsUpdateEvent) -> None:
-        self.__dispatch('automod_settings_update', data)
+    def parse_automod_settings_update(self, data: MPData[eventsub.moderation.AutomodSettingsUpdateEvent]) -> None:
+        self._dispatcher('automod_settings_update', data)
 
-    def parse_automod_terms_update(self, data: eventsub.moderation.AutomodTermsUpdateEvent) -> None:
-        self.__dispatch('automod_terms_update', data)
+    def parse_automod_terms_update(self, data: MPData[eventsub.moderation.AutomodTermsUpdateEvent]) -> None:
+        self._dispatcher('automod_terms_update', data)
 
-    def parse_channel_ban(self, data: eventsub.moderation.BanEvent) -> None:
-        self.__dispatch('ban', data)
+    def parse_channel_ban(self, data: MPData[eventsub.moderation.BanEvent]) -> None:
+        self._dispatcher('ban', data)
 
-    def parse_channel_unban(self, data: eventsub.moderation.UnbanEvent) -> None:
-        self.__dispatch('unban', data)
+    def parse_channel_unban(self, data: MPData[eventsub.moderation.UnbanEvent]) -> None:
+        self._dispatcher('unban', data)
 
-    def parse_channel_unban_request_create(self, data: eventsub.moderation.UnbanRequestCreateEvent) -> None:
-        self.__dispatch('unban_request_create', data)
+    def parse_channel_unban_request_create(self, data: MPData[eventsub.moderation.UnbanRequestCreateEvent]) -> None:
+        self._dispatcher('unban_request_create', data)
 
-    def parse_channel_moderate(self, data: eventsub.moderation.UnbanRequestResolveEvent) -> None:
-        self.__dispatch('channel_moderate', data)
+    def parse_channel_moderate(self, data: MPData[eventsub.moderation.UnbanRequestResolveEvent]) -> None:
+        self._dispatcher('channel_moderate', data)
 
-    def parse_channel_unban_request_resolve(self, data: eventsub.moderation.ModerateEvent) -> None:
-        self.__dispatch('unban_request_resolve', data)
+    def parse_channel_unban_request_resolve(self, data: MPData[eventsub.moderation.ModerateEvent]) -> None:
+        self._dispatcher('unban_request_resolve', data)
 
-    def parse_channel_moderator_add(self, data: eventsub.moderation.ModeratorAddEvent) -> None:
-        self.__dispatch('moderator_add', data)
+    def parse_channel_moderator_add(self, data: MPData[eventsub.moderation.ModeratorAddEvent]) -> None:
+        self._dispatcher('moderator_add', data)
 
-    def parse_channel_moderator_remove(self, data: eventsub.moderation.ModeratorRemoveEvent) -> None:
-        self.__dispatch('moderator_remove', data)
+    def parse_channel_moderator_remove(self, data: MPData[eventsub.moderation.ModeratorRemoveEvent]) -> None:
+        self._dispatcher('moderator_remove', data)
 
     # Channels
-    def parse_channel_update(self, data: eventsub.channels.ChannelUpdateEvent) -> None:
-        self.user.channel.title = data['title']
-        self.user.channel.language = data['language']
-        self.user.channel.category_id = data['category_id']
-        self.user.channel.category_name = data['category_name']
-        self.user.channel.ccl = data['content_classification_labels']
-        self.__dispatch('channel_update', data)
+    def parse_channel_update(self, data: MPData[eventsub.channels.ChannelUpdateEvent]) -> None:
+        self.user.channel.title = data['payload']['event']['title']
+        self.user.channel.language = data['payload']['event']['language']
+        self.user.channel.category_id = data['payload']['event']['category_id']
+        self.user.channel.category_name = data['payload']['event']['category_name']
+        self.user.channel.ccl = data['payload']['event']['content_classification_labels']
+        self._dispatcher('channel_update', data)
 
-    def parse_channel_follow(self, data: eventsub.channels.FollowEvent) -> None:
-        self.__dispatch('follow', data)
+    def parse_channel_follow(self, data: MPData[eventsub.channels.FollowEvent]) -> None:
+        self._dispatcher('follow', data)
 
-    def parse_channel_subscribe(self, data: eventsub.channels.SubscribeEvent) -> None:
-        self.__dispatch('subscribe', data)
+    def parse_channel_subscribe(self, data: MPData[eventsub.channels.SubscribeEvent]) -> None:
+        self._dispatcher('subscribe', data)
 
-    def parse_channel_subscription_end(self, data: eventsub.channels.SubscriptionEndEvent) -> None:
-        self.__dispatch('subscription_end', data)
+    def parse_channel_subscription_end(self, data: MPData[eventsub.channels.SubscriptionEndEvent]) -> None:
+        self._dispatcher('subscription_end', data)
 
-    def parse_channel_subscription_gift(self, data: eventsub.channels.SubscriptionGiftEvent) -> None:
-        self.__dispatch('subscription_gift', data)
+    def parse_channel_subscription_gift(self, data: MPData[eventsub.channels.SubscriptionGiftEvent]) -> None:
+        self._dispatcher('subscription_gift', data)
 
-    def parse_channel_subscription_message(self, data: eventsub.channels.SubscriptionMessageEvent) -> None:
-        self.__dispatch('subscription_message', data)
+    def parse_channel_subscription_message(self, data: MPData[eventsub.channels.SubscriptionMessageEvent]) -> None:
+        self._dispatcher('subscription_message', data)
 
-    def parse_channel_vip_add(self, data: eventsub.channels.VIPAddEvent) -> None:
-        self.__dispatch('vip_add', data)
+    def parse_channel_vip_add(self, data: MPData[eventsub.channels.VIPAddEvent]) -> None:
+        self._dispatcher('vip_add', data)
 
-    def parse_channel_vip_remove(self, data: eventsub.channels.VIPRemoveEvent) -> None:
-        self.__dispatch('vip_remove', data)
+    def parse_channel_vip_remove(self, data: MPData[eventsub.channels.VIPRemoveEvent]) -> None:
+        self._dispatcher('vip_remove', data)
 
     # Interaction
     def parse_channel_channel_points_automatic_reward_redemption_add(
-            self, data: eventsub.interaction.AutomaticRewardRedemptionAddEvent) -> None:
-        self.__dispatch('points_automatic_reward_redemption_add', data)
+            self, data: MPData[eventsub.interaction.AutomaticRewardRedemptionAddEvent]) -> None:
+        self._dispatcher('points_automatic_reward_redemption_add', data)
 
-    def parse_channel_channel_points_custom_reward_add(self, data: eventsub.interaction.PointRewardEvent) -> None:
-        self.__dispatch('points_reward_add', data)
+    def parse_channel_channel_points_custom_reward_add(self,
+                                                       data: MPData[eventsub.interaction.PointRewardEvent]) -> None:
+        self._dispatcher('points_reward_add', data)
 
     def parse_channel_channel_points_custom_reward_update(self,
-                                                          data: eventsub.interaction.PointRewardEvent) -> None:
-        self.__dispatch('points_reward_update', data)
+                                                          data: MPData[eventsub.interaction.PointRewardEvent]) -> None:
+        self._dispatcher('points_reward_update', data)
 
     def parse_channel_channel_points_custom_reward_remove(self,
-                                                          data: eventsub.interaction.PointRewardEvent) -> None:
-        self.__dispatch('points_reward_remove', data)
+                                                          data: MPData[eventsub.interaction.PointRewardEvent]) -> None:
+        self._dispatcher('points_reward_remove', data)
 
     def parse_channel_channel_points_custom_reward_redemption_add(
-            self, data: eventsub.interaction.RewardRedemptionEvent) -> None:
-        self.__dispatch('points_reward_redemption_add', data)
+            self, data: MPData[eventsub.interaction.RewardRedemptionEvent]) -> None:
+        self._dispatcher('points_reward_redemption_add', data)
 
     def parse_channel_channel_points_custom_reward_redemption_update(
-            self, data: eventsub.interaction.RewardRedemptionEvent) -> None:
-        self.__dispatch('points_reward_redemption_update', data)
+            self, data: MPData[eventsub.interaction.RewardRedemptionEvent]) -> None:
+        self._dispatcher('points_reward_redemption_update', data)
 
-    def parse_channel_poll_begin(self, data: eventsub.interaction.PollBeginEvent) -> None:
-        self.__dispatch('poll_begin', data)
+    def parse_channel_poll_begin(self, data: MPData[eventsub.interaction.PollBeginEvent]) -> None:
+        self._dispatcher('poll_begin', data)
 
-    def parse_channel_poll_progress(self, data: eventsub.interaction.PollProgressEvent) -> None:
-        self.__dispatch('poll_progress', data)
+    def parse_channel_poll_progress(self, data: MPData[eventsub.interaction.PollProgressEvent]) -> None:
+        self._dispatcher('poll_progress', data)
 
-    def parse_channel_poll_end(self, data: eventsub.interaction.PollEndEvent) -> None:
-        self.__dispatch('poll_end', data)
+    def parse_channel_poll_end(self, data: MPData[eventsub.interaction.PollEndEvent]) -> None:
+        self._dispatcher('poll_end', data)
 
-    def parse_channel_prediction_begin(self, data: eventsub.interaction.PredictionBeginEvent) -> None:
-        self.__dispatch('prediction_begin', data)
+    def parse_channel_prediction_begin(self, data: MPData[eventsub.interaction.PredictionBeginEvent]) -> None:
+        self._dispatcher('prediction_begin', data)
 
-    def parse_channel_prediction_progress(self, data: eventsub.interaction.PredictionProgressEvent) -> None:
-        self.__dispatch('prediction_progress', data)
+    def parse_channel_prediction_progress(self, data: MPData[eventsub.interaction.PredictionProgressEvent]) -> None:
+        self._dispatcher('prediction_progress', data)
 
-    def parse_channel_prediction_lock(self, data: eventsub.interaction.PredictionLockEvent) -> None:
-        self.__dispatch('prediction_lock', data)
+    def parse_channel_prediction_lock(self, data: MPData[eventsub.interaction.PredictionLockEvent]) -> None:
+        self._dispatcher('prediction_lock', data)
 
-    def parse_channel_prediction_end(self, data: eventsub.interaction.PredictionEndEvent) -> None:
-        self.__dispatch('prediction_end', data)
+    def parse_channel_prediction_end(self, data: MPData[eventsub.interaction.PredictionEndEvent]) -> None:
+        self._dispatcher('prediction_end', data)
 
-    def parse_channel_hype_train_begin(self, data: eventsub.interaction.HypeTrainEvent) -> None:
-        self.__dispatch('hype_train_begin', data)
+    def parse_channel_hype_train_begin(self, data: MPData[eventsub.interaction.HypeTrainEvent]) -> None:
+        self._dispatcher('hype_train_begin', data)
 
-    def parse_channel_hype_train_progress(self, data: eventsub.interaction.HypeTrainEvent) -> None:
-        self.__dispatch('hype_train_progress', data)
+    def parse_channel_hype_train_progress(self, data: MPData[eventsub.interaction.HypeTrainEvent]) -> None:
+        self._dispatcher('hype_train_progress', data)
 
-    def parse_channel_hype_train_end(self, data: eventsub.interaction.HypeTrainEndEvent) -> None:
-        self.__dispatch('hype_train_end', data)
+    def parse_channel_hype_train_end(self, data: MPData[eventsub.interaction.HypeTrainEndEvent]) -> None:
+        self._dispatcher('hype_train_end', data)
 
     # Activity
-    def parse_channel_charity_campaign_donate(self, data: eventsub.activity.CharityDonationEvent) -> None:
-        self.__dispatch('charity_campaign_donate', data)
+    def parse_channel_charity_campaign_donate(self, data: MPData[eventsub.activity.CharityDonationEvent]) -> None:
+        self._dispatcher('charity_campaign_donate', data)
 
-    def parse_channel_charity_campaign_start(self, data: eventsub.activity.CharityCampaignStartEvent) -> None:
-        self.__dispatch('charity_campaign_start', data)
+    def parse_channel_charity_campaign_start(self, data: MPData[eventsub.activity.CharityCampaignStartEvent]) -> None:
+        self._dispatcher('charity_campaign_start', data)
 
-    def parse_channel_charity_campaign_progress(self, data: eventsub.activity.CharityCampaignProgressEvent) -> None:
-        self.__dispatch('charity_campaign_progress', data)
+    def parse_channel_charity_campaign_progress(self,
+                                                data: MPData[eventsub.activity.CharityCampaignProgressEvent]) -> None:
+        self._dispatcher('charity_campaign_progress', data)
 
-    def parse_channel_charity_campaign_stop(self, data: eventsub.activity.CharityCampaignStopEvent) -> None:
-        self.__dispatch('charity_campaign_stop', data)
+    def parse_channel_charity_campaign_stop(self, data: MPData[eventsub.activity.CharityCampaignStopEvent]) -> None:
+        self._dispatcher('charity_campaign_stop', data)
 
-    def parse_channel_goal_begin(self, data: eventsub.activity.GoalsEvent) -> None:
-        self.__dispatch('goal_begin', data)
+    def parse_channel_goal_begin(self, data: MPData[eventsub.activity.GoalsEvent]) -> None:
+        self._dispatcher('goal_begin', data)
 
-    def parse_channel_goal_progress(self, data: eventsub.activity.GoalsEvent) -> None:
-        self.__dispatch('goal_progress', data)
+    def parse_channel_goal_progress(self, data: MPData[eventsub.activity.GoalsEvent]) -> None:
+        self._dispatcher('goal_progress', data)
 
-    def parse_channel_goal_end(self, data: eventsub.activity.GoalsEvent) -> None:
-        self.__dispatch('goal_end', data)
+    def parse_channel_goal_end(self, data: MPData[eventsub.activity.GoalsEvent]) -> None:
+        self._dispatcher('goal_end', data)
 
     # Streams
-    def parse_channel_ad_break_begin(self, data: eventsub.streams.AdBreakBeginEvent) -> None:
-        self.__dispatch('ad_break_begin', data)
+    def parse_channel_ad_break_begin(self, data: MPData[eventsub.streams.AdBreakBeginEvent]) -> None:
+        self._dispatcher('ad_break_begin', data)
 
-    def parse_channel_raid(self, data: eventsub.streams.RaidEvent) -> None:
-        self.__dispatch('raid', data)
+    def parse_channel_raid(self, data: MPData[eventsub.streams.RaidEvent]) -> None:
+        self._dispatcher('raid', data)
 
-    def parse_channel_shoutout_create(self, data: eventsub.streams.ShoutoutCreateEvent) -> None:
-        self.__dispatch('shoutout_create', data)
+    def parse_channel_shoutout_create(self, data: MPData[eventsub.streams.ShoutoutCreateEvent]) -> None:
+        self._dispatcher('shoutout_create', data)
 
-    def parse_channel_shoutout_receive(self, data: eventsub.streams.ShoutoutReceivedEvent) -> None:
-        self.__dispatch('shoutout_received', data)
+    def parse_channel_shoutout_receive(self, data: MPData[eventsub.streams.ShoutoutReceivedEvent]) -> None:
+        self._dispatcher('shoutout_received', data)
 
-    def parse_stream_online(self, data: eventsub.streams.StreamOnlineEvent) -> None:
+    def parse_stream_online(self, data: MPData[eventsub.streams.StreamOnlineEvent]) -> None:
         self.is_live = True
-        self.__dispatch('stream_online', data)
+        self._dispatcher('stream_online', data)
 
-    def parse_stream_offline(self, data: eventsub.streams.StreamOfflineEvent) -> None:
+    def parse_stream_offline(self, data: MPData[eventsub.streams.StreamOfflineEvent]) -> None:
         self.is_live = False
-        self.__dispatch('stream_offline', data)
+        self._dispatcher('stream_offline', data)
 
     # Users
-    def parse_user_update(self, data: eventsub.users.UserUpdateEvent) -> None:
-        self.user.name = data['user_login']
-        self.user.display_name = data['user_name']
-        self.user.description = data['description']
-        self.user.email = data.get('email') or None
-        self.__dispatch('user_update', data)
+    def parse_user_update(self, data: MPData[eventsub.users.UserUpdateEvent]) -> None:
+        self.user.name = data['payload']['event']['user_login']
+        self.user.display_name = data['payload']['event']['user_name']
+        self.user.description = data['payload']['event']['description']
+        self.user.email = data['payload']['event'].get('email') or None
+        self._dispatcher('user_update', data)
 
-    def parse_user_whisper_message(self, data: eventsub.users.WhisperReceivedEvent) -> None:
-        self.__dispatch('whisper_received', data)
+    def parse_user_whisper_message(self, data: MPData[eventsub.users.WhisperReceivedEvent]) -> None:
+        self._dispatcher('whisper_received', data)
 
-    def parse_channel_chat_user_message_hold(self, data: eventsub.users.MessageHoldEvent) -> None:
-        self.__dispatch('chat_user_message_hold', data)
+    def parse_channel_chat_user_message_hold(self, data: MPData[eventsub.users.MessageHoldEvent]) -> None:
+        self._dispatcher('chat_user_message_hold', data)
 
-    def parse_channel_chat_user_message_update(self, data: eventsub.users.MessageUpdateEvent) -> None:
-        self.__dispatch('chat_user_message_update', data)
+    def parse_channel_chat_user_message_update(self, data: MPData[eventsub.users.MessageUpdateEvent]) -> None:
+        self._dispatcher('chat_user_message_update', data)

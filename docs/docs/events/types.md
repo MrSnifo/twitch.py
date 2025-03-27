@@ -2,6 +2,12 @@
 icon: material/order-bool-descending
 ---
 
+## Event
+### ::: twitch.types.eventsub.MPData
+#### ::: twitch.types.eventsub.Payload
+#### ::: twitch.types.eventsub.Subscription
+#### ::: twitch.types.eventsub.Transport
+#### ::: twitch.types.eventsub.Metadata
 
 ## Users
 ___

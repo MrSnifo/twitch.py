@@ -165,7 +165,7 @@ class EventSubWebSocket:
                 raise ReconnectWebSocket(url=data['payload']['session']['reconnect_url'])
 
             if metadata['message_type'] == self.NOTIFICATION:
-                self._state.parse(data=data['payload'])
+                self._state.parse(data=data)
                 return
 
             if metadata['message_type'] == self.REVOCATION:

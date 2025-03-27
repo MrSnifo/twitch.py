@@ -70,14 +70,11 @@ class Client:
 
             **Default**: `False`
 
-            ___
-
-        - cli_port: [int][]
+        - cli_port: [int][int]
 
             The port number used for CLI mode.
 
             **Default**: `8080`
-            ___
 
         - socket_debug: [False][bool]
 
@@ -85,45 +82,47 @@ class Client:
             If enabled, raw WebSocket messages are dispatched to the on_socket_raw_receive.
 
             **Default**: `False`
-            ___
 
-        - proxy: [Optional][typing.Optional][[str][str]]
+        - proxy: [Optional][str]
 
             The proxy URL to use for HTTP requests.
 
             **Default**: `None`
-            ___
 
-        - proxy_auth: [Optional][typing.Optional][aiohttp.BasicAuth]
+        - proxy_auth: [Optional][aiohttp.BasicAuth]
 
             Authentication details for the proxy, if required.
 
             **Default**: `None`
+
+        - return_full_data: [bool]
+
+            Flag indicating whether to return the full event data, including both the event payload
+            and metadata. If `True`, the event data will be wrapped in `types.eventsub.MPData`,
+            providing access to all details of the event. If `False`, only the event info will
+            be returned.
+
+            **Default**: `False`
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:
-        cli: bool = options.get('cli', False)
-        cli_port: int = options.get('cli_port', 8080)
-        _socket_debug: bool = options.get('socket_debug', False)
-        proxy: Optional[str] = options.pop('proxy', None)
-        proxy_auth: Optional[aiohttp.BasicAuth] = options.pop('proxy_auth', None)
-
         self.client_id: str = client_id
         self.client_secret: str = client_secret
 
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.http: HTTPClient = HTTPClient(client_id, client_secret,
                                            loop=self.loop,
-                                           proxy=proxy,
-                                           proxy_auth=proxy_auth,
-                                           cli=cli,
-                                           cli_port=cli_port)
+                                           proxy=options.pop('proxy', None),
+                                           proxy_auth=options.pop('proxy_auth', None),
+                                           cli=options.get('cli', False),
+                                           cli_port=options.get('cli_port', 8080))
 
         self._connection: ConnectionState = ConnectionState(
             dispatcher=self.dispatch,
             custom_dispatch=self.custom_dispatch,
             http=self.http,
-            socket_debug=_socket_debug
+            socket_debug=options.get('socket_debug', False),
+            return_full_data=options.get('return_full_data', False)
         )
         self._closing_task: Optional[asyncio.Task] = None
         self.ws: Optional[EventSubWebSocket] = None

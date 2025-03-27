@@ -24,12 +24,9 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
+from typing import Optional, List, Literal, TypedDict
 from .users import SpecificBroadcaster, SpecificUser
-from typing import TYPE_CHECKING, TypedDict
 from .chat import TextEmoteMessage
-
-if TYPE_CHECKING:
-    from typing import Optional, List, Literal
 
 
 # Reward
