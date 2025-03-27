@@ -68,41 +68,41 @@ class Client:
 
             Flag indicating if CLI mode is enabled.
 
-            **Default**: `False`
+            **Default**: [False][bool]
 
         - cli_port: [int][int]
 
             The port number used for CLI mode.
 
-            **Default**: `8080`
+            **Default**: [8080][int]
 
         - socket_debug: [False][bool]
 
             Flag indicating if raw WebSocket messages should be dispatched for debugging purposes.
             If enabled, raw WebSocket messages are dispatched to the on_socket_raw_receive.
 
-            **Default**: `False`
+            **Default**: [False][bool]
 
         - proxy: [Optional][str]
 
             The proxy URL to use for HTTP requests.
 
-            **Default**: `None`
+            **Default**: [None][None]
 
         - proxy_auth: [Optional][aiohttp.BasicAuth]
 
             Authentication details for the proxy, if required.
 
-            **Default**: `None`
+            **Default**: [None][None]
 
-        - return_full_data: [bool]
+        - return_full_data: [bool][bool]
 
             Flag indicating whether to return the full event data, including both the event payload
             and metadata. If `True`, the event data will be wrapped in `types.eventsub.MPData`,
             providing access to all details of the event. If `False`, only the event info will
             be returned.
 
-            **Default**: `False`
+            **Default**: [False][bool]
     """
 
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:

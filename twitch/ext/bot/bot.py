@@ -58,47 +58,41 @@ class Bot(twitch.Client):
 
             Flag indicating if CLI mode is enabled.
 
-            **Default**: `False`
+            **Default**: [False][bool]
 
-            ___
-
-        - cli_port: [int][]
+        - cli_port: [int][int]
 
             The port number used for CLI mode.
 
-            **Default**: `8080`
-            ___
+            **Default**: `8080][int]
 
         - socket_debug: [False][bool]
 
             Flag indicating if raw WebSocket messages should be dispatched for debugging purposes.
             If enabled, raw WebSocket messages are dispatched to the on_socket_raw_receive.
 
-            **Default**: `False`
-            ___
+            **Default**: [False][bool]
 
-        - proxy: [Optional][typing.Optional][[str][str]]
+        - proxy: [Optional][str]
 
             The proxy URL to use for HTTP requests.
 
-            **Default**: `None`
-            ___
+            **Default**: [None][None]
 
-        - proxy_auth: [Optional][typing.Optional][aiohttp.BasicAuth]
+        - proxy_auth: [Optional][aiohttp.BasicAuth]
 
             Authentication details for the proxy, if required.
 
-            **Default**: `None`
-            ___
+            **Default**: [None][None]
 
-        - return_full_data: [bool]
+        - return_full_data: [bool][bool]
 
             Flag indicating whether to return the full event data, including both the event payload
             and metadata. If `True`, the event data will be wrapped in `types.eventsub.MPData`,
             providing access to all details of the event. If `False`, only the event info will
             be returned.
 
-            **Default**: `False`
+            **Default**: [False][bool]
     """
     def __init__(self, client_id: str, client_secret: Optional[str] = None, **options) -> None:
         super().__init__(client_id=client_id, client_secret=client_secret, **options)

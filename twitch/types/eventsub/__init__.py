@@ -1,6 +1,8 @@
 """ 
-twitch.types.eventsub  
-Typing for Twitch.  
+twitch.types.eventsub
+
+Typing for Twitch.
+
 :copyright: (c) 2025-present Snifo 
 :license: MIT, see LICENSE for more details. 
 """
