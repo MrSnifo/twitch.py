@@ -88,7 +88,7 @@ class Bot(twitch.Client):
         - return_full_data: [bool][bool]
 
             Flag indicating whether to return the full event data, including both the event payload
-            and metadata. If `True`, the event data will be wrapped in `types.eventsub.MPData`,
+            and metadata. If `True`, the event data will be wrapped in [`MPData`][twitch.types.eventsub.MPData],
             providing access to all details of the event. If `False`, only the event info will
             be returned.
 
