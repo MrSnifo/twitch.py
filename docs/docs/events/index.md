@@ -24,7 +24,7 @@ do not require separate function definitions, you can add custom handlers if nee
 
 You may add custom handlers for these events to perform specific actions in response.
 
-### Full Event Data
+### Return Full Event Data 
 ___
 
 When you need **full event data**, You can enable it by setting the `return_full_data` flag to `True`.
