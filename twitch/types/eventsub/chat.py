@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from typing import TypedDict, Literal,Optional, List
+from typing import TypedDict, Literal, Optional, List, NotRequired
 from .users import SpecificBroadcaster, SpecificUser
 
 
@@ -273,6 +273,9 @@ class MessageEvent(SpecificBroadcaster):
     source_badges: Optional[List[Badge]]
         The list of chat badges for the chatter in the channel the message was sent from,
         in case of a shared chat session.
+    is_source_only: Optional[bool]
+        Determines if a message delivered during a shared chat session is only sent to the source channel.
+        Has no effect if the message is not sent during a shared chat session.
     """
     chatter_user_id: str
     chatter_user_name: str
@@ -298,6 +301,7 @@ class MessageEvent(SpecificBroadcaster):
     source_broadcaster_user_login: Optional[str]
     source_message_id: Optional[str]
     source_badges: Optional[List[Badge]]
+    is_source_only: Optional[bool]
 
 
 class MessageDeleteEvent(SpecificBroadcaster):
