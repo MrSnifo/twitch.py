@@ -498,7 +498,7 @@ class HTTPClient:
                 'version': '1',
                 'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
             },
-            'moderate': {
+            'channel_moderate': {
                 'name': 'channel.moderate',
                 'version': '2',
                 'condition': {'broadcaster': 'moderator_user_id', 'user': 'broadcaster_user_id'}
@@ -513,7 +513,12 @@ class HTTPClient:
                 'version': '1',
                 'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
             },
-            'points_automatic_reward_redemption_add': {
+            'points_automatic_reward_redemption_add_v1': {
+                'name': 'channel.channel_points_automatic_reward_redemption.add',
+                'version': '1',
+                'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}
+            },
+            'points_automatic_reward_redemption_add_v2': {
                 'name': 'channel.channel_points_automatic_reward_redemption.add',
                 'version': '2',
                 'condition': {'broadcaster': None, 'user': 'broadcaster_user_id'}

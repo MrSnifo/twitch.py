@@ -178,7 +178,7 @@ class ConnectionState:
                         subscription_version=subscription['version'],
                         subscription_condition=subscription['condition']
                     )
-                    self._events[user_id][data['data'][0]['type']] = {
+                    self._events[user_id][data['data'][0]['type'], subscription['version']] = {
                         'id': data['data'][0]['id'],
                         'name': event,
                         'version': subscription['version'],
@@ -204,9 +204,11 @@ class ConnectionState:
         if subscription is not None:
             async with self._lock:
                 if self._events.setdefault(user_id, {}).get(subscription['name']) is not None:
-                    await self.http.delete_subscription(self._events[user_id]['auth_user_id'],
-                                                        self._events[user_id][subscription['name']]['id'])
-                    self._events[user_id].pop(subscription['name'])
+                    await self.http.delete_subscription(
+                        self._events[user_id]['auth_user_id'],
+                        self._events[user_id][subscription['name'], subscription['version']]['id']
+                    )
+                    self._events[user_id].pop(subscription['name'], subscription['version'])
                     if self.user.id == user_id and event in ['channel_update',
                                                              'user_update',
                                                              'stream_online',
@@ -485,11 +487,13 @@ class ConnectionState:
 
     def parse(self, data: MPData[Any]) -> None:
         try:
-            conditions = data['payload']['subscription']['condition']
+            subscription = data['payload']['subscription']
+            conditions = subscription['condition']
             user_id = conditions.get('broadcaster_user_id') or conditions.get('to_broadcaster_user_id')
 
-            event_type =  data['payload']['subscription']['type']
-            event = self._events.get(user_id, {}).get(event_type)
+            version = subscription['version']
+
+            event = self._events.get(user_id, {}).get((subscription['type'], subscription['version']))
 
             # Incase Using CLI.
             if event is not None:
@@ -500,8 +504,11 @@ class ConnectionState:
                 if user_id != self.user.id:
                     return
 
+            event_type = subscription['type'].replace('.', '_')
+            key = "%s_v%s" % (event_type, version)
+
             # Client events
-            parse = getattr(self, 'parse_' +  data['payload']['subscription']['type'].replace('.', '_'))
+            parse = getattr(self, 'parse_' +  key)
             parse(data)
         except Exception as error:
             _logger.exception('Failed to parse event: %s', error)
@@ -514,235 +521,239 @@ class ConnectionState:
             self.__dispatch(event, data)
 
     # Chat
-    def parse_channel_chat_clear(self, data: MPData[eventsub.chat.ChatClearEvent]) -> None:
-        self._dispatcher('chat_clear', data)
+    def parse_channel_chat_clear_v1(self, d: MPData[eventsub.chat.ChatClearEvent]) -> None:
+        self._dispatcher('chat_clear', d)
 
-    def parse_channel_chat_clear_user_messages(self, data: MPData[eventsub.chat.ClearUserMessagesEvent]) -> None:
-        self._dispatcher('chat_clear_user_messages', data)
+    def parse_channel_chat_clear_user_messages_v1(self, d: MPData[eventsub.chat.ClearUserMessagesEvent]) -> None:
+        self._dispatcher('chat_clear_user_messages', d)
 
-    def parse_channel_chat_message(self, data: MPData[eventsub.chat.MessageEvent]) -> None:
-        self._dispatcher('chat_message', data)
+    def parse_channel_chat_message_v1(self, d: MPData[eventsub.chat.MessageEvent]) -> None:
+        self._dispatcher('chat_message', d)
 
-    def parse_channel_chat_message_delete(self, data: MPData[eventsub.chat.MessageDeleteEvent]) -> None:
-        self._dispatcher('chat_message_delete', data)
+    def parse_channel_chat_message_delete_v1(self, d: MPData[eventsub.chat.MessageDeleteEvent]) -> None:
+        self._dispatcher('chat_message_delete', d)
 
-    def parse_channel_chat_notification(self, data: MPData[eventsub.chat.NotificationEvent]) -> None:
-        self._dispatcher('chat_notification', data)
+    def parse_channel_chat_notification_v1(self, d: MPData[eventsub.chat.NotificationEvent]) -> None:
+        self._dispatcher('chat_notification', d)
 
-    def parse_channel_chat_settings_update(self, data: MPData[eventsub.chat.SettingsUpdateEvent]) -> None:
-        self._dispatcher('chat_settings_update', data)
+    def parse_channel_chat_settings_update_v1(self, d: MPData[eventsub.chat.SettingsUpdateEvent]) -> None:
+        self._dispatcher('chat_settings_update', d)
 
-    def parse_channel_shared_chat_begin(self, data: MPData[eventsub.chat.SharedChatBeginEvent]) -> None:
-        self._dispatcher('shared_chat_begin', data)
+    def parse_channel_shared_chat_begin_v1(self, d: MPData[eventsub.chat.SharedChatBeginEvent]) -> None:
+        self._dispatcher('shared_chat_begin', d)
 
-    def parse_channel_shared_chat_update(self, data: MPData[eventsub.chat.SharedChatUpdateEvent]) -> None:
-        self._dispatcher('shared_chat_update', data)
+    def parse_channel_shared_chat_update_v1(self, d: MPData[eventsub.chat.SharedChatUpdateEvent]) -> None:
+        self._dispatcher('shared_chat_update', d)
 
-    def parse_channel_shared_chat_end(self, data: MPData[eventsub.chat.SharedChatEndEvent]) -> None:
-        self._dispatcher('shared_chat_end', data)
+    def parse_channel_shared_chat_end_v1(self, d: MPData[eventsub.chat.SharedChatEndEvent]) -> None:
+        self._dispatcher('shared_chat_end', d)
 
     # Bits
-    def parse_channel_cheer(self, data: MPData[eventsub.bits.CheerEvent]) -> None:
-        self._dispatcher('cheer', data)
+    def parse_channel_cheer_v1(self, d: MPData[eventsub.bits.CheerEvent]) -> None:
+        self._dispatcher('cheer', d)
 
-    def parse_channel_bits_use(self, data: MPData[eventsub.bits.BitsEvent]) -> None:
-        self._dispatcher('bits_use', data)
+    def parse_channel_bits_use_v1(self, d: MPData[eventsub.bits.BitsEvent]) -> None:
+        self._dispatcher('bits_use', d)
 
     # Moderation
-    def parse_channel_shield_mode_begin(self, data: MPData[eventsub.moderation.ShieldModeBeginEvent]) -> None:
-        self._dispatcher('shield_mode_begin', data)
+    def parse_channel_shield_mode_begin_v1(self, d: MPData[eventsub.moderation.ShieldModeBeginEvent]) -> None:
+        self._dispatcher('shield_mode_begin', d)
 
-    def parse_channel_shield_mode_end(self, data: MPData[eventsub.moderation.ShieldModeEndEvent]) -> None:
-        self._dispatcher('shield_mode_end', data)
+    def parse_channel_shield_mode_end_v1(self, d: MPData[eventsub.moderation.ShieldModeEndEvent]) -> None:
+        self._dispatcher('shield_mode_end', d)
 
-    def parse_channel_suspicious_user_message(self,
-                                              data: MPData[eventsub.moderation.SuspiciousUserMessageEvent]) -> None:
-        self._dispatcher('suspicious_user_message', data)
+    def parse_channel_suspicious_user_message_v1(self,
+                                              d: MPData[eventsub.moderation.SuspiciousUserMessageEvent]) -> None:
+        self._dispatcher('suspicious_user_message', d)
 
-    def parse_channel_suspicious_user_update(self, data: MPData[eventsub.moderation.SuspiciousUserUpdateEvent]) -> None:
-        self._dispatcher('suspicious_user_update', data)
+    def parse_channel_suspicious_user_update_v1(self, d: MPData[eventsub.moderation.SuspiciousUserUpdateEvent]) -> None:
+        self._dispatcher('suspicious_user_update', d)
 
-    def parse_channel_warning_acknowledge(self, data: MPData[eventsub.moderation.WarningAcknowledgeEvent]) -> None:
-        self._dispatcher('warning_acknowledge', data)
+    def parse_channel_warning_acknowledge_v1(self, d: MPData[eventsub.moderation.WarningAcknowledgeEvent]) -> None:
+        self._dispatcher('warning_acknowledge', d)
 
-    def parse_channel_warning_send(self, data: MPData[eventsub.moderation.WarningSendEvent]) -> None:
-        self._dispatcher('warning_send', data)
+    def parse_channel_warning_send_v1(self, d: MPData[eventsub.moderation.WarningSendEvent]) -> None:
+        self._dispatcher('warning_send', d)
 
-    def parse_automod_message_hold(self, data: MPData[eventsub.moderation.AutomodMessageHoldEvent]) -> None:
-        self._dispatcher('automod_message_hold', data)
+    def parse_automod_message_hold_v2(self, d: MPData[eventsub.moderation.AutomodMessageHoldEvent]) -> None:
+        self._dispatcher('automod_message_hold', d)
 
-    def parse_automod_message_update(self, data: MPData[eventsub.moderation.AutomodMessageUpdateEvent]) -> None:
-        self._dispatcher('automod_message_update', data)
+    def parse_automod_message_update_v2(self, d: MPData[eventsub.moderation.AutomodMessageUpdateEvent]) -> None:
+        self._dispatcher('automod_message_update', d)
 
-    def parse_automod_settings_update(self, data: MPData[eventsub.moderation.AutomodSettingsUpdateEvent]) -> None:
-        self._dispatcher('automod_settings_update', data)
+    def parse_automod_settings_update_v1(self, d: MPData[eventsub.moderation.AutomodSettingsUpdateEvent]) -> None:
+        self._dispatcher('automod_settings_update', d)
 
-    def parse_automod_terms_update(self, data: MPData[eventsub.moderation.AutomodTermsUpdateEvent]) -> None:
-        self._dispatcher('automod_terms_update', data)
+    def parse_automod_terms_update_v1(self, d: MPData[eventsub.moderation.AutomodTermsUpdateEvent]) -> None:
+        self._dispatcher('automod_terms_update', d)
 
-    def parse_channel_ban(self, data: MPData[eventsub.moderation.BanEvent]) -> None:
-        self._dispatcher('ban', data)
+    def parse_channel_ban_v1(self, d: MPData[eventsub.moderation.BanEvent]) -> None:
+        self._dispatcher('ban', d)
 
-    def parse_channel_unban(self, data: MPData[eventsub.moderation.UnbanEvent]) -> None:
-        self._dispatcher('unban', data)
+    def parse_channel_unban_v1(self, d: MPData[eventsub.moderation.UnbanEvent]) -> None:
+        self._dispatcher('unban', d)
 
-    def parse_channel_unban_request_create(self, data: MPData[eventsub.moderation.UnbanRequestCreateEvent]) -> None:
-        self._dispatcher('unban_request_create', data)
+    def parse_channel_unban_request_create_v1(self, d: MPData[eventsub.moderation.UnbanRequestCreateEvent]) -> None:
+        self._dispatcher('unban_request_create', d)
 
-    def parse_channel_moderate(self, data: MPData[eventsub.moderation.UnbanRequestResolveEvent]) -> None:
-        self._dispatcher('channel_moderate', data)
+    def parse_channel_moderate_v2(self, d: MPData[eventsub.moderation.UnbanRequestResolveEvent]) -> None:
+        self._dispatcher('channel_moderate', d)
 
-    def parse_channel_unban_request_resolve(self, data: MPData[eventsub.moderation.ModerateEvent]) -> None:
-        self._dispatcher('unban_request_resolve', data)
+    def parse_channel_unban_request_resolve_v1(self, d: MPData[eventsub.moderation.ModerateEvent]) -> None:
+        self._dispatcher('unban_request_resolve', d)
 
-    def parse_channel_moderator_add(self, data: MPData[eventsub.moderation.ModeratorAddEvent]) -> None:
-        self._dispatcher('moderator_add', data)
+    def parse_channel_moderator_add_v1(self, d: MPData[eventsub.moderation.ModeratorAddEvent]) -> None:
+        self._dispatcher('moderator_add', d)
 
-    def parse_channel_moderator_remove(self, data: MPData[eventsub.moderation.ModeratorRemoveEvent]) -> None:
-        self._dispatcher('moderator_remove', data)
+    def parse_channel_moderator_remove_v1(self, d: MPData[eventsub.moderation.ModeratorRemoveEvent]) -> None:
+        self._dispatcher('moderator_remove', d)
 
     # Channels
-    def parse_channel_update(self, data: MPData[eventsub.channels.ChannelUpdateEvent]) -> None:
-        self.user.channel.title = data['payload']['event']['title']
-        self.user.channel.language = data['payload']['event']['language']
-        self.user.channel.category_id = data['payload']['event']['category_id']
-        self.user.channel.category_name = data['payload']['event']['category_name']
-        self.user.channel.ccl = data['payload']['event']['content_classification_labels']
-        self._dispatcher('channel_update', data)
+    def parse_channel_update_v2(self, d: MPData[eventsub.channels.ChannelUpdateEvent]) -> None:
+        self.user.channel.title = d['payload']['event']['title']
+        self.user.channel.language = d['payload']['event']['language']
+        self.user.channel.category_id = d['payload']['event']['category_id']
+        self.user.channel.category_name = d['payload']['event']['category_name']
+        self.user.channel.ccl = d['payload']['event']['content_classification_labels']
+        self._dispatcher('channel_update', d)
 
-    def parse_channel_follow(self, data: MPData[eventsub.channels.FollowEvent]) -> None:
-        self._dispatcher('follow', data)
+    def parse_channel_follow_v2(self, d: MPData[eventsub.channels.FollowEvent]) -> None:
+        self._dispatcher('follow', d)
 
-    def parse_channel_subscribe(self, data: MPData[eventsub.channels.SubscribeEvent]) -> None:
-        self._dispatcher('subscribe', data)
+    def parse_channel_subscribe_v1(self, d: MPData[eventsub.channels.SubscribeEvent]) -> None:
+        self._dispatcher('subscribe', d)
 
-    def parse_channel_subscription_end(self, data: MPData[eventsub.channels.SubscriptionEndEvent]) -> None:
-        self._dispatcher('subscription_end', data)
+    def parse_channel_subscription_end_v1(self, d: MPData[eventsub.channels.SubscriptionEndEvent]) -> None:
+        self._dispatcher('subscription_end', d)
 
-    def parse_channel_subscription_gift(self, data: MPData[eventsub.channels.SubscriptionGiftEvent]) -> None:
-        self._dispatcher('subscription_gift', data)
+    def parse_channel_subscription_gift_v1(self, d: MPData[eventsub.channels.SubscriptionGiftEvent]) -> None:
+        self._dispatcher('subscription_gift', d)
 
-    def parse_channel_subscription_message(self, data: MPData[eventsub.channels.SubscriptionMessageEvent]) -> None:
-        self._dispatcher('subscription_message', data)
+    def parse_channel_subscription_message_v1(self, d: MPData[eventsub.channels.SubscriptionMessageEvent]) -> None:
+        self._dispatcher('subscription_message', d)
 
-    def parse_channel_vip_add(self, data: MPData[eventsub.channels.VIPAddEvent]) -> None:
-        self._dispatcher('vip_add', data)
+    def parse_channel_vip_add_v1(self, d: MPData[eventsub.channels.VIPAddEvent]) -> None:
+        self._dispatcher('vip_add', d)
 
-    def parse_channel_vip_remove(self, data: MPData[eventsub.channels.VIPRemoveEvent]) -> None:
-        self._dispatcher('vip_remove', data)
+    def parse_channel_vip_remove_v1(self, d: MPData[eventsub.channels.VIPRemoveEvent]) -> None:
+        self._dispatcher('vip_remove', d)
 
     # Interaction
-    def parse_channel_channel_points_automatic_reward_redemption_add(
-            self, data: MPData[eventsub.interaction.AutomaticRewardRedemptionAddEvent]) -> None:
-        self._dispatcher('points_automatic_reward_redemption_add', data)
+    def parse_channel_channel_points_automatic_reward_redemption_add_v1(
+            self, d: MPData[eventsub.interaction.AutomaticRewardRedemptionAddEventV1]) -> None:
+        self._dispatcher('points_automatic_reward_redemption_add_v1', d)
 
-    def parse_channel_channel_points_custom_reward_add(self,
-                                                       data: MPData[eventsub.interaction.PointRewardEvent]) -> None:
-        self._dispatcher('points_reward_add', data)
+    def parse_channel_channel_points_automatic_reward_redemption_add_v2(
+            self, d: MPData[eventsub.interaction.AutomaticRewardRedemptionAddEventV2]) -> None:
+        self._dispatcher('points_automatic_reward_redemption_add_v2', d)
 
-    def parse_channel_channel_points_custom_reward_update(self,
-                                                          data: MPData[eventsub.interaction.PointRewardEvent]) -> None:
-        self._dispatcher('points_reward_update', data)
+    def parse_channel_channel_points_custom_reward_add_v1(self,
+                                                       d: MPData[eventsub.interaction.PointRewardEvent]) -> None:
+        self._dispatcher('points_reward_add', d)
 
-    def parse_channel_channel_points_custom_reward_remove(self,
-                                                          data: MPData[eventsub.interaction.PointRewardEvent]) -> None:
-        self._dispatcher('points_reward_remove', data)
+    def parse_channel_channel_points_custom_reward_update_v1(self,
+                                                          d: MPData[eventsub.interaction.PointRewardEvent]) -> None:
+        self._dispatcher('points_reward_update', d)
+
+    def parse_channel_channel_points_custom_reward_remove_v1(self,
+                                                          d: MPData[eventsub.interaction.PointRewardEvent]) -> None:
+        self._dispatcher('points_reward_remove', d)
 
     def parse_channel_channel_points_custom_reward_redemption_add(
-            self, data: MPData[eventsub.interaction.RewardRedemptionEvent]) -> None:
-        self._dispatcher('points_reward_redemption_add', data)
+            self, d: MPData[eventsub.interaction.RewardRedemptionEvent]) -> None:
+        self._dispatcher('points_reward_redemption_add', d)
 
     def parse_channel_channel_points_custom_reward_redemption_update(
-            self, data: MPData[eventsub.interaction.RewardRedemptionEvent]) -> None:
-        self._dispatcher('points_reward_redemption_update', data)
+            self, d: MPData[eventsub.interaction.RewardRedemptionEvent]) -> None:
+        self._dispatcher('points_reward_redemption_update', d)
 
-    def parse_channel_poll_begin(self, data: MPData[eventsub.interaction.PollBeginEvent]) -> None:
-        self._dispatcher('poll_begin', data)
+    def parse_channel_poll_begin_v1(self, d: MPData[eventsub.interaction.PollBeginEvent]) -> None:
+        self._dispatcher('poll_begin', d)
 
-    def parse_channel_poll_progress(self, data: MPData[eventsub.interaction.PollProgressEvent]) -> None:
-        self._dispatcher('poll_progress', data)
+    def parse_channel_poll_progress_v1(self, d: MPData[eventsub.interaction.PollProgressEvent]) -> None:
+        self._dispatcher('poll_progress', d)
 
-    def parse_channel_poll_end(self, data: MPData[eventsub.interaction.PollEndEvent]) -> None:
-        self._dispatcher('poll_end', data)
+    def parse_channel_poll_end_v1(self, d: MPData[eventsub.interaction.PollEndEvent]) -> None:
+        self._dispatcher('poll_end', d)
 
-    def parse_channel_prediction_begin(self, data: MPData[eventsub.interaction.PredictionBeginEvent]) -> None:
-        self._dispatcher('prediction_begin', data)
+    def parse_channel_prediction_begin_v1(self, d: MPData[eventsub.interaction.PredictionBeginEvent]) -> None:
+        self._dispatcher('prediction_begin', d)
 
-    def parse_channel_prediction_progress(self, data: MPData[eventsub.interaction.PredictionProgressEvent]) -> None:
-        self._dispatcher('prediction_progress', data)
+    def parse_channel_prediction_progress_v1(self, d: MPData[eventsub.interaction.PredictionProgressEvent]) -> None:
+        self._dispatcher('prediction_progress', d)
 
-    def parse_channel_prediction_lock(self, data: MPData[eventsub.interaction.PredictionLockEvent]) -> None:
-        self._dispatcher('prediction_lock', data)
+    def parse_channel_prediction_lock_v1(self, d: MPData[eventsub.interaction.PredictionLockEvent]) -> None:
+        self._dispatcher('prediction_lock', d)
 
-    def parse_channel_prediction_end(self, data: MPData[eventsub.interaction.PredictionEndEvent]) -> None:
-        self._dispatcher('prediction_end', data)
+    def parse_channel_prediction_end_v1(self, d: MPData[eventsub.interaction.PredictionEndEvent]) -> None:
+        self._dispatcher('prediction_end', d)
 
-    def parse_channel_hype_train_begin(self, data: MPData[eventsub.interaction.HypeTrainEvent]) -> None:
-        self._dispatcher('hype_train_begin', data)
+    def parse_channel_hype_train_begin_v1(self, d: MPData[eventsub.interaction.HypeTrainEvent]) -> None:
+        self._dispatcher('hype_train_begin', d)
 
-    def parse_channel_hype_train_progress(self, data: MPData[eventsub.interaction.HypeTrainEvent]) -> None:
-        self._dispatcher('hype_train_progress', data)
+    def parse_channel_hype_train_progress_v1(self, d: MPData[eventsub.interaction.HypeTrainEvent]) -> None:
+        self._dispatcher('hype_train_progress', d)
 
-    def parse_channel_hype_train_end(self, data: MPData[eventsub.interaction.HypeTrainEndEvent]) -> None:
-        self._dispatcher('hype_train_end', data)
+    def parse_channel_hype_train_end_v1(self, d: MPData[eventsub.interaction.HypeTrainEndEvent]) -> None:
+        self._dispatcher('hype_train_end', d)
 
     # Activity
-    def parse_channel_charity_campaign_donate(self, data: MPData[eventsub.activity.CharityDonationEvent]) -> None:
-        self._dispatcher('charity_campaign_donate', data)
+    def parse_channel_charity_campaign_donate_v1(self, d: MPData[eventsub.activity.CharityDonationEvent]) -> None:
+        self._dispatcher('charity_campaign_donate', d)
 
-    def parse_channel_charity_campaign_start(self, data: MPData[eventsub.activity.CharityCampaignStartEvent]) -> None:
-        self._dispatcher('charity_campaign_start', data)
+    def parse_channel_charity_campaign_start_v1(self, d: MPData[eventsub.activity.CharityCampaignStartEvent]) -> None:
+        self._dispatcher('charity_campaign_start', d)
 
-    def parse_channel_charity_campaign_progress(self,
-                                                data: MPData[eventsub.activity.CharityCampaignProgressEvent]) -> None:
-        self._dispatcher('charity_campaign_progress', data)
+    def parse_channel_charity_campaign_progress_v1(self,
+                                                d: MPData[eventsub.activity.CharityCampaignProgressEvent]) -> None:
+        self._dispatcher('charity_campaign_progress', d)
 
-    def parse_channel_charity_campaign_stop(self, data: MPData[eventsub.activity.CharityCampaignStopEvent]) -> None:
-        self._dispatcher('charity_campaign_stop', data)
+    def parse_channel_charity_campaign_stop_v1(self, d: MPData[eventsub.activity.CharityCampaignStopEvent]) -> None:
+        self._dispatcher('charity_campaign_stop', d)
 
-    def parse_channel_goal_begin(self, data: MPData[eventsub.activity.GoalsEvent]) -> None:
-        self._dispatcher('goal_begin', data)
+    def parse_channel_goal_begin_v1(self, d: MPData[eventsub.activity.GoalsEvent]) -> None:
+        self._dispatcher('goal_begin', d)
 
-    def parse_channel_goal_progress(self, data: MPData[eventsub.activity.GoalsEvent]) -> None:
-        self._dispatcher('goal_progress', data)
+    def parse_channel_goal_progress_v1(self, d: MPData[eventsub.activity.GoalsEvent]) -> None:
+        self._dispatcher('goal_progress', d)
 
-    def parse_channel_goal_end(self, data: MPData[eventsub.activity.GoalsEvent]) -> None:
-        self._dispatcher('goal_end', data)
+    def parse_channel_goal_end_v1(self, d: MPData[eventsub.activity.GoalsEvent]) -> None:
+        self._dispatcher('goal_end', d)
 
     # Streams
-    def parse_channel_ad_break_begin(self, data: MPData[eventsub.streams.AdBreakBeginEvent]) -> None:
-        self._dispatcher('ad_break_begin', data)
+    def parse_channel_ad_break_begin_v1(self, d: MPData[eventsub.streams.AdBreakBeginEvent]) -> None:
+        self._dispatcher('ad_break_begin', d)
 
-    def parse_channel_raid(self, data: MPData[eventsub.streams.RaidEvent]) -> None:
-        self._dispatcher('raid', data)
+    def parse_channel_raid_v1(self, d: MPData[eventsub.streams.RaidEvent]) -> None:
+        self._dispatcher('raid', d)
 
-    def parse_channel_shoutout_create(self, data: MPData[eventsub.streams.ShoutoutCreateEvent]) -> None:
-        self._dispatcher('shoutout_create', data)
+    def parse_channel_shoutout_create_v1(self, d: MPData[eventsub.streams.ShoutoutCreateEvent]) -> None:
+        self._dispatcher('shoutout_create', d)
 
-    def parse_channel_shoutout_receive(self, data: MPData[eventsub.streams.ShoutoutReceivedEvent]) -> None:
-        self._dispatcher('shoutout_received', data)
+    def parse_channel_shoutout_receive_v1(self, d: MPData[eventsub.streams.ShoutoutReceivedEvent]) -> None:
+        self._dispatcher('shoutout_received', d)
 
-    def parse_stream_online(self, data: MPData[eventsub.streams.StreamOnlineEvent]) -> None:
+    def parse_stream_online_v1(self, d: MPData[eventsub.streams.StreamOnlineEvent]) -> None:
         self.is_live = True
-        self._dispatcher('stream_online', data)
+        self._dispatcher('stream_online', d)
 
-    def parse_stream_offline(self, data: MPData[eventsub.streams.StreamOfflineEvent]) -> None:
+    def parse_stream_offline_v1(self, d: MPData[eventsub.streams.StreamOfflineEvent]) -> None:
         self.is_live = False
-        self._dispatcher('stream_offline', data)
+        self._dispatcher('stream_offline', d)
 
     # Users
-    def parse_user_update(self, data: MPData[eventsub.users.UserUpdateEvent]) -> None:
-        self.user.name = data['payload']['event']['user_login']
-        self.user.display_name = data['payload']['event']['user_name']
-        self.user.description = data['payload']['event']['description']
-        self.user.email = data['payload']['event'].get('email') or None
-        self._dispatcher('user_update', data)
+    def parse_user_update_v1(self, d: MPData[eventsub.users.UserUpdateEvent]) -> None:
+        self.user.name = d['payload']['event']['user_login']
+        self.user.display_name = d['payload']['event']['user_name']
+        self.user.description = d['payload']['event']['description']
+        self.user.email = d['payload']['event'].get('email') or None
+        self._dispatcher('user_update', d)
 
-    def parse_user_whisper_message(self, data: MPData[eventsub.users.WhisperReceivedEvent]) -> None:
-        self._dispatcher('whisper_received', data)
+    def parse_user_whisper_message_v1(self, d: MPData[eventsub.users.WhisperReceivedEvent]) -> None:
+        self._dispatcher('whisper_received', d)
 
-    def parse_channel_chat_user_message_hold(self, data: MPData[eventsub.users.MessageHoldEvent]) -> None:
-        self._dispatcher('chat_user_message_hold', data)
+    def parse_channel_chat_user_message_hold_v1(self, d: MPData[eventsub.users.MessageHoldEvent]) -> None:
+        self._dispatcher('chat_user_message_hold', d)
 
-    def parse_channel_chat_user_message_update(self, data: MPData[eventsub.users.MessageUpdateEvent]) -> None:
-        self._dispatcher('chat_user_message_update', data)
+    def parse_channel_chat_user_message_update_v1(self, d: MPData[eventsub.users.MessageUpdateEvent]) -> None:
+        self._dispatcher('chat_user_message_update', d)

@@ -24,269 +24,287 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from typing import Optional, List, Literal, TypedDict
+from typing import TypedDict, List, Optional, Literal
 from .users import SpecificBroadcaster, SpecificUser
-from .chat import TextEmoteMessage
 
 
 # Reward
-class Emote(TypedDict):
+UnlockedEmoteV1 = TypedDict('UnlockedEmoteV1', {'id': str, 'name': str})
+MessageEmoteV1 = TypedDict('MessageEmoteV1', {'id': str, 'begin': int, 'end': int})
+MessageV1 = TypedDict('MessageV1', {'text': str, 'emotes': List[MessageEmoteV1]})
+RewardV1 = TypedDict('RewardV1', {
+    'type': Literal[
+        'single_message_bypass_sub_mode',
+        'send_highlighted_message',
+        'random_sub_emote_unlock',
+        'chosen_sub_emote_unlock',
+        'chosen_modified_sub_emote_unlock',
+        'message_effect',
+        'gigantify_an_emote',
+        'celebration'
+    ],
+    'cost': int,
+    'unlocked_emote': Optional[UnlockedEmoteV1]
+})
+
+class AutomaticRewardRedemptionAddEventV1(TypedDict):
     """
-    Represents an emote with its ID and availability times.
+    Twitch EventSub payload for automatic channel point reward redemptions (v1).
 
     Attributes
     ----------
     id: str
-        The ID of the emote.
-    begin: int
-        The start time of the emotes availability, in Unix timestamp format.
-    end: int
-        The end time of the emotes availability, in Unix timestamp format.
-    """
-    id: str
-    begin: int
-    end: int
-
-
-class UnlockedEmote(TypedDict):
-    """
-    Represents an emote that has been unlocked.
-
-    Attributes
-    ----------
-    id: str
-        The ID of the unlocked emote.
-    name: str
-        The name of the unlocked emote.
-    """
-    id: str
-    name: str
-
-
-class AutomaticReward(TypedDict):
-    """
-    Represents an automatic reward with its type and details.
-
-    Attributes
-    ----------
-    type: str
-        The type of event. Possible values include:
-
-        - single_message_bypass_sub_mode
-        - send_highlighted_message
-        - random_sub_emote_unlock
-        - chosen_sub_emote_unlock
-        - chosen_modified_sub_emote_unlock
-        - message_effect
-        - gigantify_an_emote
-        - celebration
-    cost: int
-        The cost of the reward in channel points or other currency.
-    unlocked_emote: Optional[UnlockedEmote]
-        Details of an emote unlocked by the reward, if applicable.
-    """
-    type: Literal['single_message_bypass_sub_mode',
-                  'send_highlighted_message',
-                  'random_sub_emote_unlock',
-                  'chosen_sub_emote_unlock',
-                  'chosen_modified_sub_emote_unlock',
-                  'message_effect',
-                  'gigantify_an_emote',
-                  'celebration']
-    cost: int
-    unlocked_emote: Optional[UnlockedEmote]
-
-
-class AutomaticRewardRedemptionAddEvent(SpecificBroadcaster, SpecificUser):
-    """
-    Represents an event where an automatic reward is redeemed.
-
-    Attributes
-    ----------
-    id: str
-        The ID of the reward redemption event.
-    reward: AutomaticReward
-        The details of the automatic reward redeemed.
-    message: TextEmoteMessage
-        The message associated with the reward redemption.
-    user_input: Optional[str]
-        Additional user input, if any, provided during the redemption.
-    redeemed_at: str
-        The timestamp when the reward was redeemed, in ISO 8601 format.
-    """
-    id: str
-    reward: AutomaticReward
-    message: TextEmoteMessage
-    user_input: Optional[str]
-    redeemed_at: str
-
-
-class Image(TypedDict):
-    """
-    Represents an image with multiple resolution options.
-
-    Attributes
-    ----------
-    url_1x: Optional[str]
-        URL of the image at 1x resolution.
-    url_2x: Optional[str]
-        URL of the image at 2x resolution.
-    url_4x: Optional[str]
-        URL of the image at 4x resolution.
-    """
-    url_1x: Optional[str]
-    url_2x: Optional[str]
-    url_4x: Optional[str]
-
-
-class PointRewardEvent(SpecificBroadcaster):
-    """
-    Represents custom point reward event.
-
-    Attributes
-    ----------
-    id: str
-        The ID of the reward.
-    is_enabled: bool
-        Whether the reward is currently enabled.
-    is_paused: bool
-        Whether the reward is currently paused.
-    is_in_stock: bool
-        Whether the reward is in stock.
-    title: str
-        The title of the reward.
-    cost: int
-        The cost of the reward in channel points or other currency.
-    prompt: str
-        The prompt or description for the reward.
-    is_user_input_required: bool
-        Whether user input is required to redeem the reward.
-    should_redemptions_skip_request_queue: bool
-        Whether redemptions should skip the request queue.
-    max_per_stream: Optional[int]
-        The maximum number of redemptions allowed per stream, if applicable.
-    max_per_user_per_stream: Optional[int]
-        The maximum number of redemptions allowed per user per stream, if applicable.
-    background_color: Optional[str]
-        The background color of the reward's display.
-    image: Optional[Image]
-        The image associated with the reward.
-    default_image: Optional[Image]
-        The default image to display for the reward.
-    global_cooldown: Optional[int]
-        The global cooldown for the reward, in seconds.
-    cooldown_expires_at: Optional[str]
-        The timestamp when the cooldown expires, in ISO 8601 format.
-    redemptions_redeemed_current_stream: Optional[int]
-        The number of redemptions redeemed in the current stream.
-    """
-    id: str
-    is_enabled: bool
-    is_paused: bool
-    is_in_stock: bool
-    title: str
-    cost: int
-    prompt: str
-    is_user_input_required: bool
-    should_redemptions_skip_request_queue: bool
-    max_per_stream: Optional[int]
-    max_per_user_per_stream: Optional[int]
-    background_color: Optional[str]
-    image: Optional[Image]
-    default_image: Optional[Image]
-    global_cooldown: Optional[int]
-    cooldown_expires_at: Optional[str]
-    redemptions_redeemed_current_stream: Optional[int]
-
-
-class RedemptionMessageEmote(TypedDict):
-    """
-    Represents metadata about an emote.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier for the emote.
-    name: str
-        The human-readable emote token.
-    """
-    id: str
-    name: str
-
-
-class RedemptionFragment(TypedDict):
-    """
-    Represents a fragment of a chat message.
-
-    Attributes
-    ----------
-    text: str
-        The message text within the fragment.
-    type: Literal["text", "emote"]
-        The type of fragment (text or emote).
-    emote: Optional[Emote]
-        Metadata about the emote if the fragment contains one.
-    """
-    text: str
-    type: Literal["text", "emote"]
-    emote: Optional[RedemptionMessageEmote]
-
-
-class RedemptionMessage(TypedDict):
-    """
-    Represents a chat message with potential emotes.
-
-    Attributes
-    ----------
-    text: str
-        The complete message in plain text.
-    fragments: List[Fragment]
-        The ordered list of message fragments.
-    """
-    text: str
-    fragments: List[RedemptionFragment]
-
-class RewardInfo(TypedDict):
-    """
-    Represents information about the reward redeemed by the user.
-
-    Attributes
-    ----------
-    type: Literal["single_message_bypass_sub_mode", "send_highlighted_message",
-                  "random_sub_emote_unlock", "chosen_sub_emote_unlock",
-                  "chosen_modified_sub_emote_unlock"]
-        The type of reward redeemed.
-    channel_points: int
-        The number of channel points used to redeem the reward.
-    emote: Optional[Emote]
-        The associated emote for the reward, if available.
-    message: Optional[Message]
-        The associated message and emote information for the reward.
-    """
-    type: Literal["single_message_bypass_sub_mode", "send_highlighted_message",
-                  "random_sub_emote_unlock", "chosen_sub_emote_unlock",
-                  "chosen_modified_sub_emote_unlock"]
-    channel_points: int
-    emote: Optional[Emote]
-    message: Optional[RedemptionMessage]
-
-
-class RewardRedemptionEvent(SpecificBroadcaster, SpecificUser):
-    """
-    Represents a channel points redemption event.
-
-    Attributes
-    ----------
-    id: str
-        The unique identifier for the redemption event.
+        Unique redemption ID
+    broadcaster_user_id: str
+        The ID of the channel where the reward was redeemed.
+    broadcaster_user_login: str
+        The login of the channel where the reward was redeemed.
+    broadcaster_user_name: str
+        The display name of the channel where the reward was redeemed.
+    user_id: str
+        The ID of the redeeming user.
+    user_login: str
+        The login of the redeeming user.
+    user_name: str
+        The display name of the redeeming user.
     reward: Reward
-        The reward information associated with the redemption.
+        Details about the redeemed reward with structure:
+        {
+            'type': Literal[
+                'single_message_bypass_sub_mode',
+                'send_highlighted_message',
+                'random_sub_emote_unlock',
+                'chosen_sub_emote_unlock',
+                'chosen_modified_sub_emote_unlock',
+                'message_effect',
+                'gigantify_an_emote',
+                'celebration'
+            ],
+            'cost': int,
+            'unlocked_emote': Optional[{'id': str, 'name': str}]
+        }
+    message: Message
+        Associated chat message data with structure:
+        {
+            'text': str,
+            'emotes': List[{'id': str, 'begin': int, 'end': int}]
+        }
+    user_input: Optional[str]
+        User-provided text input if required
     redeemed_at: str
-        The UTC date and time (in RFC3339 format) of when the reward was redeemed.
+        UTC timestamp in RFC3339 format
     """
     id: str
+    broadcaster_user_id: str
+    broadcaster_user_login: str
+    broadcaster_user_name: str
+    user_id: str
+    user_login: str
+    user_name: str
+    reward: RewardV1
+    message: MessageV1
+    user_input: Optional[str]
+    redeemed_at: str
+
+
+EmoteV2 = TypedDict('EmoteV2', {'id': str, 'name': str})
+MessageFragmentV2 = TypedDict('MessageFragmentV2', {'text': str,
+                                                    'type': Literal['text', 'emote'],
+                                                    'emote': Optional[EmoteV2]})
+MessageV2 = TypedDict('MessageV2', {'text': str, 'fragments': List[MessageFragmentV2]})
+RewardV2 = TypedDict('RewardV2', {
+    'type': Literal[
+        'single_message_bypass_sub_mode',
+        'send_highlighted_message',
+        'random_sub_emote_unlock',
+        'chosen_sub_emote_unlock',
+        'chosen_modified_sub_emote_unlock'
+    ], 'channel_points': int, 'emote': Optional[EmoteV2]
+})
+
+class AutomaticRewardRedemptionAddEventV2(TypedDict):
+    """
+    Twitch EventSub payload for automatic channel point reward redemptions (v2).
+
+    Attributes
+    ----------
+    id: str
+        Unique redemption ID
+    broadcaster_user_id: str
+        The ID of the channel where the reward was redeemed.
+    broadcaster_user_login: str
+        The login of the channel where the reward was redeemed.
+    broadcaster_user_name: str
+        The display name of the channel where the reward was redeemed.
+    user_id: str
+        The ID of the redeeming user.
+    user_login: str
+        The login of the redeeming user.
+    user_name: str
+        The display name of the redeeming user.
+
+    reward: RewardV2
+        Details about the redeemed reward with structure:
+        {
+            'type': Literal[
+                'single_message_bypass_sub_mode',
+                'send_highlighted_message',
+                'random_sub_emote_unlock',
+                'chosen_sub_emote_unlock',
+                'chosen_modified_sub_emote_unlock'
+            ],
+            'channel_points': int,
+            'emote': Optional[{'id': str, 'name': str}]
+        }
+    message: MessageV2
+        Associated chat message data with structure:
+        {
+            'text': str,
+            'fragments': List[{
+                'text': str,
+                'type': Literal['text', 'emote'],
+                'emote': Optional[{'id': str, 'name': str}]
+            }]
+        }
+    redeemed_at: str
+        UTC timestamp in RFC3339 format
+    """
+    id: str
+    broadcaster_user_id: str
+    broadcaster_user_login: str
+    broadcaster_user_name: str
+    user_id: str
+    user_login: str
+    user_name: str
+    reward: RewardV2
+    message: Optional[MessageV2]
+    redeemed_at: str
+
+
+Image = TypedDict('Image', {'url_1x': str, 'url_2x': str, 'url_4x': str})
+MaxPerStream = TypedDict('MaxPerStream', {'is_enabled': bool, 'max_per_stream': int})
+MaxPerUserPerStream = TypedDict('MaxPerUserPerStream', {'is_enabled': bool, 'max_per_user_per_stream': int})
+GlobalCooldown = TypedDict('GlobalCooldown', {'is_enabled': bool, 'global_cooldown_seconds': int})
+RewardImage = TypedDict('RewardImage', {'image': Optional[Image], 'default_image': Image})
+
+class PointRewardEvent(TypedDict):
+    """
+    Twitch EventSub payload for channel points custom reward add events.
+
+    Attributes
+    ----------
+    id: str
+        The reward identifier.
+    broadcaster_user_id: str
+        The requested broadcaster ID.
+    broadcaster_user_login: str
+        The requested broadcaster login.
+    broadcaster_user_name: str
+        The requested broadcaster display name.
+    is_enabled: bool
+        Is the reward currently enabled. If false, the reward won't show up to viewers.
+    is_paused: bool
+        Is the reward currently paused. If true, viewers can't redeem.
+    is_in_stock: bool
+        Is the reward currently in stock. If false, viewers can't redeem.
+    title: str
+        The reward title.
+    cost: int
+        The reward cost.
+    prompt: str
+        The reward description.
+    is_user_input_required: bool
+        Does the viewer need to enter information when redeeming the reward.
+    should_redemptions_skip_request_queue: bool
+        Should redemptions be set to fulfilled status immediately when redeemed.
+    max_per_stream: {'is_enabled': bool, 'max_per_stream': int}
+        Whether a maximum per stream is enabled and what the maximum is.
+    max_per_user_per_stream: {'is_enabled': bool, 'max_per_user_per_stream': int}
+        Whether a maximum per user per stream is enabled and what the maximum is.
+    background_color: str
+        Custom background color for the reward (Hex with # prefix).
+    image: Optional[{'url_1x': str, 'url_2x': str, 'url_4x': str}]
+        Set of custom images for the reward. Can be null if no images uploaded.
+    default_image: {'url_1x': str, 'url_2x': str, 'url_4x': str}
+        Set of default images for the reward.
+    global_cooldown: {'is_enabled': bool, 'global_cooldown_seconds': int}
+        Whether a cooldown is enabled and what the cooldown is in seconds.
+    cooldown_expires_at: str
+        Timestamp of the cooldown expiration. null if the reward isn't on cooldown.
+    redemptions_redeemed_current_stream: Optional[int]
+        The number of redemptions redeemed during the current live stream.
+    """
+    id: str
+    broadcaster_user_id: str
+    broadcaster_user_login: str
+    broadcaster_user_name: str
+    is_enabled: bool
+    is_paused: bool
+    is_in_stock: bool
+    title: str
+    cost: int
+    prompt: str
+    is_user_input_required: bool
+    should_redemptions_skip_request_queue: bool
+    max_per_stream: MaxPerStream
+    max_per_user_per_stream: MaxPerUserPerStream
+    background_color: str
+    image: Optional[Image]
+    default_image: Image
+    global_cooldown: GlobalCooldown
+    cooldown_expires_at: Optional[str]
+    redemptions_redeemed_current_stream: Optional[int]
+
+
+RewardInfo = TypedDict('RewardInfo', {'id': str, 'title': str, 'prompt': str, 'cost': int})
+
+class RewardRedemptionEvent(TypedDict):
+    """
+    Twitch EventSub payload for custom channel point reward redemptions.
+
+    Attributes
+    ----------
+    id: str
+        The redemption identifier.
+    broadcaster_user_id: str
+        The requested broadcaster ID.
+    broadcaster_user_login: str
+        The requested broadcaster login.
+    broadcaster_user_name: str
+        The requested broadcaster display name.
+    user_id: str
+        User ID of the user that redeemed the reward.
+    user_login: str
+        Login of the user that redeemed the reward.
+    user_name: str
+        Display name of the user that redeemed the reward.
+    user_input: str
+        The user input provided. Empty string if not provided.
+    status: Literal['unknown', 'unfulfilled', 'fulfilled', 'canceled']
+        Redemption status. Possible values: unknown, unfulfilled, fulfilled, canceled.
+    reward: RewardInfo
+        Basic information about the reward that was redeemed, with structure:
+        {
+            'id': str,
+            'title': str,
+            'prompt': str,
+            'cost': int
+        }
+    redeemed_at: str
+        RFC3339 timestamp of when the reward was redeemed.
+    """
+    id: str
+    broadcaster_user_id: str
+    broadcaster_user_login: str
+    broadcaster_user_name: str
+    user_id: str
+    user_login: str
+    user_name: str
+    user_input: str
+    status: Literal['unknown', 'unfulfilled', 'fulfilled', 'canceled']
     reward: RewardInfo
     redeemed_at: str
+
 
 
 # Poll
