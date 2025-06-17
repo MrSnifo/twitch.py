@@ -628,7 +628,7 @@ ___
     - **Usage**:
     ```python
     @client.event
-    async def on_points_automatic_reward_redemption_add(data: eventsub.interaction.AutomaticRewardRedemptionAddEvent):
+    async def on_points_automatic_reward_redemption_add(data: eventsub.interaction.AutomaticRewardRedemptionAddEventV1):
         ...
     ```
   
@@ -645,7 +645,7 @@ ___
     - **Usage**:
     ```python
     @client.event
-    async def on_points_automatic_reward_redemption_add(data: eventsub.interaction.AutomaticRewardRedemptionAddEvent):
+    async def on_points_automatic_reward_redemption_add(data: eventsub.interaction.AutomaticRewardRedemptionAddEventV2):
         ...
     ```
   
