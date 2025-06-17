@@ -618,13 +618,30 @@ ___
 ## Points Reward Events
 ___
 
-- `on_points_automatic_reward_redemption_add`
+- `on_points_automatic_reward_redemption_add_v1`
     - **Description**: Triggered when a viewer has redeemed an automatic channel points reward.
     - **Possible Scopes**: 
          - `channel:read:redemptions` 
          - `channel:manage:redemptions`
     - **Customizable**: `False`
-    - **Data Type**: [`AutomaticRewardRedemptionAddEvent`][twitch.types.eventsub.interaction.AutomaticRewardRedemptionAddEvent]
+    - **Data Type**: [`AutomaticRewardRedemptionAddEventV1`][twitch.types.eventsub.interaction.AutomaticRewardRedemptionAddEventV1]
+    - **Usage**:
+    ```python
+    @client.event
+    async def on_points_automatic_reward_redemption_add(data: eventsub.interaction.AutomaticRewardRedemptionAddEvent):
+        ...
+    ```
+  
+---
+
+
+- `on_points_automatic_reward_redemption_add_v2`
+    - **Description**: Triggered when a viewer has redeemed an automatic channel points reward.
+    - **Possible Scopes**: 
+         - `channel:read:redemptions` 
+         - `channel:manage:redemptions`
+    - **Customizable**: `False`
+    - **Data Type**: [`AutomaticRewardRedemptionAddEventV2`][twitch.types.eventsub.interaction.AutomaticRewardRedemptionAddEventV2]
     - **Usage**:
     ```python
     @client.event

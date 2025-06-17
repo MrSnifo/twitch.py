@@ -204,27 +204,14 @@ ___
 
 ## Interaction
 ___
-### ::: twitch.types.eventsub.interaction.AutomaticRewardRedemptionAddEvent
+### ::: twitch.types.eventsub.interaction.AutomaticRewardRedemptionAddEventV2
 ---
-#### ::: twitch.types.eventsub.interaction.Emote
----
-#### ::: twitch.types.eventsub.interaction.UnlockedEmote
----
-#### ::: twitch.types.eventsub.interaction.AutomaticReward
+### ::: twitch.types.eventsub.interaction.AutomaticRewardRedemptionAddEventV1
+
 ---
 ### ::: twitch.types.eventsub.interaction.PointRewardEvent
 ---
-#### ::: twitch.types.eventsub.interaction.Image
----
 ### ::: twitch.types.eventsub.interaction.RewardRedemptionEvent
----
-#### ::: twitch.types.eventsub.interaction.RewardInfo
----
-#### ::: twitch.types.eventsub.interaction.RedemptionMessage
----
-#### ::: twitch.types.eventsub.interaction.RedemptionFragment
----
-#### ::: twitch.types.eventsub.interaction.RedemptionMessageEmote
 ---
 ### ::: twitch.types.eventsub.interaction.PollBeginEvent
 ---

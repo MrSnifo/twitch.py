@@ -49,7 +49,7 @@ RewardV1 = TypedDict('RewardV1', {
 
 class AutomaticRewardRedemptionAddEventV1(TypedDict):
     """
-    Twitch EventSub payload for automatic channel point reward redemptions (v1).
+    Twitch EventSub payload for automatic channel point reward redemptions **version 1**.
 
     Attributes
     ----------
@@ -67,8 +67,9 @@ class AutomaticRewardRedemptionAddEventV1(TypedDict):
         The login of the redeeming user.
     user_name: str
         The display name of the redeeming user.
-    reward: Reward
+    reward: RewardV1
         Details about the redeemed reward with structure:
+        ```py
         {
             'type': Literal[
                 'single_message_bypass_sub_mode',
@@ -83,12 +84,15 @@ class AutomaticRewardRedemptionAddEventV1(TypedDict):
             'cost': int,
             'unlocked_emote': Optional[{'id': str, 'name': str}]
         }
-    message: Message
+        ```
+    message: MessageV1
         Associated chat message data with structure:
+        ```py
         {
             'text': str,
             'emotes': List[{'id': str, 'begin': int, 'end': int}]
         }
+        ```
     user_input: Optional[str]
         User-provided text input if required
     redeemed_at: str
@@ -124,7 +128,7 @@ RewardV2 = TypedDict('RewardV2', {
 
 class AutomaticRewardRedemptionAddEventV2(TypedDict):
     """
-    Twitch EventSub payload for automatic channel point reward redemptions (v2).
+    Twitch EventSub payload for automatic channel point reward redemptions **version 2**.
 
     Attributes
     ----------
@@ -145,6 +149,7 @@ class AutomaticRewardRedemptionAddEventV2(TypedDict):
 
     reward: RewardV2
         Details about the redeemed reward with structure:
+        ```py
         {
             'type': Literal[
                 'single_message_bypass_sub_mode',
@@ -156,8 +161,10 @@ class AutomaticRewardRedemptionAddEventV2(TypedDict):
             'channel_points': int,
             'emote': Optional[{'id': str, 'name': str}]
         }
+        ```
     message: MessageV2
         Associated chat message data with structure:
+        ```py
         {
             'text': str,
             'fragments': List[{
@@ -166,6 +173,7 @@ class AutomaticRewardRedemptionAddEventV2(TypedDict):
                 'emote': Optional[{'id': str, 'name': str}]
             }]
         }
+        ```
     redeemed_at: str
         UTC timestamp in RFC3339 format
     """
