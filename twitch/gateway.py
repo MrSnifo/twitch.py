@@ -63,13 +63,8 @@ class EventSubWebSocket:
     NOTIFICATION: ClassVar[str] = 'notification'
     REVOCATION: ClassVar[str] = 'revocation'
 
-    def __init__(self,
-                 socket: aiohttp.ClientWebSocketResponse,
-                 state: ConnectionState,
-                 *,
-                 loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, socket: aiohttp.ClientWebSocketResponse, state: ConnectionState) -> None:
         self.socket: aiohttp.ClientWebSocketResponse = socket
-        self.loop: asyncio.AbstractEventLoop = loop
         self.session_id: Optional[str] = None
         self._subscriptions_task: Optional[asyncio.Task] = None
         self._state: ConnectionState = state
@@ -108,7 +103,7 @@ class EventSubWebSocket:
         gateway = gateway or cls.DEFAULT_GATEWAY
         socket = await client.http.ws_connect(url=gateway, resume=resume)
         state.ws_connect()
-        ws: Self = cls(socket, state, loop=client.loop)
+        ws: Self = cls(socket, state)
         # Waits for welcome message.
         await ws.poll_handle_dispatch()
         if not resume:
@@ -117,7 +112,7 @@ class EventSubWebSocket:
             # Add additional default events.
             events.update({'channel_update', 'user_update', 'stream_online', 'stream_offline'})
             task = ws.create_subscriptions(events=events, initial=initial)
-            ws._subscriptions_task = ws.loop.create_task(task, name='twitch:gateway:subscriptions')
+            ws._subscriptions_task = client.loop.create_task(task, name='twitch:gateway:subscriptions')
         else:
             state.state_ready()
         return ws

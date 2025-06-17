@@ -262,7 +262,7 @@ class MessageEvent(SpecificBroadcaster):
         The broadcaster user ID of the channel the message was sent from,
         in case of a shared chat session.
     source_broadcaster_user_name: Optional[str]
-        The user name of the broadcaster of the channel the message was sent from,
+        The username of the broadcaster of the channel the message was sent from,
         in case of a shared chat session.
     source_broadcaster_user_login: Optional[str]
         The login of the broadcaster of the channel the message was sent from,
